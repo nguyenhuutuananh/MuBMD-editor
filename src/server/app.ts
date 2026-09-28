@@ -1,8 +1,7 @@
 // app.ts - HTTP handling: JSON API + serving the UI. Kept separate from Bun.serve so it is testable.
 
-import { basename as pathBasename, dirname as pathDirname, join as pathJoin, resolve as pathResolve } from "node:path";
-import * as fs from "node:fs";
-import { AppError, type ErrorCode, type ErrorParams, type GlossaryEntry, NameValidationError, isStatus, parseGlossary, serializeGlossary } from "../core";
+import { dirname as pathDirname, join as pathJoin } from "node:path";
+import { AppError, type ErrorCode, type ErrorParams, NameValidationError, isStatus } from "../core";
 import {
   type EditRequest,
   type ErrorResponse,
@@ -19,8 +18,10 @@ import {
   type StateResponse,
 } from "../shared/api";
 import { pickFile, pickSaveFile } from "./filePicker";
-import { NoFileError, Session } from "./session";
-import { writeText } from "./storage";
+import { loadGlossaryFile, saveGlossaryFile } from "../session/glossaryFiles";
+import { itemsResponse as buildItemsResponse, saveResponse, stateResponse } from "../session/responses";
+import { NoFileError, Session } from "../session/session";
+import { NodeStorage } from "./nodeStorage";
 
 // Built UI (Vite), keyed by URL path ("/index.html", "/assets/index-abc.js").
 export interface WebAsset {
@@ -99,31 +100,17 @@ function errorResponse(e: unknown): Response {
 const str = (v: unknown) => (typeof v === "string" ? v : "");
 
 export function createApp(opts: AppOptions) {
-  const session = opts.session ?? new Session();
+  const session = opts.session ?? new Session(new NodeStorage());
   const pick = opts.pick ?? pickFile;
   const pickSave = opts.pickSave ?? pickSaveFile;
 
-  const state = (): StateResponse => ({ file: session.file, version: opts.version });
-
-  function itemsResponse(): ItemsResponse {
-    const file = session.file;
-    if (!file) throw new NoFileError();
-    return {
-      file,
-      items: session.items(),
-      edits: session.edits(),
-      records: session.recordList(),
-      dirty: session.dirtySlots(),
-      status: session.status(),
-      draft: session.draftInfo(),
-      rebased: session.wasRebased(),
-    };
-  }
+  const state = () => stateResponse(session, opts.version);
+  const itemsResponse = () => buildItemsResponse(session);
 
   // Used at startup when a path is given on the command line.
-  function openPath(path: string): Response {
+  async function openPath(path: string): Promise<Response> {
     try {
-      session.open(path);
+      await session.open(path);
       return json(state());
     } catch (e) {
       return errorResponse(e);
@@ -142,14 +129,14 @@ export function createApp(opts: AppOptions) {
   const openDir = () => (session.file ? pathDirname(session.file.path) : undefined);
 
   const posts: Record<string, Handler> = {
-    "/api/open": (b) => {
+    "/api/open": async (b) => {
       const path = str((b as Partial<OpenRequest>).path).trim();
       if (!path) return fail(400, "missing-path", "Missing file path.");
-      session.open(path, { discard: b.discard === true });
+      await session.open(path, { discard: b.discard === true });
       return state();
     },
     "/api/pick": async (b) => {
-      const kinds: PickKind[] = ["tsv", "reference", "glossary", "compare"];
+      const kinds: PickKind[] = ["bmd-file", "tsv", "reference", "glossary", "compare"];
       const kind: PickKind = kinds.includes(b.kind as PickKind) ? (b.kind as PickKind) : "bmd";
       return { path: await pick(langOf(b), kind, openDir()) } satisfies PickResponse;
     },
@@ -171,35 +158,24 @@ export function createApp(opts: AppOptions) {
       return session.setStatus(slotsOf(b.slots), b.status, str(b.translator));
     },
     "/api/note": (b) => session.setNote(Number(b.slot), str(b.note), str(b.translator)),
-    "/api/reference": (b) => ({ reference: session.setReference(b.path ? pathOf(b) : null) }),
+    "/api/reference": async (b) => ({ reference: await session.setReference(b.path ? pathOf(b) : null) }),
     // The glossary is a standalone file shared by the team (not tied to the open Item.bmd).
-    "/api/glossary/load": (b): GlossaryInfo => {
-      const p = pathResolve(pathOf(b));
-      const g = parseGlossary(fs.readFileSync(p, "utf-8"));
-      return { path: p, fileName: pathBasename(p), format: g.format, entries: g.entries };
-    },
-    "/api/glossary/save": (b): GlossaryInfo => {
-      const p = pathResolve(pathOf(b));
-      const entries = (Array.isArray(b.entries) ? b.entries : [])
-        .filter((e): e is GlossaryEntry => typeof e?.term === "string" && e.term.trim() !== "")
-        .map((e) => ({ term: e.term.trim(), translation: e.translation?.trim() || null, note: str(e.note), category: str(e.category) }));
-      writeText(p, serializeGlossary(entries));
-      return { path: p, fileName: pathBasename(p), format: "tsv", entries };
-    },
+    "/api/glossary/load": (b): Promise<GlossaryInfo> => loadGlossaryFile(session.storage, pathOf(b)),
+    "/api/glossary/save": (b): Promise<GlossaryInfo> =>
+      saveGlossaryFile(session.storage, pathOf(b), Array.isArray(b.entries) ? b.entries : []),
     "/api/export": (b) => session.exportTsv(pathOf(b), slotsOf(b.slots)),
     "/api/import/preview": (b) => session.previewImport(pathOf(b)),
     "/api/import/apply": (b) => session.applyImport(pathOf(b), str(b.token), slotsOf(b.take), str(b.translator)),
     "/api/undo": () => session.undo(),
     "/api/redo": () => session.redo(),
     "/api/draft/restore": () => session.restoreDraft(),
-    "/api/draft/discard": () => {
-      session.discardDraft();
+    "/api/draft/discard": async () => {
+      await session.discardDraft();
       return { ok: true };
     },
-    "/api/save": (b) => {
+    "/api/save": async (b) => {
       const r = b as Partial<SaveRequest>;
-      const result = session.save({ path: str(r.path).trim() || undefined, force: r.force === true });
-      return { ...result, status: session.status() } satisfies SaveResponse;
+      return saveResponse(session, await session.save({ path: str(r.path).trim() || undefined, force: r.force === true }));
     },
   };
 

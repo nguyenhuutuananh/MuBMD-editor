@@ -1,17 +1,23 @@
 {
   "name": "mubmd-editor",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "license": "MIT",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "bun scripts/dev.ts",
+    "dev:web": "bun scripts/dev-web.ts",
     "build:web": "bun scripts/build-web.ts",
+    "build:web-static": "bun scripts/build-web-static.ts",
+    "preview:web": "bun scripts/build-web-static.ts && VITE_TARGET=web node node_modules/vite/bin/vite.js preview --port 4173",
     "start": "bun scripts/build-web.ts && bun src/server/main.ts",
     "build": "bun scripts/build-bin.ts",
     "release": "bun scripts/build-bin.ts --out releases",
     "test": "bun test",
     "test:e2e": "bun scripts/build-web.ts && bun tests/e2e/run.ts",
+    "test:e2e:web": "bun tests/e2e/web.ts",
+    "test:e2e:fallback": "bun tests/e2e/web-fallback.ts",
+    "test:e2e:pwa": "bun tests/e2e/pwa.ts",
     "typecheck": "bun scripts/build-web.ts --stub && tsc --noEmit && vue-tsc --noEmit -p web/tsconfig.json"
   },
   "devDependencies": {

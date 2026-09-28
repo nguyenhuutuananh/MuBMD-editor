@@ -6,6 +6,17 @@ Runs on your machine; the UI opens in your browser (http://localhost:4817).
 The UI is in English (default) and Vietnamese - switch with the language button (top right).
 
 
+0. WEB VERSION (NO INSTALL)
+--------------------------
+Open https://nguyenhuutuananh.github.io/MuBMD-editor/ in Chrome or Edge on a computer:
+  - "Choose the folder with Item.bmd…" -> pick Data/Local. The browser edits the file in place and
+    keeps backups next to it, exactly like the desktop app. Nothing is uploaded.
+  - It can be installed like an app (install icon in the address bar) and then works offline.
+  - Firefox / Safari: you work on a copy kept in the browser; Save downloads the updated Item.bmd
+    to copy back into Data/Local.
+The rest of this guide applies to both the web version and the desktop app.
+
+
 1. RUNNING
 ----------
 Windows:

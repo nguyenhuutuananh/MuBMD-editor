@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { ErrorCode, NameIssueCode } from "../src/core";
+import type { ClientErrorCode } from "../web/src/lib/backend";
 import en from "../web/src/i18n/locales/en.json";
 import vi from "../web/src/i18n/locales/vi.json";
 
@@ -38,13 +39,14 @@ describe("locale files", () => {
 
   test("every error code and name-issue code is translated", () => {
     // Listed by hand: adding a code to core/errors.ts without translating it fails this test (and tsc).
-    const errorCodes: Record<ErrorCode | "offline" | "bad-response", true> = {
+    const errorCodes: Record<ErrorCode | ClientErrorCode, true> = {
       "bmd-size": true, "invalid-slot": true, "invalid-name": true, "name-bytes-length": true, "tsv-header": true, "import-changed": true,
       "no-file": true, dirty: true, conflict: true, "save-verify-failed": true,
       "file-not-found": true, "file-locked": true, "permission-denied": true, "is-directory": true,
       "not-a-file": true, "disk-full": true, "picker-unsupported": true, "picker-failed": true,
       "missing-path": true, "missing-name": true, "bad-json": true, "unsupported-media": true,
       "not-local": true, "unknown-api": true, internal: true, offline: true, "bad-response": true,
+      "no-bmd-in-folder": true, "fs-unsupported": true,
     };
     const issueCodes: Record<NameIssueCode, true> = {
       "too-long": true, "control-char": true, "lone-surrogate": true, "edge-whitespace": true, "double-space": true,

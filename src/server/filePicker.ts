@@ -44,6 +44,7 @@ const TEXT = {
 const TEXT_TYPES = '"tsv", "csv", "txt", "public.plain-text", "public.tab-separated-values-text", "public.comma-separated-values-text"';
 const MAC_TYPES: Record<PickKind, string> = {
   bmd: '{"bmd", "public.data"}',
+  "bmd-file": '{"bmd", "public.data"}',
   compare: '{"bmd", "public.data"}',
   tsv: `{${TEXT_TYPES}}`,
   glossary: `{${TEXT_TYPES}}`,
@@ -52,6 +53,7 @@ const MAC_TYPES: Record<PickKind, string> = {
 const WIN_FILTER = (kind: PickKind, all: string) =>
   ({
     bmd: "BMD (*.bmd)|*.bmd",
+    "bmd-file": "BMD (*.bmd)|*.bmd",
     compare: "BMD (*.bmd)|*.bmd",
     tsv: "TSV / CSV (*.tsv;*.csv;*.txt)|*.tsv;*.csv;*.txt",
     glossary: "TSV / CSV (*.tsv;*.csv;*.txt)|*.tsv;*.csv;*.txt",
@@ -60,7 +62,7 @@ const WIN_FILTER = (kind: PickKind, all: string) =>
 
 function pickerCommand(lang: Lang, kind: PickKind, dir?: string): string[] {
   const t = TEXT[lang];
-  const prompt = { bmd: t.open, tsv: t.openTsv, reference: t.openRef, glossary: t.openGlossary, compare: t.openCompare }[kind];
+  const prompt = { bmd: t.open, "bmd-file": t.open, tsv: t.openTsv, reference: t.openRef, glossary: t.openGlossary, compare: t.openCompare }[kind];
   switch (process.platform) {
     case "darwin":
       return [

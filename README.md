@@ -16,6 +16,7 @@ Team model: **each translator runs the tool on their own machine** (the server o
 | 3b | UI moved to Vue 3 + shadcn-vue + i18n (English default, Vietnamese) | Done |
 | 4 | TSV export/import, reference column, per-slot status, merging several translators' work | Done |
 | 5 | Glossary, compare with another file, release packaging | Done (1.0.0) |
+| Web | Static web version on GitHub Pages: in-browser editing, Firefox/Safari fallback, PWA | Done (1.1.0) |
 
 ## Running
 
@@ -26,6 +27,8 @@ bun install
 bun run dev              # dev: API server (4817) + Vite (5173, HMR), opens data/Item.bmd and the browser
                          # (no game data is committed: a sample data/Item.bmd is created if missing)
 bun run dev -- path/to/Item.bmd
+bun run dev:web          # web build in development: Vite only (5174), the Session runs in the browser
+                         # (open in Chrome or Edge, choose the folder that contains Item.bmd)
 bun run start            # build the UI, then run like a release (one port, http://localhost:4817)
 bun run release          # release zips into ./releases/ (inside this folder)
 bun run build            # release zips into ./dist/
@@ -144,10 +147,45 @@ before saving.
 - Reference / import files may be CSV; `Nguon`/`Source` is the source-name column,
   `TiengViet` the name column.
 
+## Web version
+
+**https://nguyenhuutuananh.github.io/MuBMD-editor/** - no download needed. The same UI runs as a
+static web page (a PWA: installable, works offline): the editing Session runs in the browser and
+edits files in place through the File System Access API (Chrome / Edge on a computer). Nothing is
+uploaded anywhere.
+
+- **Open:** choose the folder that contains `Item.bmd` (side data - backups, change log,
+  `project.json`, draft - is written next to the file as on the desktop), or open a single
+  `Item.bmd` file (its side data is then kept in the browser's private storage, OPFS).
+- **Recent files** survive a reload: every granted folder/file is remembered in IndexedDB under a
+  stable id that is part of its path (`/Local@3/Item.bmd`, shown as `/Local/Item.bmd`); the browser
+  may ask for permission again.
+- Export / import / reference / glossary / compare / "Save as" use the browser's file dialogs.
+- Closing the tab with unsaved changes asks first (the draft is kept anyway); opening the same
+  file in a second tab warns both tabs.
+- **Firefox / Safari / Brave (no File System Access API) - fallback mode:** `Item.bmd` is uploaded
+  into a copy kept in the browser (IndexedDB, with all side data); Save downloads the updated file
+  to copy back into the game folder; export / glossary save download too; other files are
+  uploaded. "Recent files" reopens the browser copy. Add `?fallback` to the URL to force this mode.
+- **PWA:** installable from the browser's address bar; the service worker precaches the whole app
+  so it opens offline. When a new version is deployed, a "new version ready - Reload" notice
+  appears; the new version takes over only after Reload.
+- Build: `bun run build:web-static` -> `build/web-static/` (relative paths: works under any sub-path
+  or domain). `bun run preview:web` serves it locally (http://localhost:4173/).
+- Development: `bun run dev:web`. Tests: `bun run test:e2e:web` answers the file dialogs with
+  handles from OPFS (`window.__MUBMD_TEST_PICK__`). It prefers Playwright's Chrome for Testing
+  (`bunx playwright-core install chromium`): Google Chrome 153 stable crashes when an OPFS folder
+  handle stored in IndexedDB is read back after a reload, which the test relies on.
+  `bun run test:e2e:pwa` builds the static site, serves it under `/MuBMD-editor/` and checks the
+  manifest / installability, offline use and the update flow.
+  `bun run test:e2e:fallback` runs the fallback mode on Chrome (`?fallback`) and on Playwright's
+  Firefox and WebKit / Safari engine (`bunx playwright-core install firefox webkit`; each skipped
+  if missing).
+
 ## Download
 
-Ready-to-run builds for Windows and macOS are on the repository's **Releases** page - no clone or
-Bun needed. Download the zip for your platform, unzip, and read `USER-GUIDE_en.txt`
+Use the [web version](https://nguyenhuutuananh.github.io/MuBMD-editor/), or get ready-to-run builds
+for Windows and macOS from the repository's **Releases** page - no clone or Bun needed. Download the zip for your platform, unzip, and read `USER-GUIDE_en.txt`
 (`USER-GUIDE_vi.txt` in Vietnamese).
 
 ## Release
@@ -162,7 +200,11 @@ Bun needed. Download the zip for your platform, unzip, and read `USER-GUIDE_en.t
 3. `.github/workflows/release.yml` checks the tag against `package.json`, runs typecheck + tests,
    cross-compiles all platforms on Linux (`bun run release`) and publishes a GitHub Release with
    the zips + `SHA256SUMS.txt` and generated release notes. Tags with a `-` (e.g. `v1.1.0-beta.1`)
-   become pre-releases.
+   become pre-releases. Then it builds the web version and deploys it to GitHub Pages, so the web
+   and desktop builds always carry the same version.
+
+**One-time setup for the web version:** repository *Settings -> Pages -> Build and deployment ->
+Source: GitHub Actions*. Without it the "pages" job fails (the desktop release is still published).
 
 `.github/workflows/ci.yml` runs typecheck, unit tests and the e2e suite (real Chrome on the
 runner) on every push to `main` and every pull request.
@@ -190,10 +232,16 @@ backups) is synced as well.
 ## Layout
 
 ```
-src/core/     Item.bmd read/write, tsv.ts (TSV/CSV), merge.ts (3-way merge), glossary.ts, errors.ts
+src/core/     Item.bmd read/write, tsv.ts (TSV/CSV), merge.ts (3-way merge), glossary.ts, sha1.ts, errors.ts
+src/session/  runtime-neutral editing session: session.ts (edit/undo/draft/save, async, one call at a time),
+              sidecar.ts (backups, change log, project.json, draft), storage.ts (the Storage interface),
+              memoryStorage.ts, glossaryFiles.ts - no Node APIs, so the web build can run it in the browser
 src/shared/   API types shared by server and UI
-src/server/   app.ts (API), session.ts (edit/undo/draft/save), storage.ts (disk writes), filePicker.ts,
-              main.ts (Bun.serve)
+src/server/   app.ts (HTTP API), nodeStorage.ts (Storage on real files), filePicker.ts, main.ts (Bun.serve)
+web/src/lib/  backend.ts (Backend interface), httpBackend.ts (desktop), localBackend.ts + browserStorage.ts +
+              handleDb.ts (web: Session in the browser on the File System Access API, granted handles in
+              IndexedDB), idbStorage.ts + fileTransfer.ts (fallback: files in IndexedDB, upload/download),
+              tabs.ts (same file in two tabs); "@backend" is chosen by VITE_TARGET
 web/          Vue 3 UI (Vite, Tailwind 4, shadcn-vue, Pinia, vue-i18n)
   src/components/        AppTopbar, GroupSidebar, ItemToolbar, ItemGrid (virtual scroll), InlineEditor, DetailPanel, dialogs…
   src/components/ui/     shadcn-vue components (copied into the project, edit freely; add with `npx shadcn-vue add <name>` in web/)
@@ -240,7 +288,9 @@ Differences from `../tools/item_ts`:
 
 ```
 bun run test         # unit tests (core, server, session, search, glossary, locales)
-bun run test:e2e     # build the UI, then e2e in real Chrome on a copy of the sample file (EN and VI)
+bun run test:e2e     # desktop build: e2e in real Chrome on a copy of the sample file (EN and VI)
+bun run test:e2e:web # web build: e2e in real Chrome; the browser's private file system (OPFS) stands in
+                     # for the folder the user picks
 bun run typecheck    # tsc (server/core) + vue-tsc (UI)
 ```
 

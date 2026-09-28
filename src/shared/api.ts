@@ -183,7 +183,9 @@ export interface GlossaryInfo {
   entries: GlossaryEntry[];
 }
 
-export type PickKind = "bmd" | "tsv" | "reference" | "glossary" | "compare";
+// "bmd" = the Item.bmd to edit (desktop: a file dialog; web: a folder dialog), "bmd-file" = web: a
+// single Item.bmd file (side data then lives in the browser's private storage).
+export type PickKind = "bmd" | "bmd-file" | "tsv" | "reference" | "glossary" | "compare";
 
 export interface PickRequest {
   lang?: Lang; // language of the native OS dialog captions

@@ -7,15 +7,37 @@
     "noUncheckedIndexedAccess": true,
     "noEmit": true,
     "jsx": "preserve",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "types": ["vite/client", "@intlify/unplugin-vue-i18n/messages"],
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable",
+      "DOM.AsyncIterable"
+    ],
+    "types": [
+      "vite/client",
+      "@intlify/unplugin-vue-i18n/messages"
+    ],
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"],
-      "@core/*": ["../src/core/*"],
-      "@shared/*": ["../src/shared/*"]
+      "@/*": [
+        "./src/*"
+      ],
+      "@core/*": [
+        "../src/core/*"
+      ],
+      "@shared/*": [
+        "../src/shared/*"
+      ],
+      "@backend": [
+        "./src/lib/httpBackend.ts"
+      ]
     }
   },
-  "include": ["src/**/*.ts", "src/**/*.vue", "src/**/*.json", "env.d.ts"]
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.vue",
+    "src/**/*.json",
+    "env.d.ts"
+  ]
 }

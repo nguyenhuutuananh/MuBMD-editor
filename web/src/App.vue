@@ -15,6 +15,7 @@ import WelcomeScreen from "@/components/WelcomeScreen.vue";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { onGlobalKeydown, start } from "@/composables/actions";
+import { isWeb } from "@/lib/api";
 import { useDocStore } from "@/stores/doc";
 
 const store = useDocStore();
@@ -25,11 +26,21 @@ const dark = usePreferredDark();
 watchEffect(() => document.documentElement.classList.toggle("dark", dark.value));
 
 const onKey = (e: KeyboardEvent) => onGlobalKeydown(e, () => toolbar.value?.focusSearch());
+// Web: the edits live in this tab; warn before closing it with unsaved changes (the draft is kept anyway).
+const onBeforeUnload = (e: BeforeUnloadEvent) => {
+  if (!isWeb || !store.status.dirtyCount) return;
+  e.preventDefault();
+  e.returnValue = "";
+};
 onMounted(() => {
   window.addEventListener("keydown", onKey);
+  window.addEventListener("beforeunload", onBeforeUnload);
   start();
 });
-onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
+onBeforeUnmount(() => {
+  window.removeEventListener("keydown", onKey);
+  window.removeEventListener("beforeunload", onBeforeUnload);
+});
 </script>
 
 <template>

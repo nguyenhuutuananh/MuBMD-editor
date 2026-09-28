@@ -84,7 +84,7 @@ const app = createApp({ assets, version: pkg.version, pick: fakePick, pickSave: 
 if (!assets["/index.html"]) console.log("(UI not built - run `bun run build:web`, or open the Vite dev server when using `bun run dev`.)");
 
 if (args.file) {
-  const res = app.openPath(args.file);
+  const res = await app.openPath(args.file);
   if (!res.ok) console.error(`Could not open ${args.file}: ${((await res.json()) as { error: string }).error}`);
 }
 

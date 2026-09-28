@@ -214,6 +214,9 @@ async function main() {
   const choose = async (trigger: string, option: string) => {
     await p.click(`[data-testid=${trigger}]`);
     await p.click(`[data-testid=${option}]`);
+    // A closing menu hands focus back to its trigger after its animation; keys typed before that
+    // would land on the trigger (and reopen the menu), so wait until it is gone.
+    await p.waitForFunction(() => !document.querySelector("[role=menu], [role=listbox]"));
   };
   const action = (id: string) => choose("actions", `action-${id}`);
   const statusOf = (slot: number) => p.getAttribute(`[data-testid=grid] [data-slot='${slot}'] [data-status]`, "data-status");
@@ -238,6 +241,8 @@ async function main() {
   check("bulk mark the listed rows", marked.includes("Đã duyệt"), marked);
   await p.fill("[data-testid=search]", "");
   await p.keyboard.press("Enter");
+  // wait until the cleared search is applied before the next step (avoids a flaky race)
+  await p.waitForFunction(() => document.querySelector("[data-testid=result-count]")?.textContent?.trim() === "488 dòng");
 
   await p.keyboard.press("Control+s");
   await toastWith(p, "Đã lưu 11 thay đổi");
@@ -257,6 +262,8 @@ async function main() {
   check("search matches reference names", true);
   await p.fill("[data-testid=search]", "");
   await p.keyboard.press("Enter");
+  // wait until the cleared search is applied before the next step (avoids a flaky race)
+  await p.waitForFunction(() => document.querySelector("[data-testid=result-count]")?.textContent?.trim() === "488 dòng");
   await shot(p, "09-status-reference-vi");
 
   const exported = path.join(WORK, "export.tsv");

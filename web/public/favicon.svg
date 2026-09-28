@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#9a5b13"/>
+  <text x="256" y="300" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="230" font-weight="700" fill="#fff8ec">MU</text>
+  <rect x="120" y="354" width="272" height="34" rx="17" fill="#fff8ec" opacity="0.9"/>
+  <rect x="120" y="354" width="150" height="34" rx="17" fill="#f1c27d"/>
+</svg>

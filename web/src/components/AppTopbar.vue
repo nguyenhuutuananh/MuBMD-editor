@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { askTranslator, reload, saveAs, saveFile, showWelcome, undoRedo } from "@/composables/actions";
+import { isFallback } from "@/lib/api";
+import { displayPath } from "@/lib/paths";
 import { useDocStore } from "@/stores/doc";
 
 const { t } = useI18n();
@@ -39,9 +41,15 @@ watchEffect(() => {
           {{ store.file.checksumValid ? t("topbar.checksumOkTitle") : t("topbar.checksumBadTitle") }}
         </TooltipContent>
       </Tooltip>
+      <Tooltip v-if="isFallback">
+        <TooltipTrigger as-child>
+          <Badge variant="outline" class="border-warn text-warn" data-testid="browser-copy">{{ t("topbar.browserCopy") }}</Badge>
+        </TooltipTrigger>
+        <TooltipContent class="max-w-sm">{{ t("topbar.browserCopyTitle") }}</TooltipContent>
+      </Tooltip>
       <!-- rtl truncates the start of the path; LRM marks keep the character order -->
-      <span class="text-muted-foreground hidden min-w-0 truncate text-xs md:inline" dir="rtl" :title="store.file.path">
-        &lrm;{{ store.file.path }}&lrm;
+      <span class="text-muted-foreground hidden min-w-0 truncate text-xs md:inline" dir="rtl" :title="displayPath(store.file.path)">
+        &lrm;{{ displayPath(store.file.path) }}&lrm;
       </span>
     </div>
 

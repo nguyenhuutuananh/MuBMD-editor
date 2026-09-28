@@ -1,6 +1,9 @@
-# Release: pushing a tag like v1.0.0 builds the Windows + macOS zips and publishes a GitHub Release.
+# Release: pushing a tag like v1.0.0
+#   1. builds the Windows + macOS zips and publishes a GitHub Release (job "release")
+#   2. then deploys the web version (static PWA) to GitHub Pages (job "pages")
 #   git tag v1.0.0 && git push origin v1.0.0
 # The tag must match "version" in package.json.
+# One-time setup for Pages: repository Settings -> Pages -> Source: "GitHub Actions".
 name: Release
 
 on:
@@ -8,11 +11,18 @@ on:
     tags: ["v*"]
 
 permissions:
-  contents: write # create the release and upload assets
+  contents: read
+
+# Never deploy two versions at once; a newer tag waits for the running deploy.
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # create the release and upload assets
     steps:
       - uses: actions/checkout@v7
 
@@ -47,3 +57,38 @@ jobs:
           generate_release_notes: true
           # Tags like v1.1.0-beta.1 are published as pre-releases.
           prerelease: ${{ contains(github.ref_name, '-') }}
+
+  pages:
+    needs: release # only after the tests passed and the release exists
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.1.32
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - run: bun install --frozen-lockfile
+
+      # Relative paths: works at https://<user>.github.io/<repo>/ or on a custom domain.
+      - run: bun run build:web-static
+
+      - uses: actions/configure-pages@v6
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: build/web-static
+
+      - id: deploy
+        uses: actions/deploy-pages@v5

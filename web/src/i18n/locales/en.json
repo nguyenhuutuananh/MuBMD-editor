@@ -19,7 +19,13 @@
     "placeholder": "C:\\MU\\Data\\Local\\Item.bmd",
     "open": "Open",
     "recent": "Recently opened",
-    "back": "← Back to the open file"
+    "back": "← Back to the open file",
+    "pickFolder": "Choose the folder with Item.bmd…",
+    "webHint": "Pick the folder that contains Item.bmd (usually Data/Local). Your files never leave this computer: the browser edits them in place and keeps backups next to them.",
+    "pickFile": "Or open a single Item.bmd file…",
+    "pickFileHint": "When a single file is opened, its backups and draft are kept in this browser instead of next to the file.",
+    "pickUpload": "Choose Item.bmd…",
+    "fallbackHint": "This browser cannot edit files in place (use Chrome or Edge for that). Choose Item.bmd to work on a copy kept in this browser; Save (Ctrl+S) downloads the updated file for you to copy back into the game folder."
   },
   "topbar": {
     "checksumOk": "Checksum OK",
@@ -38,7 +44,9 @@
     "translatorTitle": "This name is written to the change log",
     "reload": "Reload",
     "reloadTitle": "Read the file again from disk",
-    "openOther": "Open another file…"
+    "openOther": "Open another file…",
+    "browserCopy": "Copy in this browser",
+    "browserCopyTitle": "This browser cannot write to your folders, so you are editing a copy stored in the browser. Saving downloads the updated Item.bmd - copy it into the game's Data/Local folder."
   },
   "groups": {
     "label": "Item groups",
@@ -191,7 +199,9 @@
     "rebased": "Item.bmd was replaced from outside since your last save (e.g. a new master copy). Merge bases were reset to its current names.",
     "statusSet": "Marked {n} row as {status}. | Marked {n} rows as {status}.",
     "glossaryLoaded": "Glossary: {file} ({n} terms)",
-    "glossarySaved": "Saved {n} terms to {file}."
+    "glossarySaved": "Saved {n} terms to {file}.",
+    "otherTab": "This file is also open in another tab. Each tab keeps its own changes, so saving in both would overwrite one with the other - keep one tab.",
+    "downloaded": "Downloaded {file} - copy it into the game's Data/Local folder."
   },
   "errors": {
     "bmd-size": "The file is {size} bytes; a MuMain Item.bmd must be exactly {expected} bytes.",
@@ -220,7 +230,9 @@
     "offline": "Lost connection to MuBMD-editor. Is its command-line window still running?",
     "bad-response": "Server error ({status}).",
     "tsv-header": "The TSV file needs ItemType, ItemIndex and Name columns (found: {columns}).",
-    "import-changed": "{file} changed after the preview – preview it again."
+    "import-changed": "{file} changed after the preview – preview it again.",
+    "no-bmd-in-folder": "No .bmd file was found in the folder “{folder}”.",
+    "fs-unsupported": "This browser cannot edit files in place. Use Chrome or Edge on a computer."
   },
   "status": {
     "untranslated": "Untranslated",
@@ -303,5 +315,9 @@
     "missing": "“{term}” should be translated as “{translation}”",
     "keep": "“{term}” should be kept as-is",
     "untranslated": "“{term}” is still untranslated (→ {translation})"
+  },
+  "pwa": {
+    "updateReady": "A new version of MuBMD-editor is ready.",
+    "reload": "Reload"
   }
 }

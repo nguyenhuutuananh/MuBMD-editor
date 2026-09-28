@@ -6,6 +6,17 @@ Chạy trên máy của bạn, giao diện mở trong trình duyệt (http://loc
 Giao diện có Tiếng Anh (mặc định) và Tiếng Việt - chọn ở nút ngôn ngữ góc trên bên phải.
 
 
+0. BẢN WEB (KHÔNG CẦN CÀI)
+--------------------------
+Mở https://nguyenhuutuananh.github.io/MuBMD-editor/ bằng Chrome hoặc Edge trên máy tính:
+  - "Chọn thư mục chứa Item.bmd…" -> chọn Data/Local. Trình duyệt sửa trực tiếp file và giữ backup
+    ngay cạnh file, giống hệt bản desktop. Không có gì bị tải lên mạng.
+  - Có thể cài như app (biểu tượng cài đặt trên thanh địa chỉ), sau đó dùng được cả khi offline.
+  - Firefox / Safari: bạn làm việc trên một bản sao lưu trong trình duyệt; Lưu sẽ tải Item.bmd đã sửa
+    về để chép lại vào Data/Local.
+Phần còn lại của hướng dẫn dùng chung cho cả bản web và bản desktop.
+
+
 1. CHẠY CHƯƠNG TRÌNH
 --------------------
 Windows:

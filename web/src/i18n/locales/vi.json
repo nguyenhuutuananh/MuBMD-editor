@@ -19,7 +19,13 @@
     "placeholder": "C:\\MU\\Data\\Local\\Item.bmd",
     "open": "Mở",
     "recent": "Mở gần đây",
-    "back": "← Quay lại file đang mở"
+    "back": "← Quay lại file đang mở",
+    "pickFolder": "Chọn thư mục chứa Item.bmd…",
+    "webHint": "Chọn thư mục chứa Item.bmd (thường là Data/Local). File không rời khỏi máy bạn: trình duyệt sửa trực tiếp và giữ backup ngay cạnh file.",
+    "pickFile": "Hoặc mở một file Item.bmd…",
+    "pickFileHint": "Khi mở một file lẻ, backup và bản nháp được giữ trong trình duyệt này thay vì cạnh file.",
+    "pickUpload": "Chọn file Item.bmd…",
+    "fallbackHint": "Trình duyệt này không sửa file trực tiếp được (muốn vậy hãy dùng Chrome hoặc Edge). Chọn Item.bmd để làm việc trên một bản sao lưu trong trình duyệt; Lưu (Ctrl+S) sẽ tải file đã sửa về để bạn chép lại vào thư mục game."
   },
   "topbar": {
     "checksumOk": "Checksum OK",
@@ -38,7 +44,9 @@
     "translatorTitle": "Tên này được ghi vào nhật ký thay đổi",
     "reload": "Tải lại",
     "reloadTitle": "Đọc lại file từ ổ đĩa",
-    "openOther": "Mở file khác…"
+    "openOther": "Mở file khác…",
+    "browserCopy": "Bản trong trình duyệt",
+    "browserCopyTitle": "Trình duyệt này không ghi được vào thư mục của bạn, nên bạn đang sửa một bản sao lưu trong trình duyệt. Khi lưu, Item.bmd đã sửa sẽ được tải về - hãy chép nó vào thư mục Data/Local của game."
   },
   "groups": {
     "label": "Nhóm vật phẩm",
@@ -191,7 +199,9 @@
     "rebased": "Item.bmd đã bị thay bằng file khác kể từ lần lưu trước (ví dụ nhận bản chính mới). Tên gốc để gộp đã được đặt lại theo tên hiện tại.",
     "statusSet": "Đã đánh dấu {n} dòng là {status}.",
     "glossaryLoaded": "Thuật ngữ: {file} ({n} thuật ngữ)",
-    "glossarySaved": "Đã lưu {n} thuật ngữ vào {file}."
+    "glossarySaved": "Đã lưu {n} thuật ngữ vào {file}.",
+    "otherTab": "File này cũng đang mở ở một tab khác. Mỗi tab giữ thay đổi riêng, lưu ở cả hai sẽ ghi đè lẫn nhau - hãy chỉ giữ một tab.",
+    "downloaded": "Đã tải {file} về - hãy chép nó vào thư mục Data/Local của game."
   },
   "errors": {
     "bmd-size": "File có {size} byte; Item.bmd của MuMain phải đúng {expected} byte.",
@@ -220,7 +230,9 @@
     "offline": "Mất kết nối tới MuBMD-editor. Cửa sổ dòng lệnh của công cụ còn đang chạy không?",
     "bad-response": "Lỗi máy chủ ({status}).",
     "tsv-header": "File TSV cần có cột ItemType, ItemIndex và Name (đang có: {columns}).",
-    "import-changed": "{file} đã thay đổi sau khi xem trước – hãy xem trước lại."
+    "import-changed": "{file} đã thay đổi sau khi xem trước – hãy xem trước lại.",
+    "no-bmd-in-folder": "Không tìm thấy file .bmd nào trong thư mục “{folder}”.",
+    "fs-unsupported": "Trình duyệt này không sửa file trực tiếp được. Hãy dùng Chrome hoặc Edge trên máy tính."
   },
   "status": {
     "untranslated": "Chưa dịch",
@@ -303,5 +315,9 @@
     "missing": "“{term}” nên dịch là “{translation}”",
     "keep": "“{term}” nên giữ nguyên",
     "untranslated": "“{term}” vẫn chưa dịch (→ {translation})"
+  },
+  "pwa": {
+    "updateReady": "Đã có phiên bản MuBMD-editor mới.",
+    "reload": "Tải lại"
   }
 }

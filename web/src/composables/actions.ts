@@ -3,9 +3,11 @@
 import { ref, shallowRef } from "vue";
 import { toast } from "vue-sonner";
 import { checkName } from "../../../src/core/nameCodec";
-import type { DraftInfo, GlossaryEntry, ImportPreview, SaveRequest, Status } from "../../../src/shared/api";
+import type { DraftInfo, GlossaryEntry, ImportPreview, PickKind, SaveRequest, Status } from "../../../src/shared/api";
 import { currentLang, errorText, fmtTime, issueText, tr } from "@/i18n";
-import { ApiError, api } from "@/lib/api";
+import { ApiError, api, isFallback, isWeb } from "@/lib/api";
+import { displayPath } from "@/lib/paths";
+import { announceOpen } from "@/lib/tabs";
 import { ask, isDialogOpen } from "@/lib/dialogs";
 import { useDocStore } from "@/stores/doc";
 
@@ -63,6 +65,12 @@ async function confirmDiscard(): Promise<boolean> {
 // After a file is opened: re-load its remembered reference file, report a rebase, offer the draft.
 async function afterOpen(draft: DraftInfo | null) {
   const s = store();
+  if (isWeb && s.file) announceOpen(s.file.path, () => toast.warning(tr("toast.otherTab"), { duration: 15000 }));
+  // Web: a remembered glossary may need the permission prompt, which only works right after a click.
+  if (isWeb && !s.glossary) {
+    const g = s.rememberedGlossary();
+    if (g) await s.loadGlossary(g).catch(() => undefined);
+  }
   const refPath = s.file ? s.referenceFor(s.file.path) : null;
   if (refPath) {
     try {
@@ -90,10 +98,10 @@ export async function openPath(path: string, discard = false): Promise<void> {
   }
 }
 
-export async function pickAndOpen() {
+export async function pickAndOpen(kind: PickKind = "bmd") {
   welcomeError.value = null;
   try {
-    const { path } = await api.pick(currentLang());
+    const { path } = await api.pick(currentLang(), kind);
     if (path) await openPath(path);
   } catch (e) {
     welcomeError.value = errorText(e);
@@ -108,8 +116,10 @@ export async function reload() {
 // On startup: if the server already has a file open (path on the command line), go straight to it.
 export async function start() {
   // The team glossary is remembered per browser (one file for every Item.bmd).
+  // Web: no permission prompt is possible without a click, so failures are silent here and the
+  // glossary is retried after the next file is opened (afterOpen).
   const g = store().rememberedGlossary();
-  if (g) store().loadGlossary(g).catch((e) => toast.error(errorText(e)));
+  if (g) store().loadGlossary(g).catch((e) => !isWeb && toast.error(errorText(e)));
   try {
     const state = await api.state();
     if (state.file) await afterOpen(await store().loadItems(false));
@@ -397,8 +407,14 @@ export async function saveFile(opts: SaveRequest = {}) {
       toast(tr("toast.nothingToSave"));
       return;
     }
+    // Fallback mode: the saved Item.bmd was handed over as a download (see localBackend.ts).
+    const downloaded = isFallback && (res.backupPath !== null || opts.path);
     toast.success(tr("toast.saved", { n: res.savedCount, file: res.file.fileName }), {
-      description: res.backupPath ? tr("toast.backup", { path: res.backupPath }) : undefined,
+      description: downloaded
+        ? tr("toast.downloaded", { file: res.file.fileName })
+        : res.backupPath
+          ? tr("toast.backup", { path: displayPath(res.backupPath) })
+          : undefined,
       duration: 8000,
     });
   } catch (e) {

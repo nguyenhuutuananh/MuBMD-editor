@@ -27,8 +27,22 @@ jobs:
       - run: bun test
 
       # ubuntu-latest ships Google Chrome, which playwright-core uses via channel "chrome".
-      - name: e2e
+      - name: e2e (desktop build)
         run: bun run test:e2e e2e-shots
+
+      # The web e2e runs on Playwright's Chrome for Testing (see tests/e2e/web.ts); the fallback
+      # e2e (no File System Access API) also runs on Playwright's Firefox and WebKit (Safari).
+      - name: Install Playwright browsers
+        run: bunx playwright-core install --with-deps chromium firefox webkit
+
+      - name: e2e (web build)
+        run: bun run test:e2e:web e2e-shots
+
+      - name: "e2e (web build, fallback mode: Chrome, Firefox, WebKit)"
+        run: bun run test:e2e:fallback e2e-shots
+
+      - name: "e2e (built web version: PWA, offline, update)"
+        run: bun run test:e2e:pwa e2e-shots
 
       - name: Upload e2e screenshots
         if: always()

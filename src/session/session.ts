@@ -1,9 +1,11 @@
-// session.ts - The Item.bmd open on this machine (each translator runs their own server):
-// editing names, per-slot status / note, undo/redo, auto-saved draft, TSV export / import (3-way merge),
-// reference names, and saving Item.bmd + project.json with backups and a change log.
+// session.ts - The Item.bmd being edited: names, per-slot status / note, undo/redo, auto-saved draft,
+// TSV export / import (3-way merge), reference names, and saving Item.bmd + project.json with backups
+// and a change log. Runtime-neutral: all file access goes through a Storage (disk for the desktop
+// build, the browser's file APIs for the web build).
+//
+// Methods that touch files are async and run one at a time (see `exclusive`), so they behave exactly
+// like the earlier synchronous version even when requests arrive concurrently.
 
-import * as fs from "node:fs";
-import * as path from "node:path";
 import {
   AppError,
   ItemBmd,
@@ -14,6 +16,7 @@ import {
   checkName,
   parseTranslationTsv,
   serializeTranslationTsv,
+  sha1,
   typeIndexOf,
 } from "../core";
 import {
@@ -34,20 +37,20 @@ import {
   type Draft,
   type Project,
   appendChangeLog,
-  atomicWrite,
   backup,
+  changeLogPath,
   deleteDraft,
+  draftPath,
   parseProject,
   projectPath,
   readDraft,
   readProjectText,
-  sha1,
   stamp,
   workDir,
   writeDraft,
   writeProject,
-  writeText,
-} from "./storage";
+} from "./sidecar";
+import { type Storage, readText, writeText } from "./storage";
 
 export class DirtyError extends AppError {
   constructor(count: number) {
@@ -116,8 +119,19 @@ export class Session {
   private pendingDraft: Draft | null = null;
   private rebased = false;
   private reference: { path: string; names: Map<number, string> } | null = null;
+  private queue: Promise<unknown> = Promise.resolve();
 
-  constructor(private readonly now: () => Date = () => new Date()) {}
+  constructor(
+    readonly storage: Storage,
+    private readonly now: () => Date = () => new Date(),
+  ) {}
+
+  // Run `fn` after every earlier call has finished (a FIFO lock around state + files).
+  private exclusive<T>(fn: () => Promise<T>): Promise<T> {
+    const run = this.queue.then(fn, fn);
+    this.queue = run.catch(() => undefined);
+    return run;
+  }
 
   get file(): FileInfo | null {
     return this.info;
@@ -134,34 +148,36 @@ export class Session {
 
   // ---- open ----
 
-  // Throws (ENOENT, BmdFormatError, DirtyError...) if it cannot open; the currently open file is then kept.
-  open(filePath: string, opts: { discard?: boolean } = {}): FileInfo {
-    const abs = path.resolve(filePath);
-    // Read + validate the new file first: a bad path errors right away instead of a pointless "discard changes?".
-    const stat = fs.statSync(abs);
-    if (!stat.isFile()) throw new AppError("not-a-file", `Not a file: ${abs}`, { path: abs });
-    const bytes = new Uint8Array(fs.readFileSync(abs));
-    const bmd = ItemBmd.parse(bytes);
-    const dirty = this.bmd ? this.dirtySlots().length : 0;
-    if (dirty && !opts.discard) throw new DirtyError(dirty);
+  // Rejects (ENOENT, BmdFormatError, DirtyError...) if it cannot open; the currently open file is then kept.
+  open(filePath: string, opts: { discard?: boolean } = {}): Promise<FileInfo> {
+    return this.exclusive(async () => {
+      const st = this.storage;
+      const abs = st.resolve(filePath);
+      // Read + validate the new file first: a bad path errors right away instead of a pointless "discard changes?".
+      const bytes = await st.read(abs);
+      const bmd = ItemBmd.parse(bytes);
+      const dirty = this.bmd ? this.dirtySlots().length : 0;
+      if (dirty && !opts.discard) throw new DirtyError(dirty);
 
-    // Discarding the old file's edits also drops its draft, so it is not offered for restore later.
-    if (this.info && dirty) deleteDraft(this.info.path);
+      // Discarding the old file's edits also drops its draft, so it is not offered for restore later.
+      if (this.info && dirty) await deleteDraft(st, this.info.path);
 
-    this.bmd = bmd;
-    this.diskSha1 = sha1(bytes);
-    this.info = this.describe(abs, bmd, stat.size);
-    this.undoStack = [];
-    this.redoStack = [];
-    this.pendingDraft = readDraft(abs);
-    if (this.pendingDraft && this.pendingDraft.slots.length === 0) this.pendingDraft = null;
-    this.reference = null; // the UI sends the reference remembered for this file again
-    this.loadProject(abs);
-    return this.info;
+      this.bmd = bmd;
+      this.diskSha1 = sha1(bytes);
+      this.info = this.describe(abs, bmd, bytes.length);
+      this.undoStack = [];
+      this.redoStack = [];
+      this.pendingDraft = await readDraft(st, abs);
+      if (this.pendingDraft && this.pendingDraft.slots.length === 0) this.pendingDraft = null;
+      this.reference = null; // the UI sends the reference remembered for this file again
+      await this.loadProject(abs);
+      return this.info;
+    });
   }
 
-  private loadProject(abs: string) {
-    this.projectText = readProjectText(abs);
+  private async loadProject(abs: string) {
+    const st = this.storage;
+    this.projectText = await readProjectText(st, abs);
     const project = parseProject(this.projectText);
     this.savedRecords = new Map();
     for (const [k, r] of Object.entries(project?.records ?? {})) {
@@ -178,7 +194,7 @@ export class Session {
       for (const [slot, r] of this.savedRecords) r.origin = this.nameText(slot);
       this.rebased = this.savedRecords.size > 0;
       try {
-        this.projectText = writeProject(abs, this.projectData());
+        this.projectText = await writeProject(st, abs, this.projectData());
       } catch (e) {
         console.warn(`Could not update project.json: ${(e as Error).message}`);
       }
@@ -195,7 +211,7 @@ export class Session {
   private describe(abs: string, bmd: ItemBmd, size: number): FileInfo {
     return {
       path: abs,
-      fileName: path.basename(abs),
+      fileName: this.storage.basename(abs),
       size,
       checksumValid: bmd.checksumValid,
       namedCount: bmd.entries().length,
@@ -318,12 +334,12 @@ export class Session {
     return { ...cur, translator, updatedAt: this.now().toISOString(), origin: cur.origin ?? originName, ...patch };
   }
 
-  private commit(changes: Change[]): MutationResponse {
+  private async commit(changes: Change[]): Promise<MutationResponse> {
     if (changes.length) {
       this.undoStack.push(changes);
       if (this.undoStack.length > MAX_HISTORY) this.undoStack.shift();
       this.redoStack = [];
-      this.persistDraft();
+      await this.persistDraft();
     }
     return this.response(changes.map((c) => c.slot));
   }
@@ -337,9 +353,10 @@ export class Session {
   }
 
   // Throws NameValidationError for an invalid name. Editing a name marks the slot "translated".
-  edit(slot: number, name: string, translator: string): MutationResponse {
-    const bmd = this.doc();
-    const change = this.mutate(slot, () => {
+  edit(slot: number, name: string, translator: string): Promise<MutationResponse> {
+    return this.exclusive(() => {
+      const bmd = this.doc();
+      const change = this.mutate(slot, () => {
       const before = this.nameText(slot);
       bmd.setName(slot, name);
       if (sameBytes(bmd.getNameBytes(slot), bmd.originalNameBytes(slot))) {
@@ -347,53 +364,60 @@ export class Session {
       } else {
         this.setRecord(slot, this.stamped(slot, translator, { status: "translated" }, before));
       }
+      });
+      return this.commit(change ? [change] : []);
     });
-    return this.commit(change ? [change] : []);
   }
 
   // Back to the saved state: name from the file on disk and the record from project.json.
-  revert(slot: number, _translator: string): MutationResponse {
-    const change = this.mutate(slot, () => {
-      this.doc().revert(slot);
-      this.setRecord(slot, this.savedRecords.get(slot) ?? null);
+  revert(slot: number, _translator: string): Promise<MutationResponse> {
+    return this.exclusive(() => {
+      const change = this.mutate(slot, () => {
+        this.doc().revert(slot);
+        this.setRecord(slot, this.savedRecords.get(slot) ?? null);
+      });
+      return this.commit(change ? [change] : []);
     });
-    return this.commit(change ? [change] : []);
   }
 
-  setStatus(slots: number[], status: Status, translator: string): MutationResponse {
-    const changes: Change[] = [];
-    for (const slot of new Set(slots)) {
-      if (!Number.isInteger(slot) || slot < 0 || slot >= MAX_ITEM) continue;
-      if (this.record(slot).status === status) continue;
-      const c = this.mutate(slot, () => this.settle(slot, this.stamped(slot, translator, { status }, this.nameText(slot))));
-      if (c) changes.push(c);
-    }
-    return this.commit(changes);
+  setStatus(slots: number[], status: Status, translator: string): Promise<MutationResponse> {
+    return this.exclusive(() => {
+      const changes: Change[] = [];
+      for (const slot of new Set(slots)) {
+        if (!Number.isInteger(slot) || slot < 0 || slot >= MAX_ITEM) continue;
+        if (this.record(slot).status === status) continue;
+        const c = this.mutate(slot, () => this.settle(slot, this.stamped(slot, translator, { status }, this.nameText(slot))));
+        if (c) changes.push(c);
+      }
+      return this.commit(changes);
+    });
   }
 
-  setNote(slot: number, note: string, translator: string): MutationResponse {
-    const clean = note.replace(/[\t\r\n]+/g, " ").trim();
-    this.doc().getName(slot); // validates the slot
-    if (this.record(slot).note === clean) return this.response([]);
-    const change = this.mutate(slot, () => this.settle(slot, this.stamped(slot, translator, { note: clean }, this.nameText(slot))));
-    return this.commit(change ? [change] : []);
+  setNote(slot: number, note: string, translator: string): Promise<MutationResponse> {
+    return this.exclusive(async () => {
+      const clean = note.replace(/[\t\r\n]+/g, " ").trim();
+      this.doc().getName(slot); // validates the slot
+      if (this.record(slot).note === clean) return this.response([]);
+      const change = this.mutate(slot, () => this.settle(slot, this.stamped(slot, translator, { note: clean }, this.nameText(slot))));
+      return this.commit(change ? [change] : []);
+    });
   }
 
-  undo(): MutationResponse {
-    return this.step(this.undoStack, this.redoStack, "before");
+  undo(): Promise<MutationResponse> {
+    return this.exclusive(() => this.step(this.undoStack, this.redoStack, "before"));
   }
 
-  redo(): MutationResponse {
-    return this.step(this.redoStack, this.undoStack, "after");
+  redo(): Promise<MutationResponse> {
+    return this.exclusive(() => this.step(this.redoStack, this.undoStack, "after"));
   }
 
-  private step(from: Change[][], to: Change[][], side: "before" | "after"): MutationResponse {
+  private async step(from: Change[][], to: Change[][], side: "before" | "after"): Promise<MutationResponse> {
     const group = from.pop();
     if (!group) return this.response([]);
     const ordered = side === "before" ? [...group].reverse() : group;
     for (const c of ordered) this.restore(c.slot, c[side]);
     to.push(group);
-    this.persistDraft();
+    await this.persistDraft();
     return this.response(group.map((c) => c.slot));
   }
 
@@ -401,33 +425,37 @@ export class Session {
 
   // Load names from another Item.bmd (e.g. the original English/Korean file) or a TSV. Not persisted
   // on the server: the UI remembers the path per file and sends it again after opening.
-  setReference(refPath: string | null): ReferenceInfo | null {
-    if (!refPath) {
-      this.reference = null;
-      return null;
-    }
-    const abs = path.resolve(refPath);
-    const names = new Map<number, string>();
-    if (abs.toLowerCase().endsWith(".bmd")) {
-      const ref = ItemBmd.parse(new Uint8Array(fs.readFileSync(abs)));
-      for (const e of ref.entries()) if (e.encoding === "utf-8") names.set(e.slot, e.text);
-    } else {
-      // A file with a source column (e.g. MuMain_VI_Item.csv: Nguon = Japanese original) shows that
-      // column; otherwise its Name column.
-      const parsed = parseTranslationTsv(fs.readFileSync(abs, "utf-8"));
-      const useRef = parsed.columns.reference && parsed.rows.some((r) => r.reference);
-      for (const r of parsed.rows) {
-        const name = useRef ? r.reference : r.name;
-        if (name) names.set(r.slot, name);
+  setReference(refPath: string | null): Promise<ReferenceInfo | null> {
+    return this.exclusive(async () => {
+      if (!refPath) {
+        this.reference = null;
+        return null;
       }
-    }
-    this.reference = { path: abs, names };
-    return { path: abs, fileName: path.basename(abs), entries: [...names].sort((a, b) => a[0] - b[0]) };
+      const st = this.storage;
+      const abs = st.resolve(refPath);
+      const names = new Map<number, string>();
+      if (abs.toLowerCase().endsWith(".bmd")) {
+        const ref = ItemBmd.parse(await st.read(abs));
+        for (const e of ref.entries()) if (e.encoding === "utf-8") names.set(e.slot, e.text);
+      } else {
+        // A file with a source column (e.g. MuMain_VI_Item.csv: Nguon = Japanese original) shows that
+        // column; otherwise its Name column.
+        const parsed = parseTranslationTsv(await readText(st, abs));
+        const useRef = parsed.columns.reference && parsed.rows.some((r) => r.reference);
+        for (const r of parsed.rows) {
+          const name = useRef ? r.reference : r.name;
+          if (name) names.set(r.slot, name);
+        }
+      }
+      this.reference = { path: abs, names };
+      return { path: abs, fileName: st.basename(abs), entries: [...names].sort((a, b) => a[0] - b[0]) };
+    });
   }
 
   // ---- TSV export / import ----
 
-  exportTsv(target: string, slots: number[]): ExportResponse {
+  exportTsv(target: string, slots: number[]): Promise<ExportResponse> {
+    return this.exclusive(async () => {
     const bmd = this.doc();
     const rows = [...new Set(slots)]
       .filter((s) => Number.isInteger(s) && s >= 0 && s < MAX_ITEM && bmd.getName(s).encoding !== "unknown")
@@ -446,9 +474,10 @@ export class Session {
           note: r.note,
         };
       });
-    const abs = path.resolve(target);
-    writeText(abs, serializeTranslationTsv(rows));
+    const abs = this.storage.resolve(target);
+    await writeText(this.storage, abs, serializeTranslationTsv(rows));
     return { path: abs, count: rows.length };
+    });
   }
 
   // Rows of a translation file; another Item.bmd is read as a plain name list (2-way compare).
@@ -471,15 +500,16 @@ export class Session {
     return { analysis, parsed };
   }
 
-  previewImport(source: string): ImportPreview {
+  previewImport(source: string): Promise<ImportPreview> {
+    return this.exclusive(async () => {
     this.doc();
-    const abs = path.resolve(source);
-    const bytes = new Uint8Array(fs.readFileSync(abs));
+    const abs = this.storage.resolve(source);
+    const bytes = await this.storage.read(abs);
     const isBmd = abs.toLowerCase().endsWith(".bmd");
     const { analysis, parsed } = this.analyze(this.readRows(bytes, isBmd));
     return {
       path: abs,
-      fileName: path.basename(abs),
+      fileName: this.storage.basename(abs),
       source: isBmd ? "bmd" : "tsv",
       token: sha1(bytes),
       items: analysis.items,
@@ -487,14 +517,16 @@ export class Session {
       problems: parsed.problems,
       hasBase: parsed.columns.base,
     };
+    });
   }
 
   // Apply the chosen rows of a previewed file as ONE undoable step.
-  applyImport(source: string, token: string, take: number[], translator: string): MutationResponse {
+  applyImport(source: string, token: string, take: number[], translator: string): Promise<MutationResponse> {
+    return this.exclusive(async () => {
     const bmd = this.doc();
-    const abs = path.resolve(source);
-    const bytes = new Uint8Array(fs.readFileSync(abs));
-    if (sha1(bytes) !== token) throw new AppError("import-changed", "The file changed since the preview.", { file: path.basename(abs) });
+    const abs = this.storage.resolve(source);
+    const bytes = await this.storage.read(abs);
+    if (sha1(bytes) !== token) throw new AppError("import-changed", "The file changed since the preview.", { file: this.storage.basename(abs) });
     const { analysis, parsed } = this.analyze(this.readRows(bytes, abs.toLowerCase().endsWith(".bmd")));
     const rows = new Map(parsed.rows.map((r) => [r.slot, r]));
     const wanted = new Set(take);
@@ -519,12 +551,14 @@ export class Session {
       if (c) changes.push(c);
     }
     return this.commit(changes);
+    });
   }
 
   // ---- draft ----
 
   // Apply the draft as one (undoable) step. Names that are no longer valid are skipped.
-  restoreDraft(): MutationResponse & { skipped: number } {
+  restoreDraft(): Promise<MutationResponse & { skipped: number }> {
+    return this.exclusive(async () => {
     const draft = this.pendingDraft;
     if (!draft) return { ...this.response([]), skipped: 0 };
     this.pendingDraft = null;
@@ -542,33 +576,38 @@ export class Session {
       });
       if (c) changes.push(c);
     }
-    return { ...this.commit(changes), skipped };
+    return { ...(await this.commit(changes)), skipped };
+    });
   }
 
-  discardDraft(): void {
-    if (!this.info) return;
-    this.pendingDraft = null;
-    if (this.dirtySlots().length === 0) deleteDraft(this.info.path);
+  discardDraft(): Promise<void> {
+    return this.exclusive(async () => {
+      if (!this.info) return;
+      this.pendingDraft = null;
+      if (this.dirtySlots().length === 0) await deleteDraft(this.storage, this.info.path);
+    });
   }
 
-  private persistDraft() {
+  // Called inside `exclusive`. A failed draft write never fails the edit itself.
+  private async persistDraft() {
     const bmd = this.bmd;
     const info = this.info;
+    const st = this.storage;
     if (!bmd || !info) return;
     try {
       // An unanswered old draft plus a new edit: archive the old draft under another name instead of overwriting it.
       if (this.pendingDraft) {
-        const old = path.join(workDir(info.path), "draft.json");
-        if (fs.existsSync(old)) fs.renameSync(old, path.join(workDir(info.path), `draft-${stamp(this.now())}.json`));
+        const old = draftPath(st, info.path);
+        if (await st.exists(old)) await st.rename(old, st.join(workDir(info.path), `draft-${stamp(this.now())}.json`));
         this.pendingDraft = null;
       }
       const dirty = this.dirtySlots();
       if (!dirty.length) {
-        deleteDraft(info.path);
+        await deleteDraft(st, info.path);
         return;
       }
       const nameDirty = new Set(bmd.dirtySlots);
-      writeDraft(info.path, {
+      await writeDraft(st, info.path, {
         version: 2,
         baseSha1: this.diskSha1,
         savedAt: this.now().toISOString(),
@@ -585,19 +624,24 @@ export class Session {
 
   // ---- save ----
 
-  save(opts: { path?: string; force?: boolean } = {}): SaveResult {
+  save(opts: { path?: string; force?: boolean } = {}): Promise<SaveResult> {
+    return this.exclusive(() => this.saveNow(opts));
+  }
+
+  private async saveNow(opts: { path?: string; force?: boolean }): Promise<SaveResult> {
+    const st = this.storage;
     const bmd = this.doc();
     const info = this.info!;
-    const target = opts.path ? path.resolve(opts.path) : info.path;
+    const target = opts.path ? st.resolve(opts.path) : info.path;
     const sameFile = target === info.path;
 
     // Someone / something else wrote Item.bmd or project.json since we read them (e.g. Google Drive sync).
     if (sameFile && !opts.force) {
-      const diskBmd = fs.existsSync(target) ? sha1(new Uint8Array(fs.readFileSync(target))) : this.diskSha1;
-      if (diskBmd !== this.diskSha1 || readProjectText(target) !== this.projectText) throw new ConflictError();
+      const diskBmd = (await st.exists(target)) ? sha1(await st.read(target)) : this.diskSha1;
+      if (diskBmd !== this.diskSha1 || (await readProjectText(st, target)) !== this.projectText) throw new ConflictError();
     }
 
-    const logPath = path.join(workDir(target), "changes.tsv");
+    const logPath = changeLogPath(st, target);
     const dirty = this.dirtySlots();
     if (sameFile && dirty.length === 0) return { file: info, savedCount: 0, backupPath: null, logPath };
 
@@ -614,8 +658,8 @@ export class Session {
     const now = this.now();
     let backupPath: string | null = null;
     if (bmd.isDirty || !sameFile) {
-      backupPath = backup(target, now);
-      atomicWrite(target, bytes);
+      backupPath = await backup(st, target, now);
+      await st.writeAtomic(target, bytes);
     }
 
     const rows = bmd.dirtySlots.map((slot) => {
@@ -629,15 +673,15 @@ export class Session {
         newName: bmd.getName(slot).text,
       };
     });
-    if (rows.length) appendChangeLog(target, rows);
+    if (rows.length) await appendChangeLog(st, target, rows);
 
     // The written file becomes the new original; the current records become the saved ones.
     this.bmd = check;
     this.diskSha1 = sha1(bytes);
     this.savedRecords = new Map([...this.records].map(([s, r]) => [s, { ...r }]));
-    backup(target, now, projectPath(target));
-    this.projectText = writeProject(target, this.projectData());
-    deleteDraft(info.path);
+    await backup(st, target, now, projectPath(st, target));
+    this.projectText = await writeProject(st, target, this.projectData());
+    await deleteDraft(st, info.path);
     this.info = this.describe(target, check, bytes.length);
     this.pendingDraft = null;
     this.rebased = false;
