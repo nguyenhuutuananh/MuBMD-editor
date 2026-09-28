@@ -1,4 +1,5 @@
-// vite.config.ts - Giao diện Vue (web/). Dev: `bun run dev` (Vite 5173 + proxy /api -> server 4817).
+// vite.config.ts - Vue UI (web/). Dev: `bun run dev` = Vite on 5173 (HMR) + the Bun API server
+// on 4817; /api is proxied to it, so dev runs the API on the same runtime (Bun) as releases.
 import { fileURLToPath } from "node:url";
 import VueI18nPlugin from "@intlify/unplugin-vue-i18n/vite";
 import tailwindcss from "@tailwindcss/vite";
@@ -12,7 +13,7 @@ export default defineConfig({
   plugins: [
     vue(),
     tailwindcss(),
-    // Biên dịch sẵn file ngôn ngữ lúc build -> dùng bản runtime-only của vue-i18n.
+    // Precompile locale files at build time -> runtime-only vue-i18n build.
     VueI18nPlugin({ include: [r("./web/src/i18n/locales/**")], compositionOnly: true, fullInstall: false }),
   ],
   resolve: {
@@ -24,6 +25,7 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    // The API server's Host check accepts localhost:5173, so the Host header is passed through unchanged.
     proxy: { "/api": "http://127.0.0.1:4817" },
   },
   build: {

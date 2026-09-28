@@ -18,45 +18,45 @@ const DATA = path.join(import.meta.dir, "../data/Item.bmd");
 const original = new Uint8Array(fs.readFileSync(DATA));
 const load = () => ItemBmd.parse(original);
 
-// Các byte khác nhau giữa 2 file (bỏ qua 4 byte checksum).
+// Offsets where two files differ (ignoring the 4-byte checksum).
 function diffOffsets(a: Uint8Array, b: Uint8Array): number[] {
   const out: number[] = [];
   for (let i = 0; i < BODY_SIZE; i++) if (a[i] !== b[i]) out.push(i);
   return out;
 }
 
-describe("đọc data/Item.bmd", () => {
-  test("đúng kích thước, checksum hợp lệ", () => {
+describe("reading data/Item.bmd", () => {
+  test("correct size, valid checksum", () => {
     const bmd = load();
     expect(original.length).toBe(FILE_SIZE);
     expect(bmd.checksumValid).toBe(true);
   });
 
-  test("488 slot có tên, đều là UTF-8", () => {
+  test("488 named slots, all UTF-8", () => {
     const named = load().entries();
     expect(named.length).toBe(488);
     expect(named.every((e) => e.encoding === "utf-8")).toBe(true);
     expect(load().entries({ includeEmpty: true }).length).toBe(MAX_ITEM);
   });
 
-  test("tên và toạ độ slot đúng", () => {
+  test("names and slot coordinates are correct", () => {
     const bmd = load();
     expect(bmd.entry(0)).toMatchObject({ itemType: 0, itemIndex: 0, text: "Chùy Thủy" });
     expect(bmd.entry(slotOf(7, 1)).text).toBe("Mũ Rồng Đỏ");
     expect(bmd.entry(1036)).toMatchObject({ itemType: 2, itemIndex: 12, text: "Quyền Trượng Đại Vương", byteLength: 32 });
   });
 
-  test("từ chối file sai kích thước", () => {
+  test("rejects a file with the wrong size", () => {
     expect(() => ItemBmd.parse(original.subarray(0, 1000))).toThrow(BmdFormatError);
   });
 });
 
-describe("ghi lại", () => {
-  test("không sửa gì -> giống hệt từng byte", () => {
+describe("writing back", () => {
+  test("no edits -> byte-identical output", () => {
     expect(Buffer.from(load().toBytes()).equals(Buffer.from(original))).toBe(true);
   });
 
-  test("sửa 1 tên -> chỉ vùng tên của slot đó đổi, checksum mới hợp lệ", () => {
+  test("editing one name changes only that slot's name bytes, new checksum is valid", () => {
     const bmd = load();
     const slot = slotOf(0, 1);
     bmd.setName(slot, "Đoản Kiếm Thử");
@@ -72,14 +72,14 @@ describe("ghi lại", () => {
     expect(re.getName(slot - 1).text).toBe("Chùy Thủy");
   });
 
-  test("slot ở cuối file (type 15, index 511) cũng ghi đúng pha khoá XOR", () => {
+  test("last slot (type 15, index 511) is written with the correct XOR key phase", () => {
     const bmd = load();
     const slot = slotOf(15, 511);
     bmd.setName(slot, "Ngọc Thử Nghiệm");
     expect(ItemBmd.parse(bmd.toBytes()).getName(slot).text).toBe("Ngọc Thử Nghiệm");
   });
 
-  test("đặt lại tên cũ -> không còn slot bẩn, file giống hệt gốc", () => {
+  test("restoring the old name clears the dirty slot, file identical to the original", () => {
     const bmd = load();
     bmd.setName(0, "Tạm");
     expect(bmd.dirtySlots).toEqual([0]);
@@ -88,33 +88,33 @@ describe("ghi lại", () => {
     expect(Buffer.from(bmd.toBytes()).equals(Buffer.from(original))).toBe(true);
   });
 
-  test("xoá trắng tên", () => {
+  test("clearing a name", () => {
     const bmd = load();
     bmd.setName(0, "");
     expect(ItemBmd.parse(bmd.toBytes()).getName(0).encoding).toBe("empty");
   });
 
-  test("tên quá dài bị từ chối và không làm đổi dữ liệu", () => {
+  test("an over-long name is rejected and leaves the data unchanged", () => {
     const bmd = load();
     expect(() => bmd.setName(0, "Quyền Trượng Đại Vương Huyền Thoại Cổ")).toThrow(NameValidationError);
     expect(bmd.isDirty).toBe(false);
     expect(bmd.getName(0).text).toBe("Chùy Thủy");
   });
 
-  test("slot ngoài phạm vi", () => {
+  test("out-of-range slot", () => {
     expect(() => load().setName(MAX_ITEM, "x")).toThrow(InvalidSlotError);
     expect(() => slotOf(16, 0)).toThrow(InvalidSlotError);
   });
 });
 
-// Đối chiếu với tool cũ (tools/item_ts) nếu có trong thư mục cha: nhập cùng 1
-// file TSV phải ra file giống hệt từng byte, kể cả checksum.
+// Cross-check against the old tool (tools/item_ts) when present in the parent folder:
+// importing the same TSV must produce a byte-identical file, checksum included.
 const LEGACY_CORE = path.join(import.meta.dir, "../../tools/item_ts/src/itemBmdCore.ts");
 const LEGACY_TSV = path.join(import.meta.dir, "../../items.tsv");
 const hasLegacy = fs.existsSync(LEGACY_CORE) && fs.existsSync(LEGACY_TSV);
 
-describe.skipIf(!hasLegacy)("tương thích tool cũ item_ts", () => {
-  test("nhập items.tsv ra kết quả giống hệt importItemBmd()", async () => {
+describe.skipIf(!hasLegacy)("compatibility with the old item_ts tool", () => {
+  test("importing items.tsv matches importItemBmd() byte for byte", async () => {
     const legacy = await import(LEGACY_CORE);
     const expected: Uint8Array = legacy.importItemBmd(DATA, LEGACY_TSV).outBytes;
 

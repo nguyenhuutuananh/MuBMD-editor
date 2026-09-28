@@ -12,7 +12,7 @@ const rows = toRows(
 const base: Filter = { group: null, scope: "named", problem: "any", query: "" };
 
 describe("fold", () => {
-  test("bỏ dấu tiếng Việt, đ -> d", () => {
+  test("strips Vietnamese accents, đ -> d", () => {
     expect(fold("Kiếm Rồng Đỏ")).toBe("kiem rong do");
     expect(fold("Đoản Đao")).toBe("doan dao");
     expect(fold("Kiếm".normalize("NFD"))).toBe("kiem");
@@ -20,7 +20,7 @@ describe("fold", () => {
 });
 
 describe("parseCoord", () => {
-  test("các dạng toạ độ", () => {
+  test("coordinate formats", () => {
     expect(parseCoord("7:1")).toEqual({ itemType: 7, itemIndex: 1 });
     expect(parseCoord("7 1")).toEqual({ itemType: 7, itemIndex: 1 });
     expect(parseCoord("#3585")).toEqual({ slot: 3585 });
@@ -30,36 +30,36 @@ describe("parseCoord", () => {
 });
 
 describe("applyFilter", () => {
-  test("mặc định chỉ slot có tên", () => {
+  test("defaults to named slots only", () => {
     expect(applyFilter(rows, base).length).toBe(488);
     expect(applyFilter(rows, { ...base, scope: "all" }).length).toBe(MAX_ITEM);
     expect(applyFilter(rows, { ...base, scope: "empty" }).length).toBe(MAX_ITEM - 488);
   });
 
-  test("tìm không dấu, nhiều từ", () => {
+  test("accent-insensitive, multi-word search", () => {
     const hits = applyFilter(rows, { ...base, query: "rong do" });
     expect(hits.some((r) => r.text === "Mũ Rồng Đỏ")).toBe(true);
     expect(hits.every((r) => fold(r.text).includes("rong") && fold(r.text).includes("do"))).toBe(true);
   });
 
-  test("lọc theo nhóm", () => {
+  test("filter by group", () => {
     const helms = applyFilter(rows, { ...base, group: 7 });
     expect(helms.length).toBeGreaterThan(0);
     expect(helms.every((r) => r.itemType === 7)).toBe(true);
   });
 
-  test("tìm theo toạ độ bỏ qua bộ lọc khác", () => {
+  test("coordinate search ignores other filters", () => {
     const hit = applyFilter(rows, { ...base, group: 0, scope: "empty", query: "7:1" });
     expect(hit.map((r) => r.text)).toEqual(["Mũ Rồng Đỏ"]);
   });
 
-  test("gần giới hạn byte", () => {
+  test("near the byte limit", () => {
     const near = applyFilter(rows, { ...base, problem: "near-limit" });
     expect(near.every((r) => r.byteLength >= 40)).toBe(true);
   });
 });
 
-test("groupCounts cộng đủ", () => {
+test("groupCounts adds up", () => {
   const counts = groupCounts(rows, MAX_ITEM_TYPE);
   expect(counts.reduce((s, c) => s + c.named, 0)).toBe(488);
   expect(counts.every((c) => c.total === 512)).toBe(true);

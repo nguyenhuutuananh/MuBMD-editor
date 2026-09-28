@@ -15,7 +15,7 @@ const row = computed(() => {
   void store.rev;
   const s = store.selectedSlot;
   const r = s === null ? undefined : store.rows[s];
-  return r ? { ...r } : null; // bản sao để computed đổi khi dòng được patch
+  return r ? { ...r } : null; // copy, so the computed changes when the row is patched in place
 });
 
 const facts = computed(() => {
@@ -40,7 +40,7 @@ const notes = computed(() => {
   return [r.encoding === "unknown" ? t("detail.nonUtf8Note") : "", ...r.issues.map((c) => t(`issues.${c}`))].filter(Boolean);
 });
 
-// Cảnh báo theo thời gian thực của tên đang gõ.
+// Live feedback for the name being typed.
 const live = computed(() => {
   const ed = store.editor;
   if (!ed || ed.slot !== store.selectedSlot) return null;

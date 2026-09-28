@@ -1,5 +1,5 @@
-// api.ts - Kiểu dữ liệu dùng chung giữa server (src/server) và giao diện (web/).
-// Chỉ chứa type + hằng số thuần, không import gì từ node/bun.
+// api.ts - Types shared by the server (src/server) and the UI (web/).
+// Types + plain constants only; nothing imported from node/bun.
 
 import type { ErrorCode, ErrorParams } from "../core/errors";
 import type { NameEncoding, NameIssue, NameIssueCode } from "../core/nameCodec";
@@ -24,17 +24,17 @@ export interface StateResponse {
   version: string;
 }
 
-// Một slot, gửi dạng mảng cho gọn (8192 dòng):
+// One slot, sent as a tuple to keep 8192 rows compact:
 // [slot, text, encoding, byteLength, issueCodes]
 export type ItemTuple = [number, string, NameEncoding, number, NameIssueCode[]];
 
-// Ai sửa slot này lần cuối, lúc nào (để sau này gộp bản dịch nhiều người).
+// Who last edited this slot, and when (for merging several translators' work later).
 export interface EditMeta {
   translator: string;
   at: string; // ISO
 }
 
-// Thông tin một slot đang khác file gốc (chưa lưu).
+// A slot that differs from the original file (unsaved).
 export interface EditInfo extends EditMeta {
   slot: number;
   originalText: string;
@@ -47,17 +47,17 @@ export interface DocStatus {
   canRedo: boolean;
 }
 
-// Bản nháp tự lưu của lần làm việc trước chưa kịp lưu vào Item.bmd.
+// Auto-saved draft from a previous session that was never saved to Item.bmd.
 export interface DraftInfo {
   count: number;
   savedAt: string;
   translators: string[];
-  baseMatches: boolean; // file trên đĩa vẫn là file lúc tạo nháp
+  baseMatches: boolean; // the file on disk is still the one the draft was made from
 }
 
 export interface ItemsResponse {
   file: FileInfo;
-  items: ItemTuple[]; // luôn đủ MAX_ITEM slot, theo thứ tự slot
+  items: ItemTuple[]; // always all MAX_ITEM slots, in slot order
   edits: EditInfo[];
   status: DocStatus;
   draft: DraftInfo | null;
@@ -65,10 +65,10 @@ export interface ItemsResponse {
 
 export interface SlotState {
   item: ItemTuple;
-  edit: EditInfo | null; // null = slot giống file gốc
+  edit: EditInfo | null; // null = slot matches the original file
 }
 
-// Kết quả của sửa / hoàn tác / undo / redo / khôi phục nháp.
+// Result of edit / revert / undo / redo / draft restore.
 export interface MutationResponse {
   changed: SlotState[];
   status: DocStatus;
@@ -76,7 +76,7 @@ export interface MutationResponse {
 
 export interface OpenRequest {
   path: string;
-  discard?: boolean; // bỏ các thay đổi chưa lưu của file đang mở
+  discard?: boolean; // discard unsaved edits of the currently open file
 }
 
 export interface EditRequest {
@@ -91,8 +91,8 @@ export interface RevertRequest {
 }
 
 export interface SaveRequest {
-  path?: string; // lưu thành file khác
-  force?: boolean; // ghi đè dù file trên đĩa đã bị thay đổi
+  path?: string; // save to a different file
+  force?: boolean; // overwrite even though the file on disk changed
 }
 
 export interface SaveResponse {
@@ -104,14 +104,14 @@ export interface SaveResponse {
 }
 
 export interface PickRequest {
-  lang?: Lang; // ngôn ngữ chữ trên hộp thoại của hệ điều hành
+  lang?: Lang; // language of the native OS dialog captions
 }
 
 export interface PickResponse {
-  path: string | null; // null = người dùng bấm Huỷ
+  path: string | null; // null = the user cancelled
 }
 
-// `error` là câu tiếng Anh (log / dự phòng); giao diện dịch theo `code` + `params`.
+// `error` is an English sentence (logs / fallback); the UI translates `code` + `params`.
 export interface ErrorResponse {
   error: string;
   code: ErrorCode;

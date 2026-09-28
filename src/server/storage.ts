@@ -1,9 +1,9 @@
-// storage.ts - Mọi thao tác ghi đĩa: ghi file an toàn, backup, nhật ký thay đổi, bản nháp.
+// storage.ts - All disk writes: safe file writes, backups, change log, draft.
 //
-// Dữ liệu phụ nằm trong thư mục "<Item.bmd>.mubmd/" cạnh file:
-//   backups/Item-20260928-111300.bmd   bản trước mỗi lần lưu (giữ MAX_BACKUPS bản mới nhất)
-//   changes.tsv                        nhật ký: ai đổi tên slot nào, từ gì sang gì
-//   draft.json                         thay đổi chưa lưu (tự ghi sau mỗi lần sửa)
+// Side data lives in a "<Item.bmd>.mubmd/" folder next to the file:
+//   backups/Item-20260928-111300.bmd   the previous version before each save (newest MAX_BACKUPS kept)
+//   changes.tsv                        log: who renamed which slot, from what to what
+//   draft.json                         unsaved edits (written after every edit)
 
 import { createHash } from "node:crypto";
 import * as fs from "node:fs";
@@ -20,7 +20,7 @@ export function workDir(bmdPath: string): string {
   return `${bmdPath}.mubmd`;
 }
 
-// 2026-09-28 11:13:00 -> "20260928-111300" (giờ máy)
+// 2026-09-28 11:13:00 -> "20260928-111300" (local time)
 export function stamp(d: Date): string {
   const p = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
@@ -33,8 +33,8 @@ export class FileLockedError extends AppError {
   }
 }
 
-// Ghi ra file tạm cùng thư mục rồi đổi tên đè lên: mất điện / lỗi giữa chừng
-// không để lại file Item.bmd ghi dở.
+// Write to a temp file in the same folder, then rename over the target: a power loss / crash
+// mid-write never leaves a half-written Item.bmd.
 export function atomicWrite(target: string, bytes: Uint8Array): void {
   const tmp = `${target}.tmp-${process.pid}-${Date.now()}`;
   fs.writeFileSync(tmp, bytes);
@@ -48,7 +48,7 @@ export function atomicWrite(target: string, bytes: Uint8Array): void {
   }
 }
 
-// Chép file hiện tại trên đĩa vào backups/ (nếu có) và xoá bớt bản cũ. Trả về đường dẫn backup.
+// Copy the current file on disk into backups/ (if it exists) and prune old copies. Returns the backup path.
 export function backup(target: string, now: Date): string | null {
   if (!fs.existsSync(target)) return null;
   const dir = path.join(workDir(target), "backups");
@@ -62,7 +62,7 @@ export function backup(target: string, now: Date): string | null {
   const all = fs
     .readdirSync(dir)
     .filter((f) => f.startsWith(prefix) && f.endsWith(ext))
-    .sort(); // tên chứa thời gian nên sắp theo tên = theo thời gian
+    .sort(); // names contain the timestamp, so sorting by name = by time
   for (const old of all.slice(0, Math.max(0, all.length - MAX_BACKUPS))) fs.rmSync(path.join(dir, old), { force: true });
   return dest;
 }
@@ -112,7 +112,7 @@ export function writeDraft(target: string, draft: Draft): void {
   atomicWrite(draftPath(target), new TextEncoder().encode(JSON.stringify(draft, null, 1)));
 }
 
-// Nháp hỏng / sai định dạng thì coi như không có (không chặn việc mở file).
+// A corrupt / malformed draft is treated as absent (never blocks opening the file).
 export function readDraft(target: string): Draft | null {
   try {
     const d = JSON.parse(fs.readFileSync(draftPath(target), "utf-8")) as Draft;

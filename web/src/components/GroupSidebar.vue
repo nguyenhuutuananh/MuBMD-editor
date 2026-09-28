@@ -10,7 +10,7 @@ const { t, n } = useI18n();
 const store = useDocStore();
 
 const groups = computed(() => {
-  void store.rev; // vẽ lại khi có sửa đổi
+  void store.rev; // re-render after edits
   const counts = groupCounts(store.rows, MAX_ITEM_TYPE);
   const edited = new Array<number>(MAX_ITEM_TYPE).fill(0);
   for (const r of store.rows) if (r.edit) edited[r.itemType]!++;

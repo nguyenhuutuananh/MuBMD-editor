@@ -10,8 +10,8 @@ import { cn } from "@/lib/utils";
 import { useDocStore } from "@/stores/doc";
 
 const ROW = 32;
-const HEAD = 32; // tiêu đề sticky nằm trong vùng cuộn, phía trên danh sách
-// Dùng chung cho tiêu đề và các dòng để cột luôn thẳng.
+const HEAD = 32; // sticky header inside the scroll area, above the list
+// Shared by the header and the rows so columns always line up.
 const COLS =
   "grid grid-cols-[36px_44px_minmax(120px,1fr)_64px] md:grid-cols-[52px_60px_minmax(160px,1fr)_92px_minmax(120px,0.8fr)] items-center gap-2 px-3";
 
@@ -31,7 +31,7 @@ const virtualizer = useVirtualizer(
   })),
 );
 
-// Dòng là object thường (không reactive); đọc `rev` để vẽ lại khi có sửa đổi.
+// Rows are plain (non-reactive) objects; reading `rev` re-renders after edits.
 const items = computed(() => {
   void store.rev;
   return virtualizer.value.getVirtualItems().map((v) => ({ v, row: store.visible[v.index]! }));

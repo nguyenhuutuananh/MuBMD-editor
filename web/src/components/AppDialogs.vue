@@ -23,7 +23,7 @@ function choose(id: string) {
   resolveCurrent({ action: id, value: value.value.trim() });
 }
 
-// Enter trong ô nhập luôn chọn nút chính (không phải nút đầu tiên như form mặc định).
+// Enter in the input always picks the primary button (not the first button, as a plain form would).
 function onInputEnter(e: KeyboardEvent) {
   if (e.isComposing || e.keyCode === 229) return;
   e.preventDefault();
@@ -35,7 +35,7 @@ function onOpenChange(open: boolean) {
   if (!open && currentDialog.value) resolveCurrent({ action: null, value: "" });
 }
 
-// Mở hộp thoại: focus ô nhập, nếu không có thì nút chính.
+// On open: focus the input, or the primary button if there is none.
 function focusFirst() {
   nextTick(() => {
     const root = document.querySelector<HTMLElement>("[data-slot=dialog-content]");

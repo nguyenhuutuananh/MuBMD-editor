@@ -1,4 +1,4 @@
-// build-bin.ts - Build file chạy độc lập cho Windows + macOS vào dist/ (nhúng sẵn giao diện).
+// build-bin.ts - Build standalone executables for Windows + macOS into dist/ (UI embedded).
 
 import * as path from "node:path";
 
@@ -18,4 +18,4 @@ await run(["bun", "scripts/build-web.ts"]);
 for (const [target, out] of targets) {
   await run(["bun", "build", "--compile", "--minify", `--target=${target}`, `--outfile=dist/${out}`, "src/server/main.ts"]);
 }
-console.log("Đã build xong vào dist/.");
+console.log("Build finished: dist/");

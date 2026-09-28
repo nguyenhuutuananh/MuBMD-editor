@@ -30,8 +30,8 @@ function opened() {
 }
 const nameOnDisk = (slot: number) => ItemBmd.parse(new Uint8Array(fs.readFileSync(file))).getName(slot).text;
 
-describe("sửa + undo/redo", () => {
-  test("sửa ghi nhận người dịch, thời gian, tên gốc", () => {
+describe("edit + undo/redo", () => {
+  test("an edit records translator, time and original name", () => {
     const s = opened();
     const r = s.edit(1, "Đoản Kiếm", "An");
     expect(r.status).toEqual({ dirtyCount: 1, canUndo: true, canRedo: false });
@@ -39,24 +39,24 @@ describe("sửa + undo/redo", () => {
     expect(r.changed[0]!.edit).toMatchObject({ slot: 1, originalText: "Đoản Đao", translator: "An" });
   });
 
-  test("sửa giống hệt tên hiện tại không tạo bước undo", () => {
+  test("setting the same name creates no undo step", () => {
     const s = opened();
     expect(s.edit(0, "Chùy Thủy", "An").status.canUndo).toBe(false);
   });
 
-  test("tên không hợp lệ bị từ chối, không đổi trạng thái", () => {
+  test("an invalid name is rejected without changing state", () => {
     const s = opened();
     expect(() => s.edit(0, "x".repeat(60), "An")).toThrow(NameValidationError);
     expect(s.status().dirtyCount).toBe(0);
   });
 
-  test("undo / redo nhiều bước", () => {
+  test("multi-step undo / redo", () => {
     const s = opened();
     s.edit(0, "A", "An");
     s.edit(0, "B", "Bình");
     s.edit(1, "C", "An");
     expect(s.undo().changed[0]!.item[1]).toBe("Đoản Đao");
-    expect(s.undo().changed[0]!.edit).toMatchObject({ translator: "An" }); // quay về "A" của An
+    expect(s.undo().changed[0]!.edit).toMatchObject({ translator: "An" }); // back to An's "A"
     expect(s.item(0)[1]).toBe("A");
     const back = s.undo();
     expect(back.changed[0]!.edit).toBeNull();
@@ -67,14 +67,14 @@ describe("sửa + undo/redo", () => {
     expect(s.editInfo(0)?.translator).toBe("Bình");
   });
 
-  test("sửa mới xoá nhánh redo", () => {
+  test("a new edit clears the redo branch", () => {
     const s = opened();
     s.edit(0, "A", "An");
     s.undo();
     expect(s.edit(1, "B", "An").status.canRedo).toBe(false);
   });
 
-  test("hoàn tác về tên gốc là 1 bước undo được", () => {
+  test("reverting to the original name is an undoable step", () => {
     const s = opened();
     s.edit(0, "A", "An");
     expect(s.revert(0, "An").status.dirtyCount).toBe(0);
@@ -82,7 +82,7 @@ describe("sửa + undo/redo", () => {
     expect(s.item(0)[1]).toBe("A");
   });
 
-  test("không cho mở file khác khi còn thay đổi, trừ khi bỏ", () => {
+  test("refuses to open another file with unsaved changes unless discarding", () => {
     const s = opened();
     s.edit(0, "A", "An");
     expect(() => s.open(file)).toThrow(DirtyError);
@@ -93,8 +93,8 @@ describe("sửa + undo/redo", () => {
   });
 });
 
-describe("lưu", () => {
-  test("lưu: ghi file, backup bản cũ, ghi nhật ký, xoá nháp", () => {
+describe("save", () => {
+  test("save: writes file, backs up the old one, logs changes, deletes draft", () => {
     const s = opened();
     s.edit(slotOf(7, 1), "Mũ Rồng Lửa", "An");
     tick();
@@ -116,14 +116,14 @@ describe("lưu", () => {
     expect(s.status().canUndo).toBe(true);
   });
 
-  test("không có thay đổi thì không ghi, không backup", () => {
+  test("no changes -> no write, no backup", () => {
     const r = opened().save();
     expect(r.savedCount).toBe(0);
     expect(r.backupPath).toBeNull();
     expect(fs.existsSync(workDir(file))).toBe(false);
   });
 
-  test("undo sau khi lưu rồi lưu lại", () => {
+  test("undo after saving, then save again", () => {
     const s = opened();
     s.edit(0, "A", "An");
     s.save();
@@ -134,7 +134,7 @@ describe("lưu", () => {
     expect(nameOnDisk(0)).toBe("Chùy Thủy");
   });
 
-  test("phát hiện file trên đĩa bị thay đổi (Drive đồng bộ) và cho ghi đè khi force", () => {
+  test("detects the file changing on disk (Drive sync) and overwrites with force", () => {
     const s = opened();
     s.edit(0, "A", "An");
     const other = ItemBmd.parse(ORIGINAL);
@@ -147,7 +147,7 @@ describe("lưu", () => {
     expect(nameOnDisk(0)).toBe("A");
   });
 
-  test("lưu thành file khác và chuyển sang làm việc trên file đó", () => {
+  test("save as another file and switch to it", () => {
     const s = opened();
     s.edit(0, "A", "An");
     const dest = path.join(dir, "Item_new.bmd");
@@ -155,10 +155,10 @@ describe("lưu", () => {
     expect(r.file.path).toBe(dest);
     expect(r.backupPath).toBeNull();
     expect(ItemBmd.parse(new Uint8Array(fs.readFileSync(dest))).getName(0).text).toBe("A");
-    expect(nameOnDisk(0)).toBe("Chùy Thủy"); // file gốc không đổi
+    expect(nameOnDisk(0)).toBe("Chùy Thủy"); // original file unchanged
   });
 
-  test(`giữ tối đa ${MAX_BACKUPS} bản backup`, () => {
+  test(`keeps at most ${MAX_BACKUPS} backups`, () => {
     const s = opened();
     for (let i = 0; i < MAX_BACKUPS + 3; i++) {
       s.edit(0, `Tên ${i}`, "An");
@@ -169,8 +169,8 @@ describe("lưu", () => {
   });
 });
 
-describe("bản nháp", () => {
-  test("mỗi lần sửa ghi nháp, undo hết thì xoá nháp", () => {
+describe("draft", () => {
+  test("every edit writes the draft; undoing everything deletes it", () => {
     const s = opened();
     s.edit(0, "A", "An");
     expect(readDraft(file)?.edits).toEqual([{ slot: 0, name: "A", translator: "An", at: "2026-09-28T04:00:00.000Z" }]);
@@ -178,7 +178,7 @@ describe("bản nháp", () => {
     expect(readDraft(file)).toBeNull();
   });
 
-  test("mở lại sau khi tắt ngang: khôi phục nháp thành 1 bước undo", () => {
+  test("reopening after a crash restores the draft as one undo step", () => {
     const s1 = opened();
     s1.edit(0, "A", "An");
     s1.edit(1, "B", "Bình");
@@ -194,7 +194,7 @@ describe("bản nháp", () => {
     expect(s2.status().dirtyCount).toBe(0);
   });
 
-  test("nháp tạo trên file khác (đĩa đã đổi) được đánh dấu", () => {
+  test("a draft made against a different file version (disk changed) is flagged", () => {
     opened().edit(0, "A", "An");
     const other = ItemBmd.parse(ORIGINAL);
     other.setName(5, "Khác");
@@ -202,7 +202,7 @@ describe("bản nháp", () => {
     expect(opened().draftInfo()?.baseMatches).toBe(false);
   });
 
-  test("bỏ qua nháp mà sửa tiếp: nháp cũ được cất sang tên khác, không mất", () => {
+  test("editing without answering the draft prompt archives the old draft instead of losing it", () => {
     opened().edit(0, "A", "An");
     const s2 = opened();
     s2.edit(1, "B", "Bình");
@@ -211,7 +211,7 @@ describe("bản nháp", () => {
     expect(readDraft(file)?.edits.map((e) => e.slot)).toEqual([1]);
   });
 
-  test("bỏ nháp", () => {
+  test("discard draft", () => {
     opened().edit(0, "A", "An");
     const s2 = opened();
     s2.discardDraft();

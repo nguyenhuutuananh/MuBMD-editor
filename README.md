@@ -24,11 +24,15 @@ Cần Bun (server, test, build file chạy) và Node 20.19+ (Vite).
 
 ```
 bun install
-bun run dev              # server (4817) + Vite dev (5173, HMR), mở data/Item.bmd, tự mở trình duyệt
+bun run dev              # dev: server API (4817) + Vite (5173, HMR), mở data/Item.bmd, tự mở trình duyệt
 bun run dev -- đường/dẫn/Item.bmd
-bun run start            # build giao diện rồi chạy như bản phát hành (http://localhost:4817)
+bun run start            # build giao diện rồi chạy như bản phát hành (1 port, http://localhost:4817)
 bun run build            # file chạy độc lập vào dist/ (Windows x64, macOS arm64/x64), nhúng sẵn giao diện
 ```
+
+**Vì sao dev có 2 port:** Vite (5173) chỉ phục vụ giao diện, tự cập nhật khi sửa code, và
+chuyển `/api` sang server Bun (4817). Nhờ vậy API khi dev chạy đúng runtime Bun như bản
+phát hành. Bản phát hành (`bun run start`, file chạy) chỉ dùng **1 port**.
 
 File chạy độc lập: `MuBMD-editor [đường/dẫn/Item.bmd] [--port 4817] [--no-open]`.
 Nếu cổng 4817 bận, công cụ tự thử cổng kế tiếp.
@@ -92,7 +96,8 @@ thể tới ~14 MB backup) cũng sẽ được đồng bộ.
 ```
 src/core/     lõi đọc/ghi Item.bmd + errors.ts (mã lỗi) - không phụ thuộc server/UI
 src/shared/   kiểu dữ liệu API dùng chung server <-> giao diện
-src/server/   Bun.serve: app.ts (API), session.ts (sửa/undo/nháp/lưu), storage.ts (ghi đĩa), filePicker.ts, main.ts
+src/server/   app.ts (API), session.ts (sửa/undo/nháp/lưu), storage.ts (ghi đĩa), filePicker.ts,
+              main.ts (Bun.serve)
 web/          giao diện Vue 3 (Vite, Tailwind 4, shadcn-vue, Pinia, vue-i18n)
   src/components/        AppTopbar, GroupSidebar, ItemToolbar, ItemGrid (cuộn ảo), InlineEditor, DetailPanel, AppDialogs…
   src/components/ui/     component shadcn-vue (chép vào dự án, sửa tự do; thêm bằng `npx shadcn-vue add <tên>` trong web/)
@@ -100,7 +105,7 @@ web/          giao diện Vue 3 (Vite, Tailwind 4, shadcn-vue, Pinia, vue-i18n)
   src/stores/doc.ts      trạng thái file đang mở (8192 dòng trong shallowRef)
   src/lib/               api.ts, search.ts (tìm không dấu, lọc), dialogs.ts, storage.ts
   src/i18n/              cấu hình + locales/en.json, vi.json
-scripts/      dev.ts, build-web.ts (Vite build -> build/web/assets.ts để nhúng), build-bin.ts
+scripts/      dev.ts (server + Vite), build-web.ts (Vite build -> build/web/assets.ts để nhúng), build-bin.ts
 tests/        bun test (lõi, server, session, tìm kiếm, file ngôn ngữ); e2e/run.ts (Chrome thật)
 ```
 
@@ -141,3 +146,8 @@ bun run typecheck    # tsc (server/lõi) + vue-tsc (giao diện)
 
 Test dùng `data/Item.bmd`, và nếu có `../tools/item_ts` + `../items.tsv` thì
 đối chiếu kết quả nhập TSV với tool cũ (phải giống hệt từng byte, kể cả checksum).
+
+## Quy ước code
+
+Comment và log trong code viết bằng **tiếng Anh**. Chữ hiển thị cho người dùng nằm trong
+`web/src/i18n/locales/*.json` (và chữ trên hộp thoại hệ điều hành trong `filePicker.ts`).

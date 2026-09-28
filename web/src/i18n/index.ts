@@ -1,4 +1,4 @@
-// i18n - Tiếng Anh là mặc định và luôn hiện ở lần mở đầu tiên; tiếng Việt chọn trong menu, nhớ trong trình duyệt.
+// i18n - English is the default and always shown on first launch; Vietnamese is picked from the menu and remembered.
 
 import { createI18n } from "vue-i18n";
 import { isLang, type Lang, type NameIssue } from "../../../src/shared/api";
@@ -43,7 +43,7 @@ export function setLang(lang: Lang): void {
   save(KEYS.lang, lang);
 }
 
-// Dịch có số nhiều: tham số `count` hoặc `n` quyết định dạng số ít/nhiều (tiếng Anh).
+// Translate with plurals: a `count` or `n` param selects the singular/plural form (English).
 export function tr(key: string, params: Record<string, unknown> = {}): string {
   const t = i18n.global.t as (k: string, named: Record<string, unknown>, plural?: number) => string;
   const n = typeof params.count === "number" ? params.count : typeof params.n === "number" ? params.n : undefined;
@@ -62,7 +62,7 @@ export function issueText(issue: Pick<NameIssue, "code" | "params">): string {
   return tr(`issueDetail.${issue.code}`, issue.params ?? {});
 }
 
-// Lỗi từ server/giao diện -> câu theo ngôn ngữ đang chọn.
+// Server / client error -> sentence in the current language.
 export function errorText(e: unknown): string {
   if (e instanceof ApiError) {
     const firstIssue = e.issues?.find((i) => i.severity === "error");

@@ -1,4 +1,4 @@
-// api.ts - Gọi API của server cục bộ. Lỗi mang mã + tham số để giao diện tự dịch.
+// api.ts - Calls the local server API. Errors carry a code + params for the UI to translate.
 
 import type {
   ErrorCode,
@@ -14,7 +14,7 @@ import type {
   StateResponse,
 } from "../../../src/shared/api";
 
-// Mã lỗi riêng của phía giao diện (không đến từ server).
+// Client-side error codes (not sent by the server).
 export type ClientErrorCode = "offline" | "bad-response";
 
 export class ApiError extends Error {

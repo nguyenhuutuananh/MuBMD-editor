@@ -1,4 +1,4 @@
-// dialogs.ts - Hộp thoại dạng Promise: ask() xếp hàng, <AppDialogs> hiển thị lần lượt.
+// dialogs.ts - Promise-based dialogs: ask() queues, <AppDialogs> shows them one at a time.
 
 import { computed, shallowRef } from "vue";
 
@@ -10,13 +10,13 @@ export interface DialogAction {
 
 export interface DialogOptions {
   title: string;
-  body: string[]; // mỗi phần tử là một đoạn
+  body: string[]; // one paragraph per element
   actions: DialogAction[];
   input?: { label: string; value: string; placeholder?: string; required?: boolean };
 }
 
 export interface DialogResult {
-  action: string | null; // null = đóng bằng Esc / bấm ra ngoài
+  action: string | null; // null = closed with Esc / clicking outside
   value: string;
 }
 

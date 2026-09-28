@@ -18,7 +18,7 @@ const apply = () => {
 };
 const applyDebounced = useDebounceFn(apply, 80);
 
-// Enter / ↓ trong ô tìm: nhảy xuống dòng đầu tiên của kết quả.
+// Enter / ↓ in the search box: jump to the first result row.
 function toResults(e: KeyboardEvent) {
   if (e.isComposing) return;
   e.preventDefault();

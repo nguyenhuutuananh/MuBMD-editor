@@ -39,7 +39,7 @@ watchEffect(() => {
           {{ store.file.checksumValid ? t("topbar.checksumOkTitle") : t("topbar.checksumBadTitle") }}
         </TooltipContent>
       </Tooltip>
-      <!-- rtl để cắt phần đầu đường dẫn; LRM giữ thứ tự ký tự -->
+      <!-- rtl truncates the start of the path; LRM marks keep the character order -->
       <span class="text-muted-foreground hidden min-w-0 truncate text-xs md:inline" dir="rtl" :title="store.file.path">
         &lrm;{{ store.file.path }}&lrm;
       </span>

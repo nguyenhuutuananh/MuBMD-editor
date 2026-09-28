@@ -1,4 +1,4 @@
-// actions.ts - Luồng thao tác của người dùng: mở / sửa / lưu, kèm hộp thoại và thông báo.
+// actions.ts - User flows: open / edit / save, including dialogs and toasts.
 
 import { ref } from "vue";
 import { toast } from "vue-sonner";
@@ -11,7 +11,7 @@ import { useDocStore } from "@/stores/doc";
 
 export const welcomeError = ref<string | null>(null);
 
-// ItemGrid đăng ký hàm cuộn tới dòng (theo vị trí trong danh sách đang lọc).
+// ItemGrid registers a function that scrolls to a row (by index in the filtered list).
 let scroller: ((index: number) => void) | null = null;
 export function registerScroller(fn: ((index: number) => void) | null) {
   scroller = fn;
@@ -29,7 +29,7 @@ export function select(slot: number | null, scroll = false) {
   }
 }
 
-// ---- mở file ----
+// ---- open ----
 
 export function showWelcome() {
   store().editor = null;
@@ -84,7 +84,7 @@ export async function reload() {
   if (f) await openPath(f.path);
 }
 
-// Lúc khởi động: nếu server đã mở sẵn file (đường dẫn trên dòng lệnh) thì vào luôn.
+// On startup: if the server already has a file open (path on the command line), go straight to it.
 export async function start() {
   try {
     const state = await api.state();
@@ -123,7 +123,7 @@ async function offerDraft(d: DraftInfo) {
   }
 }
 
-// ---- người dịch ----
+// ---- translator ----
 
 export async function askTranslator(): Promise<boolean> {
   const r = await ask({
@@ -147,7 +147,7 @@ export async function askTranslator(): Promise<boolean> {
 
 const ensureTranslator = async () => Boolean(store().translator) || askTranslator();
 
-// ---- sửa ----
+// ---- edit ----
 
 export async function startEdit(slot: number) {
   if (!(await ensureTranslator())) return;
@@ -155,7 +155,7 @@ export async function startEdit(slot: number) {
   const row = s.rows[slot];
   if (!row || visibleIndex(slot) < 0) return;
   select(slot, true);
-  // Tên không phải UTF-8 hiển thị sai (U+FFFD) nên không điền sẵn để khỏi ghi rác vào file.
+  // Non-UTF-8 names display garbled (U+FFFD), so do not prefill them - avoids writing garbage back.
   const initial = row.encoding === "unknown" ? "" : row.text;
   s.editor = { slot, value: initial, initial };
 }
@@ -164,7 +164,7 @@ export function cancelEdit() {
   store().editor = null;
 }
 
-// Trả về true nếu ô sửa đã đóng (lưu xong hoặc không có gì thay đổi).
+// Returns true if the editor is closed (saved, or nothing changed).
 export async function commitEditor(opts: { quiet?: boolean } = {}): Promise<boolean> {
   const s = store();
   const ed = s.editor;
@@ -222,7 +222,7 @@ export async function undoRedo(which: "undo" | "redo") {
   }
 }
 
-// ---- lưu ----
+// ---- save ----
 
 export async function saveFile(opts: SaveRequest = {}) {
   if (!(await commitEditor())) return;
@@ -267,7 +267,7 @@ export async function saveAs() {
   }
 }
 
-// ---- phím tắt toàn cục ----
+// ---- global shortcuts ----
 
 const inTextField = (el: Element | null) => el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement;
 
@@ -283,7 +283,7 @@ export function onGlobalKeydown(e: KeyboardEvent, focusSearch: () => void) {
     e.preventDefault();
     focusSearch();
   } else if (!inTextField(document.activeElement) && (key === "z" || key === "y")) {
-    // Trong ô nhập thì để trình duyệt tự undo chữ đang gõ.
+    // Inside a text field, let the browser undo the typed text itself.
     e.preventDefault();
     undoRedo(key === "y" || e.shiftKey ? "redo" : "undo");
   }

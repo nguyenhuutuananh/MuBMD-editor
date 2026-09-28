@@ -1,25 +1,25 @@
-// errors.ts - Lỗi có mã + tham số. Server trả nguyên mã/tham số cho giao diện,
-// giao diện tự dịch theo ngôn ngữ người dùng chọn (message tiếng Anh chỉ để log / dự phòng).
+// errors.ts - Errors carrying a code + params. The server returns code/params as-is and the UI
+// translates them into the user's language (the English message is only for logs / fallback).
 
 export type ErrorCode =
-  // định dạng / dữ liệu
+  // format / data
   | "bmd-size"
   | "invalid-slot"
   | "invalid-name"
   | "name-bytes-length"
-  // phiên làm việc
+  // session
   | "no-file"
   | "dirty"
   | "conflict"
   | "save-verify-failed"
-  // hệ thống file
+  // file system
   | "file-not-found"
   | "file-locked"
   | "permission-denied"
   | "is-directory"
   | "not-a-file"
   | "disk-full"
-  // hộp thoại hệ điều hành
+  // native OS dialogs
   | "picker-unsupported"
   | "picker-failed"
   // HTTP

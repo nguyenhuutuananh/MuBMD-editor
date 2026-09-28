@@ -1,8 +1,8 @@
-// itemBmd.ts - Mô hình file Item.bmd trong bộ nhớ.
+// itemBmd.ts - In-memory model of an Item.bmd file.
 //
-// Nguyên tắc: chỉ những slot bị đổi tên mới được ghi lại. Mọi byte khác (chỉ
-// số item, byte rác sau 0x00 của tên không đổi...) giữ nguyên như file gốc, và
-// file không sửa gì sẽ được ghi ra giống hệt từng byte.
+// Rule: only renamed slots are rewritten. Every other byte (item stats, garbage bytes after
+// the 0x00 of unchanged names...) stays exactly as in the original, and an unedited file is
+// written back byte-for-byte identical.
 
 import {
   BODY_SIZE,
@@ -43,7 +43,7 @@ export interface ItemEntry extends DecodedName {
 
 export class ItemBmd {
   private readonly original: Uint8Array;
-  private readonly decoded: Uint8Array; // thân file đã giải mã, cập nhật khi setName
+  private readonly decoded: Uint8Array; // decoded file body, updated by setName
   private readonly originalNames = new Map<number, Uint8Array>();
   readonly storedChecksum: number;
   readonly computedChecksum: number;
@@ -63,7 +63,7 @@ export class ItemBmd {
     return new ItemBmd(bytes);
   }
 
-  // Checksum sai không chặn việc đọc (để còn cứu dữ liệu), nhưng UI nên cảnh báo.
+  // A bad checksum does not block reading (so data can be rescued), but the UI should warn.
   get checksumValid(): boolean {
     return this.storedChecksum === this.computedChecksum;
   }
@@ -93,19 +93,19 @@ export class ItemBmd {
     return out;
   }
 
-  // Bản sao 50 byte tên (đã giải mã) của slot - dùng cho undo/redo chính xác từng byte.
+  // Copy of the slot's 50 decoded name bytes - used for byte-exact undo/redo.
   getNameBytes(slot: number): Uint8Array {
     return this.nameBytes(slot).slice();
   }
 
-  // Tên của slot trong file gốc lúc mở (trước mọi chỉnh sửa).
+  // The slot's name in the file as opened (before any edits).
   originalName(slot: number): DecodedName {
     const orig = this.originalNames.get(slot);
     return orig ? decodeName(orig) : this.getName(slot);
   }
 
-  // Ném NameValidationError nếu tên không hợp lệ (quá dài, ký tự điều khiển...).
-  // Đặt lại đúng tên cũ sẽ khôi phục nguyên byte gốc của slot đó.
+  // Throws NameValidationError for an invalid name (too long, control characters...).
+  // Setting the original name again restores the slot's original bytes exactly.
   setName(slot: number, name: string): void {
     const encoded = encodeName(name, slot);
     const origName = this.originalName(slot);
@@ -116,7 +116,7 @@ export class ItemBmd {
     }
   }
 
-  // Ghi nguyên 50 byte tên (lấy từ getNameBytes) - không kiểm tra nội dung.
+  // Write raw 50 name bytes (from getNameBytes) - content is not validated.
   setNameBytes(slot: number, raw: Uint8Array): void {
     if (raw.length !== NAME_LEN) {
       throw new AppError("name-bytes-length", `Name must be exactly ${NAME_LEN} bytes, got ${raw.length}.`, { expected: NAME_LEN, got: raw.length });
@@ -124,7 +124,7 @@ export class ItemBmd {
     this.writeName(slot, raw);
   }
 
-  // Trả slot về đúng byte gốc lúc mở file.
+  // Restore the slot to its original bytes from when the file was opened.
   revert(slot: number): void {
     const orig = this.originalNames.get(slot);
     if (orig) this.writeName(slot, orig);
@@ -145,9 +145,8 @@ export class ItemBmd {
     return this.originalNames.size > 0;
   }
 
-  // Ghi ra file hoàn chỉnh. Không sửa gì -> trả về bản sao y hệt file gốc
-  // (kể cả khi checksum gốc sai). Có sửa -> chỉ mã hoá lại các slot đã đổi
-  // và tính lại checksum.
+  // Produce the complete file. No edits -> an exact copy of the original (even if its
+  // checksum was bad). With edits -> re-encode only the changed slots and recompute the checksum.
   toBytes(): Uint8Array {
     const out = this.original.slice();
     if (!this.isDirty) return out;

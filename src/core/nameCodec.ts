@@ -1,12 +1,12 @@
-// nameCodec.ts - Giải mã / kiểm tra / mã hoá tên item (trường Name[50] UTF-8).
+// nameCodec.ts - Decode / validate / encode item names (the UTF-8 Name[50] field).
 //
-// Khác tool cũ: tên quá dài KHÔNG bị cắt ngầm nữa mà báo lỗi, để người dịch
-// biết và tự rút gọn.
+// Unlike the old tool, an over-long name is NOT silently truncated; it is reported as an
+// error so the translator knows and can shorten it.
 
 import { AppError } from "./errors";
 import { NAME_LEN } from "./format";
 
-export const MAX_NAME_BYTES = NAME_LEN - 1; // chừa 1 byte cho 0x00
+export const MAX_NAME_BYTES = NAME_LEN - 1; // leave 1 byte for 0x00
 
 export type NameEncoding = "empty" | "utf-8" | "unknown";
 
@@ -20,9 +20,9 @@ const utf8Strict = new TextDecoder("utf-8", { fatal: true });
 const utf8Lossy = new TextDecoder("utf-8");
 const utf8Encoder = new TextEncoder();
 
-// Tên không phải UTF-8 (dữ liệu gốc Nhật/Hàn) được đánh dấu "unknown" và trả
-// về bản giải mã có ký tự thay thế U+FFFD chỉ để hiển thị - Bun không có sẵn
-// bộ giải mã Shift_JIS/EUC-KR nên không đoán bảng mã.
+// Non-UTF-8 names (original Japanese/Korean data) are flagged "unknown" and returned with
+// U+FFFD replacement characters for display only - Bun ships no Shift_JIS/EUC-KR decoder,
+// so we do not guess the encoding.
 export function decodeName(raw: Uint8Array): DecodedName {
   let end = raw.indexOf(0);
   if (end === -1) end = raw.length;
@@ -37,7 +37,7 @@ export function decodeName(raw: Uint8Array): DecodedName {
 
 export type NameIssueCode = "too-long" | "control-char" | "lone-surrogate" | "edge-whitespace" | "double-space";
 
-// `message` tiếng Anh chỉ để log; giao diện dịch theo `code` + `params`.
+// The English `message` is only for logs; the UI translates `code` + `params`.
 export interface NameIssue {
   code: NameIssueCode;
   severity: "error" | "warning";
@@ -46,15 +46,15 @@ export interface NameIssue {
 }
 
 export interface NameCheck {
-  normalized: string; // dạng NFC - dạng sẽ được ghi vào file
+  normalized: string; // NFC form - the form written to the file
   bytes: Uint8Array;
   byteLength: number;
   issues: NameIssue[];
-  ok: boolean; // không có lỗi mức "error"
+  ok: boolean; // no "error"-level issue
 }
 
-// Tiếng Việt gõ tổ hợp (NFD, ví dụ từ macOS) tốn nhiều byte hơn và có thể hiển
-// thị sai trong font game, nên luôn chuẩn hoá về NFC trước khi đếm byte.
+// Vietnamese typed in decomposed form (NFD, e.g. on macOS) takes more bytes and may render
+// wrongly in the game font, so always normalize to NFC before counting bytes.
 export function checkName(name: string): NameCheck {
   const normalized = name.normalize("NFC");
   const bytes = utf8Encoder.encode(normalized);
@@ -101,7 +101,7 @@ export class NameValidationError extends AppError {
   }
 }
 
-// Mã hoá thành đúng NAME_LEN byte, phần thừa điền 0x00. Ném NameValidationError nếu có lỗi.
+// Encode to exactly NAME_LEN bytes, zero-padded. Throws NameValidationError on errors.
 export function encodeName(name: string, slot?: number): Uint8Array {
   const check = checkName(name);
   if (!check.ok) throw new NameValidationError(check, slot);

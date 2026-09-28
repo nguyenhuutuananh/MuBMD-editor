@@ -17,7 +17,7 @@ import { useDocStore } from "@/stores/doc";
 const store = useDocStore();
 const toolbar = ref<InstanceType<typeof ItemToolbar> | null>(null);
 
-// Sáng/tối theo cài đặt hệ điều hành.
+// Light/dark follows the OS setting.
 const dark = usePreferredDark();
 watchEffect(() => document.documentElement.classList.toggle("dark", dark.value));
 

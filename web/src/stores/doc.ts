@@ -1,7 +1,7 @@
-// doc.ts - Trạng thái file đang mở + gọi API. Luồng có hộp thoại (xác nhận, xung đột...) nằm ở composables/actions.ts.
+// doc.ts - State of the open file + API calls. Flows with dialogs (confirmations, conflicts...) live in composables/actions.ts.
 //
-// 8192 dòng để trong shallowRef (không reactive sâu). Sửa dòng thì patch tại chỗ rồi tăng `rev`
-// để các component đang đọc `rev` vẽ lại.
+// The 8192 rows live in a shallowRef (no deep reactivity). An edit patches the row in place and
+// bumps `rev`, so components reading `rev` re-render.
 
 import { defineStore } from "pinia";
 import { reactive, ref, shallowRef, watch } from "vue";
@@ -16,7 +16,7 @@ export interface EditorState {
   initial: string;
 }
 
-// Các thao tác sửa gửi lên server lần lượt theo đúng thứ tự người dùng làm.
+// Edits are sent to the server one at a time, in the order the user made them.
 let chain: Promise<unknown> = Promise.resolve();
 export function serial<T>(fn: () => Promise<T>): Promise<T> {
   const run = chain.then(fn, fn);
@@ -44,7 +44,7 @@ export const useDocStore = defineStore("doc", () => {
     query: "",
   });
 
-  // Lọc lại khi bộ lọc đổi. Sau khi sửa thì KHÔNG lọc lại (chỉ tăng rev) để dòng vừa sửa không nhảy đi mất.
+  // Re-filter when the filter changes. After an edit we do NOT re-filter (only bump rev) so the edited row does not jump away.
   function refilter() {
     editor.value = null;
     visible.value = applyFilter(rows.value, filter);
@@ -68,7 +68,7 @@ export const useDocStore = defineStore("doc", () => {
     save(KEYS.recent, recent.value);
   }
 
-  // Trả về bản nháp chờ khôi phục (nếu có) để lớp trên hỏi người dùng.
+  // Returns the pending draft (if any) so the caller can ask the user.
   async function loadItems(): Promise<DraftInfo | null> {
     editor.value = null;
     const res = await api.items();

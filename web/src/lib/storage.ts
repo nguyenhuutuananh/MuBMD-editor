@@ -1,4 +1,4 @@
-// storage.ts - localStorage an toàn (có thể bị chặn / rỗng -> dùng giá trị mặc định).
+// storage.ts - Safe localStorage (may be blocked / empty -> fall back to defaults).
 
 export function load<T>(key: string, fallback: T): T {
   try {
@@ -13,7 +13,7 @@ export function save(key: string, value: unknown): void {
   try {
     localStorage.setItem(key, JSON.stringify(value));
   } catch {
-    /* không lưu được thì thôi */
+    /* ignore: nothing to do if it cannot be saved */
   }
 }
 

@@ -1,4 +1,4 @@
-// app.ts - Xử lý HTTP: API JSON + phục vụ giao diện. Tách khỏi Bun.serve để test được.
+// app.ts - HTTP handling: JSON API + serving the UI. Kept separate from Bun.serve so it is testable.
 
 import { AppError, type ErrorCode, type ErrorParams, NameValidationError } from "../core";
 import {
@@ -17,7 +17,7 @@ import {
 import { pickFile, pickSaveFile } from "./filePicker";
 import { NoFileError, Session } from "./session";
 
-// Giao diện đã build (Vite), khoá = đường dẫn URL ("/index.html", "/assets/index-abc.js").
+// Built UI (Vite), keyed by URL path ("/index.html", "/assets/index-abc.js").
 export interface WebAsset {
   type: string;
   body: string;
@@ -42,15 +42,15 @@ const json = (body: unknown, status = 200) =>
 const fail = (status: number, code: ErrorCode, error: string, params: ErrorParams = {}, extra: Partial<ErrorResponse> = {}) =>
   json({ error, code, params, ...extra } satisfies ErrorResponse, status);
 
-// Chỉ nhận request gửi tới localhost (chống DNS rebinding: trang web lạ trỏ
-// tên miền của nó về 127.0.0.1 rồi gọi API đọc file trên máy).
+// Only accept requests addressed to localhost (DNS-rebinding protection: a foreign site pointing
+// its domain at 127.0.0.1 to call the API and read local files).
 function isLocalHost(req: Request): boolean {
   const host = (req.headers.get("host") ?? "").replace(/:\d+$/, "").toLowerCase();
   return host === "localhost" || host === "127.0.0.1" || host === "[::1]";
 }
 
-// Request thay đổi trạng thái phải là JSON: trình duyệt bắt buộc preflight CORS
-// cho content-type này nên trang web khác không gửi ngầm được.
+// State-changing requests must be JSON: browsers require a CORS preflight for this
+// content type, so other websites cannot send them silently.
 function isJson(req: Request): boolean {
   return (req.headers.get("content-type") ?? "").toLowerCase().startsWith("application/json");
 }
@@ -74,7 +74,7 @@ const ERRNO: Record<string, ErrorCode> = {
   ENOSPC: "disk-full",
 };
 
-// Chuyển lỗi thành response có mã: lỗi người dùng -> 4xx, còn lại -> 500.
+// Turn an error into a coded response: user errors -> 4xx, everything else -> 500.
 function errorResponse(e: unknown): Response {
   if (e instanceof NameValidationError) {
     return fail(422, e.code, e.message, e.params, { issues: e.check.issues });
@@ -105,7 +105,7 @@ export function createApp(opts: AppOptions) {
     return { file, items: session.items(), edits: session.edits(), status: session.status(), draft: session.draftInfo() };
   }
 
-  // Dùng khi khởi động với đường dẫn trên dòng lệnh.
+  // Used at startup when a path is given on the command line.
   function openPath(path: string): Response {
     try {
       session.open(path);
@@ -158,7 +158,7 @@ export function createApp(opts: AppOptions) {
     if (req.method === "GET") {
       const asset = opts.assets[pathname === "/" ? "/index.html" : pathname];
       if (asset) {
-        // File trong /assets/ có mã băm trong tên -> cache lâu; index.html thì luôn lấy mới.
+        // Files in /assets/ have a content hash in their name -> cache forever; index.html is always revalidated.
         const cache = pathname.startsWith("/assets/") ? "public, max-age=31536000, immutable" : "no-cache";
         const body = asset.base64 ? Buffer.from(asset.body, "base64") : asset.body;
         return new Response(body, { headers: { "content-type": asset.type, "cache-control": cache } });

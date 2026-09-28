@@ -1,6 +1,6 @@
-// run.ts - Test end-to-end trên Chrome thật (headless) với BẢN SAO của data/Item.bmd.
-//   bun run test:e2e [thư/mục/lưu/ảnh]
-// Cần Google Chrome đã cài (playwright-core dùng channel "chrome", không tải trình duyệt).
+// run.ts - End-to-end test in real (headless) Chrome against a COPY of data/Item.bmd.
+//   bun run test:e2e [screenshot/dir]
+// Requires an installed Google Chrome (playwright-core uses the "chrome" channel, no browser download).
 
 import * as fs from "node:fs";
 import * as os from "node:os";
@@ -34,7 +34,7 @@ async function startServer() {
       await Bun.sleep(100);
     }
   }
-  throw new Error("server không chạy");
+  throw new Error("server did not start");
 }
 
 async function stopServer() {
@@ -52,7 +52,7 @@ const diskName = (slot: number) => ItemBmd.parse(new Uint8Array(fs.readFileSync(
 const rowSel = (n: number) => `[data-testid=grid] [data-slot] >> nth=${n}`;
 const EDITOR = "[data-testid=inline-editor] input";
 const text = async (p: Page, sel: string) => ((await p.textContent(sel)) ?? "").trim();
-// Chờ thông báo có chứa đoạn chữ; trả về "" nếu không thấy (để check() báo lỗi rõ ràng).
+// Wait for a toast containing the text; returns a diagnostic string if none appears (so check() reports clearly).
 async function toastWith(p: Page, needle: string): Promise<string> {
   const t = p.locator("[data-sonner-toast]", { hasText: needle }).first();
   try {
@@ -60,7 +60,7 @@ async function toastWith(p: Page, needle: string): Promise<string> {
     return ((await t.textContent()) ?? "").trim();
   } catch {
     const all = await p.locator("[data-sonner-toast]").allTextContents();
-    return `(không thấy; đang có: ${all.join(" | ") || "không có thông báo nào"})`;
+    return `(not found; showing: ${all.join(" | ") || "no toasts"})`;
   }
 }
 const shot = (p: Page, name: string) => p.screenshot({ path: path.join(SHOTS, `${name}.png`) });
@@ -73,48 +73,48 @@ async function main() {
   const errors: string[] = [];
   p.on("pageerror", (e) => errors.push(String(e)));
 
-  // 1. Lần đầu: luôn tiếng Anh
+  // 1. First launch: always English
   await p.goto(URL);
   await p.waitForSelector(rowSel(0));
-  check("lần đầu hiện tiếng Anh", (await p.getAttribute("html", "lang")) === "en" && (await text(p, "[data-testid=result-count]")) === "488 rows");
+  check("first launch shows English", (await p.getAttribute("html", "lang")) === "en" && (await text(p, "[data-testid=result-count]")) === "488 rows");
 
-  // 2. Enter -> hỏi tên người dịch; Enter trong ô nhập = nút chính
+  // 2. Enter -> asks for translator name; Enter in the input = primary button
   await p.click(rowSel(0));
   await p.keyboard.press("Enter");
   await p.waitForSelector("[data-testid=dialog]");
-  check("hộp thoại người dịch (EN)", (await text(p, "[data-testid=dialog] h2")) === "Translator name");
+  check("translator dialog (EN)", (await text(p, "[data-testid=dialog] h2")) === "Translator name");
   await p.keyboard.type("Tester");
   await p.keyboard.press("Enter");
   await p.waitForSelector(EDITOR);
-  check("Enter trong hộp thoại lưu tên người dịch", (await text(p, "[data-testid=translator]")) === "Translator: Tester");
+  check("Enter in the dialog saves the translator name", (await text(p, "[data-testid=translator]")) === "Translator: Tester");
   await shot(p, "01-editor-en");
 
-  // 3. Tên quá dài
+  // 3. Over-long name
   await p.fill(EDITOR, "Quyền Trượng Đại Vương Huyền Thoại Cổ Xưa");
-  check("bộ đếm byte", (await text(p, "[data-testid=editor-counter]")) === "58/49");
+  check("byte counter", (await text(p, "[data-testid=editor-counter]")) === "58/49");
   await p.keyboard.press("Enter");
   const tooLong = await toastWith(p, "over the 49-byte limit");
-  check("tên quá dài bị chặn, ô sửa vẫn mở", (await p.isVisible(EDITOR)) && tooLong.includes("58 bytes"), tooLong);
+  check("over-long name is blocked, editor stays open", (await p.isVisible(EDITOR)) && tooLong.includes("58 bytes"), tooLong);
   await shot(p, "02-too-long-en");
 
-  // 4. Bộ gõ tiếng Việt: Enter lúc đang ghép chữ không được lưu
+  // 4. Vietnamese IME: Enter during composition must not save
   await p.fill(EDITOR, "Chùy Thử");
   await p.$eval(EDITOR, (el) =>
     el.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", isComposing: true, bubbles: true, cancelable: true })),
   );
   await p.waitForTimeout(150);
-  check("Enter khi đang ghép chữ (IME) bị bỏ qua", (await p.isVisible(EDITOR)) && (await p.inputValue(EDITOR)) === "Chùy Thử");
+  check("Enter during IME composition is ignored", (await p.isVisible(EDITOR)) && (await p.inputValue(EDITOR)) === "Chùy Thử");
 
-  // 5. Enter -> lưu, sang dòng dưới
+  // 5. Enter -> save, move to the next row
   await p.fill(EDITOR, "Chùy Thử Nghiệm");
   await p.keyboard.press("Enter");
   await p.waitForSelector(`${EDITOR}[aria-label="New name for 0:1"]`);
-  check("Enter lưu và sang dòng dưới", true);
+  check("Enter saves and moves to the next row", true);
   await p.fill(EDITOR, "Đoản Đao Mới");
   await p.keyboard.press("Enter");
   await p.waitForSelector(`${EDITOR}[aria-label="New name for 0:2"]`);
   await p.keyboard.press("Escape");
-  check("2 thay đổi chưa lưu", (await text(p, "[data-testid=dirty-status]")) === "● 2 unsaved changes");
+  check("2 unsaved changes", (await text(p, "[data-testid=dirty-status]")) === "● 2 unsaved changes");
   await p.click(rowSel(0));
   await shot(p, "03-dirty-en");
 
@@ -126,26 +126,26 @@ async function main() {
   await p.waitForFunction(() => document.querySelector("[data-testid=dirty-status]")?.textContent?.includes("2 unsaved"));
   check("undo / redo", true);
 
-  // 7. Lưu
+  // 7. Save
   await p.keyboard.press("Control+s");
   const saved = await toastWith(p, "Saved 2 changes to Item.bmd.");
-  check("lưu + thông báo EN", saved.includes("backed up to"), saved);
-  check("ghi đúng vào file", diskName(0) === "Chùy Thử Nghiệm" && diskName(1) === "Đoản Đao Mới");
-  check("có backup + nhật ký", fs.existsSync(`${FILE}.mubmd/changes.tsv`) && fs.readdirSync(`${FILE}.mubmd/backups`).length === 1);
+  check("save + EN toast", saved.includes("backed up to"), saved);
+  check("written correctly to the file", diskName(0) === "Chùy Thử Nghiệm" && diskName(1) === "Đoản Đao Mới");
+  check("backup + change log exist", fs.existsSync(`${FILE}.mubmd/changes.tsv`) && fs.readdirSync(`${FILE}.mubmd/backups`).length === 1);
 
-  // 8. Đổi sang tiếng Việt, tải lại trang vẫn giữ
+  // 8. Switch to Vietnamese; it persists across reload
   await p.click("[data-testid=lang-switch]");
   await p.click("[data-testid=lang-vi]");
   await p.waitForFunction(() => document.documentElement.lang === "vi");
-  check("chuyển tiếng Việt", (await text(p, "[data-testid=result-count]")) === "488 dòng" && (await text(p, "[data-testid=dirty-status]")) === "Đã lưu hết");
+  check("switched to Vietnamese", (await text(p, "[data-testid=result-count]")) === "488 dòng" && (await text(p, "[data-testid=dirty-status]")) === "Đã lưu hết");
   await p.reload();
   await p.waitForSelector(rowSel(0));
-  check("tải lại vẫn giữ tiếng Việt", (await p.getAttribute("html", "lang")) === "vi");
+  check("Vietnamese kept after reload", (await p.getAttribute("html", "lang")) === "vi");
 
-  // 9. Nhấp đúp để sửa + xung đột khi file bị đổi bên ngoài
+  // 9. Double-click to edit + conflict when the file changes externally
   await p.dblclick(rowSel(2));
   await p.waitForSelector(EDITOR);
-  check("nhấp đúp mở ô sửa", true);
+  check("double-click opens the editor", true);
   await p.fill(EDITOR, "Trường Kiếm Mới");
   await p.keyboard.press("Enter");
   await p.waitForTimeout(200);
@@ -155,13 +155,13 @@ async function main() {
   fs.writeFileSync(FILE, other.toBytes());
   await p.keyboard.press("Control+s");
   await p.waitForSelector("[data-testid=dialog]");
-  check("hộp thoại xung đột (VI)", (await text(p, "[data-testid=dialog] h2")) === "File đã bị thay đổi bên ngoài");
+  check("conflict dialog (VI)", (await text(p, "[data-testid=dialog] h2")) === "File đã bị thay đổi bên ngoài");
   await shot(p, "04-conflict-vi");
   await p.click("[data-testid=dialog-force]");
   const forced = await toastWith(p, "Đã lưu 1 thay đổi");
-  check("ghi đè + thông báo VI", forced.includes("Bản cũ đã được backup") && diskName(2) === "Trường Kiếm Mới", forced);
+  check("overwrite + VI toast", forced.includes("Bản cũ đã được backup") && diskName(2) === "Trường Kiếm Mới", forced);
 
-  // 10. Bản nháp sau khi tắt server
+  // 10. Draft after the server is killed
   await p.dblclick(rowSel(3));
   await p.fill(EDITOR, "Kiếm Nháp");
   await p.keyboard.press("Enter");
@@ -171,36 +171,36 @@ async function main() {
   await startServer();
   await p.reload();
   await p.waitForSelector("[data-testid=dialog]");
-  check("hỏi khôi phục nháp (VI)", (await text(p, "[data-testid=dialog] h2")) === "Khôi phục thay đổi chưa lưu?");
+  check("asks to restore the draft (VI)", (await text(p, "[data-testid=dialog] h2")) === "Khôi phục thay đổi chưa lưu?");
   await shot(p, "05-draft-vi");
   await p.click("[data-testid=dialog-restore]");
   const restored = await toastWith(p, "Đã khôi phục 1 thay đổi");
-  check("khôi phục nháp", (await text(p, "[data-testid=dirty-status]")) === "● 1 thay đổi chưa lưu", restored);
+  check("draft restored", (await text(p, "[data-testid=dirty-status]")) === "● 1 thay đổi chưa lưu", restored);
 
-  // 11. Bộ lọc "Đã sửa"
+  // 11. "Edited" filter
   await p.click("[data-testid=problem]");
   await p.click("[data-testid=problem-edited]");
   await p.waitForFunction(() => document.querySelector("[data-testid=result-count]")?.textContent?.trim() === "1 dòng");
-  check("bộ lọc Đã sửa", true);
+  check("Edited filter", true);
   await p.click(rowSel(0));
   await shot(p, "06-edited-filter-vi");
 
-  // 12. Lỗi mở file được dịch; mở file khác khi còn thay đổi -> xác nhận bỏ
+  // 12. Open errors are translated; opening a file with unsaved changes -> confirm discard
   await p.click("[data-testid=open-other]");
   await p.fill("#open-path", path.join(WORK, "khong-co.bmd"));
   await p.keyboard.press("Enter");
   await p.waitForSelector("[data-testid=open-error]");
-  check("lỗi mở file bằng tiếng Việt", (await text(p, "[data-testid=open-error]")) === "Không tìm thấy file.");
+  check("open error in Vietnamese", (await text(p, "[data-testid=open-error]")) === "Không tìm thấy file.");
   await p.fill("#open-path", FILE);
   await p.keyboard.press("Enter");
   await p.waitForSelector("[data-testid=dialog]");
-  check("hỏi bỏ thay đổi khi mở lại", (await text(p, "[data-testid=dialog] h2")) === "Bỏ thay đổi chưa lưu?");
+  check("asks to discard changes when reopening", (await text(p, "[data-testid=dialog] h2")) === "Bỏ thay đổi chưa lưu?");
   await p.click("[data-testid=dialog-discard]");
-  // Bộ lọc vẫn là "Đã sửa" nên danh sách trống là đúng; chỉ cần trạng thái về "Đã lưu hết".
+  // The filter is still "Edited", so an empty list is correct; just wait for the all-saved status.
   await p.waitForFunction(() => document.querySelector("[data-testid=dirty-status]")?.textContent?.trim() === "Đã lưu hết");
-  check("đã bỏ thay đổi", (await text(p, "[data-testid=result-count]")) === "0 dòng");
+  check("changes discarded", (await text(p, "[data-testid=result-count]")) === "0 dòng");
 
-  // 13. Giao diện tối + màn hình hẹp (ngữ cảnh mới = lần đầu -> tiếng Anh)
+  // 13. Dark theme + narrow screen (new context = first launch -> English)
   const dark = await browser.newPage({ viewport: { width: 1440, height: 860 }, colorScheme: "dark" });
   await dark.goto(URL);
   await dark.waitForSelector(rowSel(0));
@@ -211,11 +211,11 @@ async function main() {
   await narrow.waitForSelector(rowSel(0));
   await shot(narrow, "08-narrow-en");
 
-  check("không có lỗi JavaScript", errors.length === 0, errors.join(" | "));
+  check("no JavaScript errors", errors.length === 0, errors.join(" | "));
 }
 
 const timer = setTimeout(() => {
-  console.log("✗ quá thời gian");
+  console.log("✗ timed out");
   process.exit(1);
 }, 150_000);
 
@@ -223,12 +223,12 @@ try {
   await main();
 } catch (e) {
   failures++;
-  console.log(`✗ lỗi: ${(e as Error).message}`);
+  console.log(`✗ error: ${(e as Error).message}`);
 } finally {
   clearTimeout(timer);
-  await (browser as Browser | null)?.close(); // gán trong main() nên TS tưởng luôn null
+  await (browser as Browser | null)?.close(); // assigned inside main(), so TS narrows it to null
   await stopServer();
-  console.log(`\nẢnh chụp: ${SHOTS}`);
-  console.log(failures ? `${failures} kiểm tra thất bại` : "Tất cả kiểm tra đều qua");
+  console.log(`\nScreenshots: ${SHOTS}`);
+  console.log(failures ? `${failures} check(s) failed` : "All checks passed");
   process.exit(failures ? 1 : 0);
 }

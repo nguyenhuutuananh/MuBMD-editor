@@ -1,5 +1,7 @@
-// dev.ts - Chạy server (4817, tự nạp lại khi sửa code) + Vite dev (5173, HMR) cùng lúc.
-//   bun run dev [đường/dẫn/Item.bmd]   (mặc định data/Item.bmd)
+// dev.ts - Development: the Bun API server (4817, restarts on code changes) + Vite (5173, HMR).
+// Two ports on purpose: the API runs on Bun exactly like in releases; Vite only serves the UI
+// and proxies /api. Releases (`bun run start` / the executable) use a single port.
+//   bun run dev [path/to/Item.bmd]   (defaults to data/Item.bmd)
 
 import * as path from "node:path";
 
@@ -10,6 +12,7 @@ await Bun.spawn(["bun", "scripts/build-web.ts", "--stub"], { cwd: root, stdout: 
 
 const procs = [
   Bun.spawn(["bun", "--watch", "src/server/main.ts", file, "--no-open"], { cwd: root, stdout: "inherit", stderr: "inherit" }),
+  // Vite needs Node (>= 20.19).
   Bun.spawn(["node", "node_modules/vite/bin/vite.js", "--open"], { cwd: root, stdout: "inherit", stderr: "inherit" }),
 ];
 const stop = () => {

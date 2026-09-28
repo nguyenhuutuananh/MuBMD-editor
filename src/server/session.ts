@@ -1,5 +1,5 @@
-// session.ts - File Item.bmd đang mở trên máy này (mỗi người chạy 1 server riêng):
-// chỉnh sửa, undo/redo, bản nháp tự lưu, lưu kèm backup + nhật ký.
+// session.ts - The Item.bmd open on this machine (each translator runs their own server):
+// editing, undo/redo, auto-saved draft, saving with backup + change log.
 
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -77,19 +77,19 @@ export class Session {
     return this.bmd;
   }
 
-  // ---- mở file ----
+  // ---- open ----
 
-  // Ném lỗi (ENOENT, BmdFormatError, DirtyError...) nếu không mở được; khi đó file đang mở vẫn giữ nguyên.
+  // Throws (ENOENT, BmdFormatError, DirtyError...) if it cannot open; the currently open file is then kept.
   open(filePath: string, opts: { discard?: boolean } = {}): FileInfo {
     const abs = path.resolve(filePath);
-    // Đọc + kiểm tra file mới trước: đường dẫn sai thì báo lỗi luôn, không hỏi "bỏ thay đổi?" vô ích.
+    // Read + validate the new file first: a bad path errors right away instead of a pointless "discard changes?".
     const stat = fs.statSync(abs);
     if (!stat.isFile()) throw new AppError("not-a-file", `Not a file: ${abs}`, { path: abs });
     const bytes = new Uint8Array(fs.readFileSync(abs));
     const bmd = ItemBmd.parse(bytes);
     if (this.bmd?.isDirty && !opts.discard) throw new DirtyError(this.bmd.dirtySlots.length);
 
-    // Bỏ thay đổi của file cũ thì bỏ luôn nháp của nó, để lần sau không bị hỏi khôi phục.
+    // Discarding the old file's edits also drops its draft, so it is not offered for restore later.
     if (this.info && this.bmd?.isDirty) deleteDraft(this.info.path);
 
     this.bmd = bmd;
@@ -114,7 +114,7 @@ export class Session {
     };
   }
 
-  // ---- đọc ----
+  // ---- read ----
 
   item(slot: number): ItemTuple {
     const n = this.doc().getName(slot);
@@ -161,7 +161,7 @@ export class Session {
     };
   }
 
-  // ---- sửa ----
+  // ---- edit ----
 
   private apply(slot: number, write: () => void, meta: EditMeta | null): Change | null {
     const bmd = this.doc();
@@ -194,7 +194,7 @@ export class Session {
     return { changed, status: this.status() };
   }
 
-  // Ném NameValidationError nếu tên không hợp lệ.
+  // Throws NameValidationError for an invalid name.
   edit(slot: number, name: string, translator: string): MutationResponse {
     const bmd = this.doc();
     const change = this.apply(slot, () => bmd.setName(slot, name), { translator, at: this.now().toISOString() });
@@ -229,9 +229,9 @@ export class Session {
     return this.response(group.map((c) => c.slot));
   }
 
-  // ---- bản nháp ----
+  // ---- draft ----
 
-  // Áp các thay đổi trong nháp như 1 bước (undo được). Tên không còn hợp lệ thì bỏ qua.
+  // Apply the draft's edits as one (undoable) step. Names that are no longer valid are skipped.
   restoreDraft(): MutationResponse & { skipped: number } {
     const draft = this.pendingDraft;
     if (!draft) return { ...this.response([]), skipped: 0 };
@@ -261,7 +261,7 @@ export class Session {
     const info = this.info;
     if (!bmd || !info) return;
     try {
-      // Còn nháp cũ chưa trả lời mà đã sửa tiếp: cất nháp cũ sang tên khác thay vì ghi đè mất.
+      // An unanswered old draft plus a new edit: archive the old draft under another name instead of overwriting it.
       if (this.pendingDraft) {
         const old = path.join(workDir(info.path), "draft.json");
         if (fs.existsSync(old)) fs.renameSync(old, path.join(workDir(info.path), `draft-${stamp(this.now())}.json`));
@@ -282,7 +282,7 @@ export class Session {
     }
   }
 
-  // ---- lưu ----
+  // ---- save ----
 
   save(opts: { path?: string; force?: boolean } = {}): SaveResult {
     const bmd = this.doc();
@@ -300,7 +300,7 @@ export class Session {
     if (sameFile && !bmd.isDirty) return { file: info, savedCount: 0, backupPath: null, logPath };
 
     const bytes = bmd.toBytes();
-    // Kiểm tra lại trước khi ghi: đọc được, checksum đúng, tên khớp.
+    // Verify before writing: parses, checksum valid, names match.
     const check = ItemBmd.parse(bytes);
     if (!check.checksumValid) throw new AppError("save-verify-failed", "Internal error: checksum of output is invalid - save aborted.");
     for (const slot of bmd.dirtySlots) {
@@ -326,7 +326,7 @@ export class Session {
     if (rows.length) appendChangeLog(target, rows);
     deleteDraft(info.path);
 
-    // File vừa ghi thành file gốc mới. Lịch sử undo giữ nguyên (undo sau khi lưu = sửa tiếp).
+    // The written file becomes the new original. Undo history is kept (undo after save = a new edit).
     this.bmd = check;
     this.diskSha1 = sha1(bytes);
     this.info = this.describe(target, check, bytes.length);

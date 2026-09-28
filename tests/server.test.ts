@@ -26,7 +26,7 @@ const post = (p: string, body: unknown, contentType = "application/json") =>
   });
 
 describe("API", () => {
-  test("phục vụ giao diện", async () => {
+  test("serves the UI", async () => {
     const app = setup();
     expect(await (await app.handle(get("/"))).text()).toBe("<html>ui</html>");
     const js = await app.handle(get("/assets/app-1.js"));
@@ -36,14 +36,14 @@ describe("API", () => {
     expect((await app.handle(get("/khong-co.js"))).status).toBe(404);
   });
 
-  test("chưa mở file", async () => {
+  test("no file open yet", async () => {
     const app = setup();
     const state = (await (await app.handle(get("/api/state"))).json()) as StateResponse;
     expect(state.file).toBeNull();
     expect((await app.handle(get("/api/items"))).status).toBe(409);
   });
 
-  test("mở file và lấy đủ 8192 slot", async () => {
+  test("opens a file and returns all 8192 slots", async () => {
     const app = setup();
     const res = await app.handle(post("/api/open", { path: DATA }));
     expect(res.status).toBe(200);
@@ -56,7 +56,7 @@ describe("API", () => {
     expect(items.items[MAX_ITEM - 1]![2]).toBe("empty");
   });
 
-  test("lỗi mở file rõ ràng, file đang mở vẫn giữ nguyên", async () => {
+  test("clear open errors; the currently open file is kept", async () => {
     const app = setup();
     await app.handle(post("/api/open", { path: DATA }));
 
@@ -74,13 +74,13 @@ describe("API", () => {
     expect(state.file?.path).toBe(path.resolve(DATA));
   });
 
-  test("thiếu đường dẫn", async () => {
+  test("missing path", async () => {
     const res = await setup().handle(post("/api/open", { path: "  " }));
     expect(res.status).toBe(400);
     expect(await res.json()).toMatchObject({ code: "missing-path" });
   });
 
-  test("hộp thoại chọn file nhận ngôn ngữ", async () => {
+  test("file dialog receives the UI language", async () => {
     let got = "";
     const app = setup(async (lang) => {
       got = lang;
@@ -92,7 +92,7 @@ describe("API", () => {
     expect(got).toBe("en");
   });
 
-  test("hộp thoại chọn file: huỷ và chọn", async () => {
+  test("file dialog: cancel and pick", async () => {
     const cancelled = await setup(async () => null).handle(post("/api/pick", {}));
     expect(await cancelled.json()).toEqual({ path: null });
     const picked = await setup(async () => DATA).handle(post("/api/pick", {}));
@@ -100,25 +100,25 @@ describe("API", () => {
   });
 });
 
-describe("bảo vệ localhost", () => {
-  test("từ chối Host lạ (DNS rebinding)", async () => {
+describe("localhost protection", () => {
+  test("rejects foreign Host headers (DNS rebinding)", async () => {
     const evil = await setup().handle(get("/api/state", "evil.example:4817"));
     expect(evil.status).toBe(403);
     expect(await evil.json()).toMatchObject({ code: "not-local" });
     expect((await setup().handle(get("/api/state", "127.0.0.1:4817"))).status).toBe(200);
   });
 
-  test("POST không phải JSON bị từ chối", async () => {
+  test("non-JSON POST is rejected", async () => {
     const res = await setup().handle(post("/api/open", { path: DATA }, "text/plain"));
     expect(res.status).toBe(415);
   });
 
-  test("API không tồn tại", async () => {
+  test("unknown API", async () => {
     expect((await setup().handle(get("/api/khong-co"))).status).toBe(404);
   });
 });
 
-describe("API sửa + lưu", () => {
+describe("edit + save API", () => {
   function tempCopy() {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mubmd-api-"));
     const file = path.join(dir, "Item.bmd");
@@ -127,7 +127,7 @@ describe("API sửa + lưu", () => {
   }
   const body = async (r: Response) => (await r.json()) as Record<string, any>;
 
-  test("sửa -> undo -> redo -> lưu", async () => {
+  test("edit -> undo -> redo -> save", async () => {
     const file = tempCopy();
     const app = setup();
     await app.handle(post("/api/open", { path: file }));
@@ -148,7 +148,7 @@ describe("API sửa + lưu", () => {
     expect(fs.existsSync(saved.backupPath)).toBe(true);
   });
 
-  test("tên quá dài -> 422 kèm danh sách lỗi", async () => {
+  test("over-long name -> 422 with issue list", async () => {
     const app = setup();
     await app.handle(post("/api/open", { path: tempCopy() }));
     const res = await app.handle(post("/api/edit", { slot: 0, name: "Đ".repeat(30), translator: "An" }));
@@ -159,7 +159,7 @@ describe("API sửa + lưu", () => {
     expect(b.issues[0]).toMatchObject({ code: "too-long", params: { bytes: 60, max: 49 } });
   });
 
-  test("mở file khác khi còn thay đổi -> 409 dirty, discard thì được", async () => {
+  test("opening another file with unsaved changes -> 409 dirty, allowed with discard", async () => {
     const file = tempCopy();
     const app = setup();
     await app.handle(post("/api/open", { path: file }));
@@ -170,7 +170,7 @@ describe("API sửa + lưu", () => {
     expect((await app.handle(post("/api/open", { path: file, discard: true }))).status).toBe(200);
   });
 
-  test("file bị đổi bên ngoài -> 409 conflict", async () => {
+  test("file changed externally -> 409 conflict", async () => {
     const file = tempCopy();
     const app = setup();
     await app.handle(post("/api/open", { path: file }));
@@ -189,7 +189,7 @@ describe("API sửa + lưu", () => {
     expect(await body(res)).toMatchObject({ code: "invalid-slot", params: { field: "slot", value: 99999, max: 8191 } });
   });
 
-  test("sửa khi chưa mở file -> 409", async () => {
+  test("editing with no file open -> 409", async () => {
     const res = await setup().handle(post("/api/edit", { slot: 0, name: "X", translator: "An" }));
     expect(res.status).toBe(409);
     expect(await res.json()).toMatchObject({ code: "no-file" });

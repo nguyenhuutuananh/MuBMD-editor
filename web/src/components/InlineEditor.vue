@@ -24,7 +24,7 @@ const check = computed(() => checkName(value.value));
 const level = computed(() => byteLevel(check.value.byteLength));
 
 function onKeydown(e: KeyboardEvent) {
-  // Đang ghép chữ bằng bộ gõ tiếng Việt (Telex/VNI, Unikey...): Enter/Tab là để chốt chữ, không phải lưu.
+  // Composing with a Vietnamese IME (Telex/VNI, Unikey...): Enter/Tab confirms the text, it must not save.
   if (e.isComposing || e.keyCode === 229) return;
   if (e.key === "Enter" || e.key === "Tab") {
     e.preventDefault();
@@ -39,7 +39,7 @@ function onKeydown(e: KeyboardEvent) {
   }
 }
 
-// Bấm ra ngoài: lưu nếu hợp lệ; không hợp lệ thì giữ ô sửa để người dùng quay lại.
+// Clicking away: save if valid; if invalid, keep the editor open so the user can come back.
 function onBlur() {
   const ed = store.editor;
   setTimeout(() => {

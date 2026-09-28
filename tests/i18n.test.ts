@@ -20,24 +20,24 @@ const placeholders = (msg: string) => [...new Set([...msg.matchAll(/\{(\w+)\}/g)
 const EN = flatten(en as Tree);
 const VI = flatten(vi as Tree);
 
-describe("file ngôn ngữ", () => {
-  test("en và vi có đúng cùng bộ key", () => {
+describe("locale files", () => {
+  test("en and vi have exactly the same keys", () => {
     const missingInVi = [...EN.keys()].filter((k) => !VI.has(k));
     const missingInEn = [...VI.keys()].filter((k) => !EN.has(k));
     expect({ missingInVi, missingInEn }).toEqual({ missingInVi: [], missingInEn: [] });
   });
 
-  test("mỗi key dùng cùng tham số {…} ở cả 2 ngôn ngữ", () => {
+  test("each key uses the same {…} placeholders in both languages", () => {
     const mismatch = [...EN].filter(([k, v]) => VI.has(k) && placeholders(v).join() !== placeholders(VI.get(k)!).join());
     expect(mismatch.map(([k]) => k)).toEqual([]);
   });
 
-  test("không có chuỗi rỗng", () => {
+  test("no empty strings", () => {
     expect([...EN, ...VI].filter(([, v]) => !v.trim()).map(([k]) => k)).toEqual([]);
   });
 
-  test("có bản dịch cho mọi mã lỗi và mọi loại cảnh báo tên", () => {
-    // Liệt kê tay: thêm mã mới vào core/errors.ts mà quên dịch thì test này (và tsc) báo.
+  test("every error code and name-issue code is translated", () => {
+    // Listed by hand: adding a code to core/errors.ts without translating it fails this test (and tsc).
     const errorCodes: Record<ErrorCode | "offline" | "bad-response", true> = {
       "bmd-size": true, "invalid-slot": true, "invalid-name": true, "name-bytes-length": true,
       "no-file": true, dirty: true, conflict: true, "save-verify-failed": true,
