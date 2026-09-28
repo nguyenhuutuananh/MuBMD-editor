@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MuBMD-editor</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">MuBMD-editor</div>
+      <div class="file-info" id="file-info" hidden>
+        <span class="file-name" id="file-name"></span>
+        <span class="badge" id="checksum-badge"></span>
+        <span class="file-path" id="file-path"></span>
+      </div>
+      <div class="topbar-actions" id="topbar-actions" hidden>
+        <span class="dirty-status" id="dirty-status" aria-live="polite"></span>
+        <div class="btn-group">
+          <button type="button" id="btn-undo" title="Hoàn tác (Ctrl+Z)" aria-label="Hoàn tác" disabled>↶</button>
+          <button type="button" id="btn-redo" title="Làm lại (Ctrl+Y)" aria-label="Làm lại" disabled>↷</button>
+        </div>
+        <button type="button" class="primary" id="btn-save" title="Lưu vào file (Ctrl+S)" disabled>Lưu</button>
+        <button type="button" id="btn-save-as">Lưu thành…</button>
+        <button type="button" id="btn-translator" title="Tên này được ghi vào nhật ký thay đổi"></button>
+        <button type="button" id="btn-reload" title="Đọc lại file từ ổ đĩa">Tải lại</button>
+        <button type="button" id="btn-open-other">Mở file khác…</button>
+      </div>
+    </header>
+
+    <main id="welcome" class="welcome">
+      <section class="welcome-card">
+        <button type="button" class="link back" id="btn-back" hidden>← Quay lại file đang mở</button>
+        <h1>Mở file Item.bmd</h1>
+        <p class="muted">File tên vật phẩm của client MuMain (Mu Online season 6), thường nằm ở <code>Data/Local/Item.bmd</code>.</p>
+        <button type="button" class="primary" id="btn-pick">Chọn file…</button>
+        <form id="open-form" class="open-form">
+          <label for="open-path">Hoặc dán đường dẫn đầy đủ</label>
+          <div class="open-row">
+            <input id="open-path" type="text" spellcheck="false" autocomplete="off" placeholder="C:\MU\Data\Local\Item.bmd" />
+            <button type="submit">Mở</button>
+          </div>
+        </form>
+        <p class="error" id="open-error" role="alert" hidden></p>
+        <div id="recent-wrap" hidden>
+          <h2>Mở gần đây</h2>
+          <ul class="recent" id="recent"></ul>
+        </div>
+      </section>
+    </main>
+
+    <div id="workspace" class="workspace" hidden>
+      <nav class="groups" aria-label="Nhóm vật phẩm">
+        <ul id="groups"></ul>
+      </nav>
+
+      <section class="list-pane">
+        <div class="toolbar">
+          <input id="search" type="search" spellcheck="false" autocomplete="off"
+            placeholder="Tìm tên (không cần dấu), 7:1, #3585 · Enter để sửa" aria-label="Tìm kiếm" />
+          <select id="scope" aria-label="Loại slot">
+            <option value="named">Slot có tên</option>
+            <option value="all">Tất cả slot</option>
+            <option value="empty">Slot trống</option>
+          </select>
+          <select id="problem" aria-label="Lọc vấn đề">
+            <option value="any">Mọi tên</option>
+            <option value="edited">Đã sửa (chưa lưu)</option>
+            <option value="issues">Có cảnh báo / lỗi</option>
+            <option value="near-limit">Gần giới hạn byte (≥ 40)</option>
+            <option value="unknown-encoding">Không phải UTF-8</option>
+          </select>
+          <span class="result-count" id="result-count" aria-live="polite"></span>
+        </div>
+        <div class="grid" role="grid" aria-label="Danh sách vật phẩm">
+          <div class="grid-body" id="grid-body" tabindex="0">
+            <div class="grid-head vl-row" role="row">
+              <span class="c-type">Type</span>
+              <span class="c-index">Index</span>
+              <span class="c-name">Tên</span>
+              <span class="c-bytes">Byte</span>
+              <span class="c-flags">Ghi chú</span>
+            </div>
+          </div>
+          <div class="grid-empty" id="grid-empty" hidden>Không có slot nào khớp bộ lọc.</div>
+        </div>
+      </section>
+
+      <aside class="detail" id="detail" aria-label="Chi tiết slot">
+        <p class="muted">Chọn một dòng để xem chi tiết.</p>
+      </aside>
+    </div>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
