@@ -1,0 +1,489 @@
+ItemType	ItemIndex	Name
+0	0	Chùy Thủy
+0	1	Đoản Đao
+0	2	Trường Kiếm
+0	3	Kiếm Nhật
+0	4	Đao Sát Thủ
+0	5	Khoái Đao
+0	6	Kiếm La mã
+0	7	Mã Tấu
+0	8	Xà Đao
+0	9	Kiếm Rồng Lửa
+0	10	Kiếm Ánh Sáng
+0	11	Kiếm Ma Thuật
+0	12	Thiết Kiếm
+0	13	Hỏa Đao
+0	14	Kiếm Điện
+0	15	Kiếm Băng
+0	16	Kiếm Hủy Diệt
+0	17	Thiên Ma Kiếm
+0	18	Lôi Phong Đao
+0	19	Thiên Tử Kiếm
+0	20	Cuồng Phong Đao
+0	21	Đao Sinh Mệnh
+0	22	Đao Quyền Năng
+0	23	Đao Hồng Long
+0	24	Ỷ Thiên Đao
+0	25	Hỏa Tinh Kiếm
+0	26	Hỏa Long Kiếm
+0	27	Ngọc Bích Kiếm
+0	28	Bá Vương Kiếm
+0	31	Ảo Ảnh Đao
+0	32	Bao Tay Địa Long
+0	33	Bao Tay Bạch Hổ
+0	34	Bao Tay Quyền Lực
+0	35	Găng Phượng Hoàng (RF)
+1	0	Rìu Nhỏ
+1	1	Rìu Nhẹ
+1	2	Rìu Hai Lưỡi
+1	3	Rìu Thợ Săn
+1	4	Rìu Tiên Nữ
+1	5	Rìu Chiến
+1	6	Rìu Lưỡi Bạc
+1	7	Rìu Lưỡi Vàng
+1	8	Rìu Bán Nguyệt
+2	0	Chùy
+2	1	Chùy Gai
+2	2	Chùy Dây
+2	3	Búa Chiến
+2	4	Búa Băng
+2	5	Chùy Băng
+2	6	Rìu Hỏa Long
+2	7	Chùy Thánh Nữ
+2	8	Quyền Trượng Chiến
+2	9	Quyền Trượng Thép
+2	10	Quyền Trượng Bóng Tối
+2	11	Quyền Trượng Kim Vương
+2	12	Quyền Trượng Đại Vương
+2	13	Quyền Trượng Thiên Tử
+2	14	Quyền Trượng Thái Dương
+2	15	Quyền Trượng Tối Cao
+2	16	Chùy Băng Tinh
+2	17	Lôi Phong Trượng
+2	18	Quyền Trượng Băng Giá
+3	0	Giáo Ánh Sáng
+3	1	Giáo
+3	2	Thương
+3	3	Đinh Ba
+3	4	Xà Giáo
+3	5	Giáo Hai Lưỡi
+3	6	Kích
+3	7	Kích Hai Đầu
+3	8	Lưỡi Hái
+3	9	Lưỡi Hái Tử Thần
+3	10	Đại Long Đao
+3	11	Vuốt Quỷ
+4	0	Cung Nhỏ
+4	1	Cung
+4	2	Cung Hoa
+4	3	Cung Chiến
+4	4	Cung Hổ
+4	5	Cung Bạc
+4	6	Mai Hoa Cung
+4	8	Nỏ
+4	9	Nỏ Vàng
+4	10	Nỏ Thép
+4	11	Nỏ Ánh Sáng
+4	12	Nỏ Rắn
+4	13	Nỏ Thiên Thanh
+4	14	Nỏ Kim Ngân
+4	16	Nỏ Thánh
+4	17	Cung Thiên Mệnh
+4	18	Nỏ Hỏa Long
+4	19	Nỏ Thánh Nữ
+4	20	Mỹ Nhân Cung
+4	21	Cung Thái Bình
+4	22	Cung Thiên Thần
+4	23	Cung Thiên Vũ
+4	24	Cung Thần Ưng
+5	0	Gậy Xương
+5	1	Gậy Tiên
+5	2	Gậy Rắn
+5	3	Gậy Sét
+5	4	Gậy Đầu Lâu
+5	5	Gậy Ma Thuật
+5	6	Gậy Phục Sinh
+5	7	Gậy Lôi Phong
+5	8	Gậy Hủy Duệt
+5	9	Gậy Triệu Hồn
+5	10	Gậy Hỏa Long
+5	11	Gậy Kundun
+5	12	Gậy Thần Ma
+5	13	Gậy Thiên Sứ
+5	14	Gậy Phép Thuật
+5	15	Khuyển Xích Quỷ
+5	16	Gậy Triệu Hồi
+5	17	Gậy Gió
+5	18	Gậy Ánh Bạc
+5	19	Gậy Bùng Nổ
+5	20	Gậy Đoạt Mệnh
+5	21	Sách Hỏa Kỳ Lân
+5	22	Sách Quỷ Kiếm
+5	23	Sách Ma Công
+5	30	Gậy Giác Đấu
+5	31	Gậy Quỷ Vương
+5	32	Gậy Chiêm Tinh
+5	33	Gậy Mãng Xà
+5	34	Gậy Hồng Ngọc
+5	36	Gậy Thần Ưng
+6	0	Khiên Tròn
+6	1	Khiên Sừng
+6	2	Khiên Diều
+6	3	Khiên Tiên Nữ
+6	4	Khiên Sắt
+6	5	Khiên Kim Long
+6	6	Khiên Xương
+6	7	Khiên Chông
+6	8	Khiên Trụ
+6	9	Khiên Gia Huy
+6	10	Khiên Bạc
+6	11	Khiên Rắn
+6	12	Khiên Ngưu Vương
+6	13	Khiên Hỏa Long
+6	14	Khiên Ma Thuật
+6	15	Khiên Triệu Hồn
+6	16	Khiên Thánh Nữ
+6	17	Khiên Vinh Quang
+6	18	Khiên Giác Đấu
+6	19	Khiên Băng Tinh
+6	20	Khiên Quỷ Vương
+6	21	Khiên Thập Tự
+7	0	Mũ Đồng
+7	1	Mũ Rồng Đỏ
+7	2	Mũ Bải Thô
+7	3	Mũ Ma Thuật
+7	4	Mũ Xương
+7	5	Mũ Da
+7	6	Mũ Trâu Xanh
+7	7	Mặt Nạ Nhân Sư
+7	8	Mũ Thiên Kim
+7	9	Mũ Thiết Phiến
+7	10	Mũ Trinh Nữ
+7	11	Mũ Đồ Lụa
+7	12	Mũ Thiên Thanh
+7	13	Mũ Ngọc Bích
+7	14	Mũ Kim Ngân
+7	16	Mũ Rồng Đen
+7	17	Mũ Rồng Xanh
+7	18	Mũ Triệu Hồn
+7	19	Mũ Giai Nhân
+7	21	Mũ Thần Long
+7	22	Mũ Ma Vương
+7	24	Mũ Thánh Nữ
+7	25	Mặt Nạ Thiết Ma
+7	26	Mặt Nạ Huyền Thiết
+7	27	Mặt Nạ Hắc Vương
+7	28	Mặt Nạ Chí Tôn
+7	29	Mũ Quyền Năng
+7	30	Mũ Thần Ma
+7	31	Mũ Thái Bình
+7	33	Mặt Nạ Thái Dương
+7	34	Mũ Hắc Điểu
+7	35	Mũ Ánh Trăng
+7	36	Mũ Nữ Thần
+7	38	Mặt Nạ Hoàng Kim
+7	39	Mũ Thuật Sĩ
+7	40	Mũ Hỏa Thiên
+7	41	Mũ Ma Pháp
+7	42	Mũ Phục Ma
+7	43	Mũ Thạch Anh
+7	44	Mũ Huyền Vương
+7	45	Mũ Thần Thoại
+7	46	Mũ Hoàng Long
+7	49	Mũ Thiên Vũ
+7	50	Mũ Anh Vũ
+7	51	Mặt Nạ Đế Vương
+7	52	Mũ Quỷ Vương
+7	53	Mũ Chiêm Tinh
+7	59	Mũ Địa Long
+7	60	Mũ Bạch Hổ
+7	61	Mũ Quyền Lực
+7	62	Mũ Trâu Xanh
+7	63	Mũ Lụa
+7	64	Mũ Nhân Sư
+7	65	Mũ Thiên Thanh
+7	66	Mũ Ma Vương
+7	67	Mũ Rồng Đỏ
+7	68	Mũ SU
+7	69	Mũ Ma Thuật
+7	70	Mũ Hỏa Thiên
+7	72	Mũ Bạch Hổ
+7	73	Mũ Phượng Hoàng (RF)
+8	0	Giáp Đồng
+8	1	Giáp Rồng Đỏ
+8	2	Giáp Vải Thô
+8	3	Giáp Ma Thuật
+8	4	Giáp Xương
+8	5	Giáp Da
+8	6	Giáp Trâu Xanh
+8	7	Giáp Nhân Sư
+8	8	Giáp Thiên Kim
+8	9	Giáp Thiết Phiến
+8	10	Giáp Trinh Nữ
+8	11	Giáp Lụa
+8	12	Giáp Thiên Thanh
+8	13	Giáp Ngọc Bích
+8	14	Giáp Kim Ngân
+8	15	Giáp Phong Vũ
+8	16	Giáp Rồng Đen
+8	17	Giáp Rồng Xanh
+8	18	Giáp Triệu Hồn
+8	19	Giáp Giai Nhân
+8	20	Giáp Lôi Phong
+8	21	Giáp Thần Long
+8	22	Giáp Ma Vương
+8	23	Giáp Cuồng Phong
+8	24	Giáp Thánh Nữ
+8	25	Giáp Thiết Ma
+8	26	Giáp Huyền Thiết
+8	27	Giáp Hắc Vương
+8	28	Giáp Chí Tôn
+8	29	Giáp Quyền Năng
+8	30	Giáp Thần Ma
+8	31	Giáp Thái Bình
+8	32	Giáp Hồng Long
+8	33	Giáp Thái Dương
+8	34	Giáp Hắc Điểu
+8	35	Giáp Ánh Trăng
+8	36	Giáp Nữ Thần
+8	37	Giáp Hỏa Thần
+8	38	Giáp Hoàng Kim
+8	39	Giáp Thuật Sĩ
+8	40	Giáp Hỏa Thiên
+8	41	Giáp Ma Pháp
+8	42	Giáp Phục Ma
+8	43	Giáp Thạch Anh
+8	44	Giáp Huyền Vương
+8	45	Giáp Thần Thoại
+8	46	Giáp Hoàng Long
+8	47	Giáp Bóng Ma
+8	48	Giáp Hủy Diệt
+8	49	Giáp Thiên Vũ
+8	50	Giáp Anh Vũ
+8	51	Giáp Đế Vương
+8	52	Giáp Quỷ Vương
+8	53	Giáp Chiêm Tinh
+8	59	Giáp Địa Long
+8	60	Giáp Bạch Hổ
+8	61	Giáp Quyền Lực
+8	62	Giáp Trâu Xanh
+8	63	Giáp Lụa
+8	64	Giáp Nhân Sư
+8	65	Giáp Thiên Thanh
+8	66	Giáp Ma Vương
+8	67	Giáp Rồng Đỏ
+8	68	Giáp SU
+8	69	Giáp Ma Thuật
+8	70	Giáp Hỏa Thiên
+8	71	Giáp Atlantis
+8	72	Giáp Bạch Hổ
+8	73	Giáp Phượng Hoàng (RF)
+9	0	Quần Đồng
+9	1	Quần Rồng Đỏ
+9	2	Quần Vải Thô
+9	3	Quần Ma Thuật
+9	4	Quần Xương
+9	5	Quần Da
+9	6	Quần Trâu Xanh
+9	7	Quần Nhân Sư
+9	8	Quần Thiên Kim
+9	9	Quần Thiết Phiến
+9	10	Quần Trinh Nữ
+9	11	Quần Lụa
+9	12	Quần Thiên Thanh
+9	13	Quần Ngọc Bích
+9	14	Quần Kim Ngân
+9	15	Quần Phong Vũ
+9	16	Quần Rồng Đen
+9	17	Quần Rồng Xanh
+9	18	Quần Triệu Hồn
+9	19	Quần Giai Nhân
+9	20	Quần Lôi Phong
+9	21	Quần Thần Long
+9	22	Quần Ma Vương
+9	23	Quần Cuồng Phong
+9	24	Quần Thánh Nữ
+9	25	Quần Thiết Ma
+9	26	Quần Huyền Thiết
+9	27	Quần Hắc Vương
+9	28	Quần Chí Tôn
+9	29	Quần Quyền Năng
+9	30	Quần Thần Ma
+9	31	Quần Thái Bình
+9	32	Quần Hồng Long
+9	33	Quần Thái Dương
+9	34	Quần Hắc Điểu
+9	35	Quần Ánh Trăng
+9	36	Quần Nữ Thần
+9	37	Quần Hỏa Thần
+9	38	Quần Hoàng Kim
+9	39	Quần Thuật Sĩ
+9	40	Quần Hỏa Thiên
+9	41	Quần Ma Pháp
+9	42	Quần Phục Ma
+9	43	Quần Thạch Anh
+9	44	Quần Huyền Vương
+9	45	Quần Thần Thoại
+9	46	Quần Hoàng Long
+9	47	Quần Bóng Ma
+9	48	Quần Hủy Diệt
+9	49	Quần Thiên Vũ
+9	50	Quần Anh Vũ
+9	51	Quần Đế Vương
+9	52	Quần Quỷ Vương
+9	53	Chiêm Tinh pants
+9	59	Quần Địa Long
+9	60	Quần Bạch Hổ
+9	61	Quần Quyền Lực
+9	62	Quần Trâu Xanh
+9	63	Quần Lụa
+9	64	Quần Nhân Sư
+9	65	Quần Thiên Thanh
+9	66	Quần Ma Vương
+9	67	Quần Rồng Đỏ
+9	68	Quần SU
+9	69	Quần Ma Thuật
+9	70	Quần Hỏa Thiên
+9	71	Quần Atlantis
+9	72	Quần Bạch Hổ
+9	73	Quần Phượng Hoàng (RF)
+10	0	Găng Tay Đồng
+10	1	Găng Tay Rồng Đỏ
+10	2	Găng Tay Vải Thô
+10	3	Găng Tay Ma Thuật
+10	4	Găng Tay Xương
+10	5	Găng Tay Da
+10	6	Găng Tay Trâu Xanh
+10	7	Găng Tay Nhân Sư
+10	8	Găng Tay Thiên Kim
+10	9	Găng Tay Thiết Phiến
+10	10	Găng Tay Trinh Nữ
+10	11	Găng Tay Lụa
+10	12	Găng Tay Thiên Thanh
+10	13	Găng Tay Ngọc Bích
+10	14	Găng Tay Kim Ngân
+10	15	Găng Tay Phong Vũ
+10	16	Găng Tay Rồng Đen
+10	17	Găng Tay Rồng Xanh
+10	18	Găng Tay Triệu Hồn
+10	19	Găng Tay Giai Nhân
+10	20	Găng Tay Lôi Phong
+10	21	Găng Tay Thần Long
+10	22	Găng Tay Ma Vương
+10	23	Găng Tay Cuồng Phong
+10	24	Găng Tay Thánh Nữ
+10	25	Găng Tay Thiết Ma
+10	26	Găng Tay Huyền Thiết
+10	27	Găng Tay Hắc Vương
+10	28	Găng Tay Chí Tôn
+10	29	Găng Tay Quyền Năng
+10	30	Găng Tay Thần Ma
+10	31	Găng Tay Thái Bình
+10	32	Găng Tay Hồng Long
+10	33	Găng Tay Thái Dương
+10	34	Găng Tay Hắc Điểu
+10	35	Găng Tay Ánh Trăng
+10	36	Găng Tay Nữ Thần
+10	37	Găng Tay Hỏa Thần
+10	38	Găng Tay Hoàng Kim
+10	39	Găng Tay Thuật Sĩ
+10	40	Găng Tay Hỏa Thiên
+10	41	Găng Tay Ma Pháp
+10	42	Găng Tay Phục Ma
+10	43	Găng Tay Thạch Anh
+10	44	Găng Tay Huyền Vương
+10	45	Găng Tay Thần Thoại
+10	46	Găng Tay Hoàng Long
+10	47	Găng Tay Bóng Ma
+10	48	Găng Tay Hủy Diệt
+10	49	Găng Tay Thiên Vũ
+10	50	Găng Tay Anh Vũ
+10	51	Găng Tay Đế Vương
+10	52	Găng Tay Quỷ Vương
+10	53	Găng Tay Chiêm Tinh
+10	62	Găng Tay Trâu Xanh
+10	63	Găng Tay Lụa
+10	64	Găng Tay Nhân Sư
+10	65	Găng Tay Thiên Thanh
+10	66	Găng Tay Ma Vương
+10	67	Găng Tay Rồng Đỏ
+10	68	Găng Tay SU
+10	69	Găng Tay Ma Thuật
+10	70	Găng Tay Hỏa Thiên
+10	71	Găng Tay Atlantis
+11	0	Giày Đồng
+11	1	Giày Rồng Đỏ
+11	2	Giày Vải Thô
+11	3	Giày Ma Thuật
+11	4	Giày Xương
+11	5	Giày Da
+11	6	Giày Trâu Xanh
+11	7	Giày Nhân Sư
+11	8	Giày Thiên Kim
+11	9	Giày Thiết Phiến
+11	10	Giày Trinh Nữ
+11	11	Giày Lụa
+11	12	Giày Thiên Thanh
+11	13	Giày Ngọc Bích
+11	14	Giày Kim Ngân
+11	15	Giày Phong Vũ
+11	16	Giày Rồng Đen
+11	17	Giày Rồng Xanh
+11	18	Giày Triệu Hồn
+11	19	Giày Giai Nhân
+11	20	Giày Lôi Phong
+11	21	Giày Thần Long
+11	22	Giày Ma Vương
+11	23	Giày Cuồng Phong
+11	24	Giày Thánh Nữ
+11	25	Giày Thiết Ma
+11	26	Giày Huyền Thiết
+11	27	Giày Hắc Vương
+11	28	Giày Chí Tôn
+11	29	Giày Quyền Năng
+11	30	Giày Thần Ma
+11	31	Giày Thái Bình
+11	32	Giày Hồng Long
+11	33	Giày Thái Dương
+11	34	Giày Hắc Điểu
+11	35	Giày Ánh Trăng
+11	36	Giày Nữ Thần
+11	37	Giày Hỏa Thần
+11	38	Giày Hoàng Kim
+11	39	Giày Thuật Sĩ
+11	40	Giày Hỏa Thiên
+11	41	Giày Ma Pháp
+11	42	Giày Phục Ma
+11	43	Giày Thạch Anh
+11	44	Giày Huyền Vương
+11	45	Giày Thần Thoại
+11	46	Giày Hoàng Long
+11	47	Giày Bóng Ma
+11	48	Giày Hủy Diệt
+11	49	Giày Thiên Vũ
+11	50	Giày Anh Vũ
+11	51	Giày Đế Vương
+11	52	Giày Quỷ Vương
+11	53	Giày Chiêm Tinh
+11	59	Giày Địa Long
+11	60	Giày Bạch Hổ
+11	61	Giày Quyền Lực
+11	62	Giày Trâu Xanh
+11	63	Giày Lụa
+11	64	Giày Nhân Sư
+11	65	Giày Thiên Thanh
+11	66	Giày Ma Vương
+11	67	Giày Rồng Đỏ
+11	68	Giày SU
+11	69	Giày Ma Thuật
+11	70	Giày Hỏa Thiên
+11	71	Giày Atlantis
+11	72	Giày Bạch Hổ
+11	73	Giày Phượng Hoàng (RF)
+12	3	Cánh Tinh Thần (EFL)
+12	4	Cánh Linh Hồn (SOUL)
+12	5	Cánh Rồng (DK)
+12	6	Cánh Bóng Đêm (MG)
+12	42	Cánh Hỏa Thiên (SM)
+12	50	Áo Choàng Chiến Binh
+13	30	Áo Choàng Chúa Tể

@@ -24,6 +24,7 @@ Requires Bun (server, tests, executables) and Node 20.19+ (Vite).
 ```
 bun install
 bun run dev              # dev: API server (4817) + Vite (5173, HMR), opens data/Item.bmd and the browser
+                         # (no game data is committed: a sample data/Item.bmd is created if missing)
 bun run dev -- path/to/Item.bmd
 bun run start            # build the UI, then run like a release (one port, http://localhost:4817)
 bun run release          # release zips into ./releases/ (inside this folder)
@@ -239,12 +240,14 @@ Differences from `../tools/item_ts`:
 
 ```
 bun run test         # unit tests (core, server, session, search, glossary, locales)
-bun run test:e2e     # build the UI, then e2e in real Chrome on a copy of data/Item.bmd (EN and VI)
+bun run test:e2e     # build the UI, then e2e in real Chrome on a copy of the sample file (EN and VI)
 bun run typecheck    # tsc (server/core) + vue-tsc (UI)
 ```
 
-Tests use `data/Item.bmd`; if `../tools/item_ts` + `../items.tsv` exist, TSV import results are
-compared with the old tool (must be byte-identical, checksum included).
+No game data is committed. Tests build a **sample Item.bmd** (`tests/fixtures/sampleBmd.ts`): the
+488 translated names from `tests/fixtures/item-names.tsv`, deterministic filler bytes instead of
+item stats, and the real XOR encoding + checksum. If `../tools/item_ts` + `../items.tsv` exist,
+TSV import results are also compared with the old tool (must be byte-identical, checksum included).
 
 ## Code conventions
 
@@ -254,4 +257,4 @@ Comments and logs in code are written in **English**. User-facing text lives in
 ## License
 
 [MIT](LICENSE) © 2026 Tuan Anh Nguyen. The license covers this tool's source code only, not
-game data such as `data/Item.bmd`.
+game data: `Item.bmd` files are not part of this repository.

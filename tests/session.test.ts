@@ -4,9 +4,10 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { ItemBmd, NameValidationError, slotOf } from "../src/core";
 import { ConflictError, DirtyError, Session } from "../src/server/session";
+import { SAMPLE_BMD } from "./fixtures/sampleBmd";
 import { MAX_BACKUPS, projectPath, readDraft, workDir } from "../src/server/storage";
 
-const DATA = path.join(import.meta.dir, "../data/Item.bmd");
+const DATA = SAMPLE_BMD;
 const ORIGINAL = new Uint8Array(fs.readFileSync(DATA));
 
 let dir: string;

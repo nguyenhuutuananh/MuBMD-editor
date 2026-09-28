@@ -4,9 +4,10 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { MAX_ITEM } from "../src/core";
 import { createApp } from "../src/server/app";
+import { SAMPLE_BMD } from "./fixtures/sampleBmd";
 import type { ItemsResponse, StateResponse } from "../src/shared/api";
 
-const DATA = path.join(import.meta.dir, "../data/Item.bmd");
+const DATA = SAMPLE_BMD;
 const assets = {
   "/index.html": { type: "text/html; charset=utf-8", body: "<html>ui</html>", base64: false },
   "/assets/app-1.js": { type: "text/javascript; charset=utf-8", body: "/*js*/", base64: false },

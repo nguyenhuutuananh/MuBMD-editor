@@ -8,3 +8,4 @@ releases/
 e2e-shots/
 # side data created when running the tool on the sample file
 data/*
+tests/fixtures/.generated/

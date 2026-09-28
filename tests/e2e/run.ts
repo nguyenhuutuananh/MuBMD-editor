@@ -1,4 +1,5 @@
-// run.ts - End-to-end test in real (headless) Chrome against a COPY of data/Item.bmd.
+// run.ts - End-to-end test in real (headless) Chrome against a copy of the sample Item.bmd
+// (tests/fixtures/sampleBmd.ts: real names, fake stats).
 //   bun run test:e2e [screenshot/dir]
 // Requires an installed Google Chrome (playwright-core uses the "chrome" channel, no browser download).
 
@@ -7,6 +8,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { type Browser, type Page, chromium } from "playwright-core";
 import { ItemBmd } from "../../src/core";
+import { writeSampleBmd } from "../fixtures/sampleBmd";
 
 const ROOT = path.join(import.meta.dir, "../..");
 const WORK = fs.mkdtempSync(path.join(os.tmpdir(), "mubmd-e2e-"));
@@ -15,7 +17,7 @@ const FILE = path.join(WORK, "Item.bmd");
 const PORT = 4851;
 const URL = `http://localhost:${PORT}/`;
 fs.mkdirSync(SHOTS, { recursive: true });
-fs.copyFileSync(path.join(ROOT, "data/Item.bmd"), FILE);
+writeSampleBmd(FILE);
 
 let server: ReturnType<typeof Bun.spawn> | null = null;
 let browser: Browser | null = null;

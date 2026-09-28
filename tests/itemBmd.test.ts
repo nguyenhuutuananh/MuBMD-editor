@@ -13,8 +13,9 @@ import {
   ItemBmd,
   slotOf,
 } from "../src/core";
+import { SAMPLE_BMD } from "./fixtures/sampleBmd";
 
-const DATA = path.join(import.meta.dir, "../data/Item.bmd");
+const DATA = SAMPLE_BMD; // synthetic Item.bmd: real names, fake stats (no game data in the repo)
 const original = new Uint8Array(fs.readFileSync(DATA));
 const load = () => ItemBmd.parse(original);
 
@@ -25,7 +26,7 @@ function diffOffsets(a: Uint8Array, b: Uint8Array): number[] {
   return out;
 }
 
-describe("reading data/Item.bmd", () => {
+describe("reading the sample Item.bmd", () => {
   test("correct size, valid checksum", () => {
     const bmd = load();
     expect(original.length).toBe(FILE_SIZE);

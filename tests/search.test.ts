@@ -2,10 +2,11 @@ import { describe, expect, test } from "bun:test";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { ItemBmd, MAX_ITEM, MAX_ITEM_TYPE } from "../src/core";
+import { SAMPLE_BMD } from "./fixtures/sampleBmd";
 import type { ItemTuple } from "../src/shared/api";
 import { type Filter, applyFilter, fold, groupCounts, parseCoord, toRows } from "../web/src/lib/search";
 
-const bmd = ItemBmd.parse(new Uint8Array(fs.readFileSync(path.join(import.meta.dir, "../data/Item.bmd"))));
+const bmd = ItemBmd.parse(new Uint8Array(fs.readFileSync(SAMPLE_BMD)));
 const rows = toRows(
   bmd.entries({ includeEmpty: true }).map((e): ItemTuple => [e.slot, e.text, e.encoding, e.byteLength, []]),
 );
