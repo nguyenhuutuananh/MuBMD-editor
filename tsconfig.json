@@ -19,8 +19,12 @@
   },
   "include": [
     "src/**/*.ts",
-    "web/**/*.ts",
     "tests/**/*.ts",
-    "scripts/**/*.ts"
+    "scripts/**/*.ts",
+    "vite.config.ts"
+  ],
+  "exclude": [
+    "web",
+    "web-legacy"
   ]
 }

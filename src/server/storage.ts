@@ -8,6 +8,7 @@
 import { createHash } from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { AppError } from "../core";
 
 export const MAX_BACKUPS = 20;
 
@@ -25,10 +26,10 @@ export function stamp(d: Date): string {
   return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
 }
 
-export class FileLockedError extends Error {
+export class FileLockedError extends AppError {
   constructor(target: string) {
-    super(`Không ghi được ${path.basename(target)}: file đang bị chương trình khác giữ (game client đang chạy?). Hãy đóng chương trình đó rồi lưu lại.`);
-    this.name = "FileLockedError";
+    const file = path.basename(target);
+    super("file-locked", `Cannot write ${file}: it is held by another program (is the game client running?).`, { file });
   }
 }
 

@@ -1,9 +1,10 @@
 // main.ts - Điểm vào: chạy server trên 127.0.0.1 và mở trình duyệt.
 //
-//   bun run dev                        (tự build giao diện rồi chạy)
+//   bun run dev                        (server + Vite dev server)
+//   bun run start                      (build giao diện rồi chạy như bản phát hành)
 //   MuBMD-editor [Item.bmd] [--port N] [--no-open]
 
-import { css, html, js } from "../../build/web/assets"; // sinh bởi scripts/build-web.ts
+import { assets } from "../../build/web/assets"; // sinh bởi scripts/build-web.ts
 import pkg from "../../package.json";
 import { createApp } from "./app";
 
@@ -46,7 +47,8 @@ function serve(handle: (req: Request) => Promise<Response>, port: number) {
 }
 
 const args = parseArgs(process.argv.slice(2));
-const app = createApp({ assets: { html, js, css }, version: pkg.version });
+const app = createApp({ assets, version: pkg.version });
+if (!assets["/index.html"]) console.log("(Chưa build giao diện - chạy `bun run build:web`, hoặc dùng `bun run dev` để mở giao diện qua Vite.)");
 
 if (args.file) {
   const res = app.openPath(args.file);

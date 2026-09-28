@@ -1,6 +1,8 @@
 // format.ts - Hằng số định dạng Item.bmd (MuMain) + mã hoá XOR + checksum.
 // Chuyển từ tools/item_ts/src/itemBmdCore.ts (đã kiểm chứng khớp từng byte với bản Python).
 
+import { AppError } from "./errors";
+
 export const XOR_KEY = [0xfc, 0xcf, 0xab] as const;
 export const RECORD_SIZE = 84;
 export const NAME_LEN = 50; // gồm cả byte kết thúc 0x00
@@ -41,12 +43,18 @@ export function genCheckSum2(buf: Uint8Array, key: number = CHECKSUM_KEY): numbe
   return dwResult;
 }
 
+export class InvalidSlotError extends AppError {
+  constructor(field: "slot" | "itemType" | "itemIndex", value: number, max: number) {
+    super("invalid-slot", `Invalid ${field}: ${value} (0..${max})`, { field, value, max });
+  }
+}
+
 export function slotOf(itemType: number, itemIndex: number): number {
   if (!Number.isInteger(itemType) || itemType < 0 || itemType >= MAX_ITEM_TYPE) {
-    throw new RangeError(`ItemType không hợp lệ: ${itemType} (0..${MAX_ITEM_TYPE - 1})`);
+    throw new InvalidSlotError("itemType", itemType, MAX_ITEM_TYPE - 1);
   }
   if (!Number.isInteger(itemIndex) || itemIndex < 0 || itemIndex >= MAX_ITEM_INDEX) {
-    throw new RangeError(`ItemIndex không hợp lệ: ${itemIndex} (0..${MAX_ITEM_INDEX - 1})`);
+    throw new InvalidSlotError("itemIndex", itemIndex, MAX_ITEM_INDEX - 1);
   }
   return itemType * MAX_ITEM_INDEX + itemIndex;
 }

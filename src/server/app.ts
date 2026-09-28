@@ -1,34 +1,36 @@
 // app.ts - Xử lý HTTP: API JSON + phục vụ giao diện. Tách khỏi Bun.serve để test được.
 
-import { BmdFormatError, NameValidationError } from "../core";
-import type {
-  EditRequest,
-  ErrorCode,
-  ErrorResponse,
-  ItemsResponse,
-  OpenRequest,
-  PickResponse,
-  RevertRequest,
-  SaveRequest,
-  SaveResponse,
-  StateResponse,
+import { AppError, type ErrorCode, type ErrorParams, NameValidationError } from "../core";
+import {
+  type EditRequest,
+  type ErrorResponse,
+  isLang,
+  type ItemsResponse,
+  type Lang,
+  type OpenRequest,
+  type PickResponse,
+  type RevertRequest,
+  type SaveRequest,
+  type SaveResponse,
+  type StateResponse,
 } from "../shared/api";
-import { FilePickerUnavailableError, pickFile, pickSaveFile } from "./filePicker";
-import { ConflictError, DirtyError, NoFileError, Session } from "./session";
-import { FileLockedError } from "./storage";
+import { pickFile, pickSaveFile } from "./filePicker";
+import { NoFileError, Session } from "./session";
 
-export interface WebAssets {
-  html: string;
-  js: string;
-  css: string;
+// Giao diện đã build (Vite), khoá = đường dẫn URL ("/index.html", "/assets/index-abc.js").
+export interface WebAsset {
+  type: string;
+  body: string;
+  base64: boolean;
 }
+export type WebAssets = Record<string, WebAsset>;
 
 export interface AppOptions {
   assets: WebAssets;
   version: string;
   session?: Session;
-  pick?: () => Promise<string | null>;
-  pickSave?: (defaultPath: string) => Promise<string | null>;
+  pick?: (lang: Lang) => Promise<string | null>;
+  pickSave?: (defaultPath: string, lang: Lang) => Promise<string | null>;
 }
 
 const json = (body: unknown, status = 200) =>
@@ -37,8 +39,8 @@ const json = (body: unknown, status = 200) =>
     headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
   });
 
-const fail = (error: string, status: number, extra: Omit<ErrorResponse, "error"> = {}) =>
-  json({ error, ...extra } satisfies ErrorResponse, status);
+const fail = (status: number, code: ErrorCode, error: string, params: ErrorParams = {}, extra: Partial<ErrorResponse> = {}) =>
+  json({ error, code, params, ...extra } satisfies ErrorResponse, status);
 
 // Chỉ nhận request gửi tới localhost (chống DNS rebinding: trang web lạ trỏ
 // tên miền của nó về 127.0.0.1 rồi gọi API đọc file trên máy).
@@ -53,28 +55,39 @@ function isJson(req: Request): boolean {
   return (req.headers.get("content-type") ?? "").toLowerCase().startsWith("application/json");
 }
 
-function fsMessage(e: unknown): string {
-  const code = (e as NodeJS.ErrnoException)?.code;
-  if (code === "ENOENT") return "Không tìm thấy file.";
-  if (code === "EACCES" || code === "EPERM") return "Không có quyền đọc/ghi file.";
-  if (code === "EISDIR") return "Đường dẫn là thư mục, không phải file.";
-  if (code === "ENOSPC") return "Ổ đĩa đầy.";
-  return e instanceof Error ? e.message : String(e);
-}
+const STATUS: Partial<Record<ErrorCode, number>> = {
+  "invalid-name": 422,
+  dirty: 409,
+  conflict: 409,
+  "no-file": 409,
+  "picker-unsupported": 501,
+  "picker-failed": 500,
+  "save-verify-failed": 500,
+  internal: 500,
+};
 
-// Chuyển lỗi thành response: lỗi người dùng -> 4xx có mã, còn lại -> 500.
+const ERRNO: Record<string, ErrorCode> = {
+  ENOENT: "file-not-found",
+  EACCES: "permission-denied",
+  EPERM: "permission-denied",
+  EISDIR: "is-directory",
+  ENOSPC: "disk-full",
+};
+
+// Chuyển lỗi thành response có mã: lỗi người dùng -> 4xx, còn lại -> 500.
 function errorResponse(e: unknown): Response {
-  const code = (c: ErrorCode) => ({ code: c });
   if (e instanceof NameValidationError) {
-    return fail(e.message, 422, { ...code("invalid-name"), issues: e.check.issues });
+    return fail(422, e.code, e.message, e.params, { issues: e.check.issues });
   }
-  if (e instanceof DirtyError) return fail(e.message, 409, code("dirty"));
-  if (e instanceof ConflictError) return fail(e.message, 409, code("conflict"));
-  if (e instanceof NoFileError) return fail(e.message, 409);
-  if (e instanceof BmdFormatError || e instanceof FileLockedError || e instanceof RangeError) return fail(e.message, 400);
-  if ((e as NodeJS.ErrnoException)?.code) return fail(fsMessage(e), 400);
+  if (e instanceof AppError) return fail(STATUS[e.code] ?? 400, e.code, e.message, e.params);
+  const errno = (e as NodeJS.ErrnoException)?.code;
+  if (errno && ERRNO[errno]) {
+    const path = (e as NodeJS.ErrnoException).path ?? "";
+    return fail(400, ERRNO[errno]!, (e as Error).message, path ? { path } : {});
+  }
   console.error(e);
-  return fail(e instanceof Error ? e.message : String(e), 500);
+  const detail = e instanceof Error ? e.message : String(e);
+  return fail(500, "internal", detail, { detail });
 }
 
 const str = (v: unknown) => (typeof v === "string" ? v : "");
@@ -104,21 +117,23 @@ export function createApp(opts: AppOptions) {
 
   type Handler = (body: Record<string, unknown>) => unknown;
 
+  const langOf = (b: Record<string, unknown>): Lang => (isLang(b.lang) ? b.lang : "en");
+
   const posts: Record<string, Handler> = {
     "/api/open": (b) => {
       const path = str((b as Partial<OpenRequest>).path).trim();
-      if (!path) return fail("Thiếu đường dẫn file.", 400);
+      if (!path) return fail(400, "missing-path", "Missing file path.");
       session.open(path, { discard: b.discard === true });
       return state();
     },
-    "/api/pick": async () => ({ path: await pick() }) satisfies PickResponse,
-    "/api/pick-save": async () => {
+    "/api/pick": async (b) => ({ path: await pick(langOf(b)) }) satisfies PickResponse,
+    "/api/pick-save": async (b) => {
       if (!session.file) throw new NoFileError();
-      return { path: await pickSave(session.file.path) } satisfies PickResponse;
+      return { path: await pickSave(session.file.path, langOf(b)) } satisfies PickResponse;
     },
     "/api/edit": (b) => {
       const r = b as Partial<EditRequest>;
-      if (typeof r.name !== "string") return fail("Thiếu tên.", 400);
+      if (typeof r.name !== "string") return fail(400, "missing-name", "Missing name.");
       return session.edit(Number(r.slot), r.name, str(r.translator));
     },
     "/api/revert": (b) => session.revert(Number((b as Partial<RevertRequest>).slot), str(b.translator)),
@@ -137,18 +152,16 @@ export function createApp(opts: AppOptions) {
   };
 
   async function handle(req: Request): Promise<Response> {
-    if (!isLocalHost(req)) return fail("Chỉ truy cập qua localhost.", 403);
+    if (!isLocalHost(req)) return fail(403, "not-local", "Only reachable via localhost.");
     const { pathname } = new URL(req.url);
 
     if (req.method === "GET") {
-      if (pathname === "/" || pathname === "/index.html") {
-        return new Response(opts.assets.html, { headers: { "content-type": "text/html; charset=utf-8" } });
-      }
-      if (pathname === "/app.js") {
-        return new Response(opts.assets.js, { headers: { "content-type": "text/javascript; charset=utf-8" } });
-      }
-      if (pathname === "/styles.css") {
-        return new Response(opts.assets.css, { headers: { "content-type": "text/css; charset=utf-8" } });
+      const asset = opts.assets[pathname === "/" ? "/index.html" : pathname];
+      if (asset) {
+        // File trong /assets/ có mã băm trong tên -> cache lâu; index.html thì luôn lấy mới.
+        const cache = pathname.startsWith("/assets/") ? "public, max-age=31536000, immutable" : "no-cache";
+        const body = asset.base64 ? Buffer.from(asset.body, "base64") : asset.body;
+        return new Response(body, { headers: { "content-type": asset.type, "cache-control": cache } });
       }
       if (pathname === "/favicon.ico") return new Response(null, { status: 204 });
       if (pathname === "/api/state") return json(state());
@@ -163,19 +176,18 @@ export function createApp(opts: AppOptions) {
 
     const handler = req.method === "POST" ? posts[pathname] : undefined;
     if (handler) {
-      if (!isJson(req)) return fail("Cần Content-Type: application/json.", 415);
+      if (!isJson(req)) return fail(415, "unsupported-media", "Content-Type must be application/json.");
       const body = await req.json().catch(() => null);
-      if (!body || typeof body !== "object") return fail("Body JSON không hợp lệ.", 400);
+      if (!body || typeof body !== "object") return fail(400, "bad-json", "Invalid JSON body.");
       try {
         const out = await handler(body as Record<string, unknown>);
         return out instanceof Response ? out : json(out);
       } catch (e) {
-        if (e instanceof FilePickerUnavailableError) return fail(e.message, 501);
         return errorResponse(e);
       }
     }
 
-    if (pathname.startsWith("/api/")) return fail("Không có API này.", 404);
+    if (pathname.startsWith("/api/")) return fail(404, "unknown-api", "No such API.");
     return new Response("Not found", { status: 404 });
   }
 

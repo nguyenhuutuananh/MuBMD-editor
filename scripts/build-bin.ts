@@ -14,7 +14,7 @@ const run = async (cmd: string[]) => {
   if (code !== 0) process.exit(code);
 };
 
-await run(["bun", "scripts/build-web.ts", "--minify"]);
+await run(["bun", "scripts/build-web.ts"]);
 for (const [target, out] of targets) {
   await run(["bun", "build", "--compile", "--minify", `--target=${target}`, `--outfile=dist/${out}`, "src/server/main.ts"]);
 }

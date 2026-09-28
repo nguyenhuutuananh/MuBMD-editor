@@ -1,0 +1,203 @@
+{
+  "app": {
+    "name": "MuBMD-editor"
+  },
+  "lang": {
+    "label": "Language",
+    "en": "English",
+    "vi": "Tiếng Việt"
+  },
+  "common": {
+    "close": "Close",
+    "cancel": "Cancel"
+  },
+  "welcome": {
+    "title": "Open Item.bmd",
+    "hint": "The item-name file of the MuMain client (Mu Online season 6), usually at {path}.",
+    "pick": "Choose file…",
+    "pasteLabel": "Or paste the full path",
+    "placeholder": "C:\\MU\\Data\\Local\\Item.bmd",
+    "open": "Open",
+    "recent": "Recently opened",
+    "back": "← Back to the open file"
+  },
+  "topbar": {
+    "checksumOk": "Checksum OK",
+    "checksumBad": "Bad checksum",
+    "checksumOkTitle": "The 4-byte checksum at the end of the file matches its content.",
+    "checksumBadTitle": "The checksum at the end of the file does not match: the file may be damaged or edited by another tool, and the client may refuse to load it. Saving with this tool recalculates the checksum.",
+    "dirty": "{n} unsaved change | {n} unsaved changes",
+    "allSaved": "All saved",
+    "undo": "Undo (Ctrl+Z)",
+    "redo": "Redo (Ctrl+Y)",
+    "save": "Save",
+    "saveTitle": "Save to file (Ctrl+S)",
+    "saveAs": "Save as…",
+    "translator": "Translator: {name}",
+    "setTranslator": "Set translator name",
+    "translatorTitle": "This name is written to the change log",
+    "reload": "Reload",
+    "reloadTitle": "Read the file again from disk",
+    "openOther": "Open another file…"
+  },
+  "groups": {
+    "label": "Item groups",
+    "all": "All groups",
+    "dirtyTitle": "{n} unsaved change | {n} unsaved changes"
+  },
+  "itemTypes": {
+    "0": "Swords",
+    "1": "Axes",
+    "2": "Maces / Scepters",
+    "3": "Spears",
+    "4": "Bows / Crossbows",
+    "5": "Staffs / Books",
+    "6": "Shields",
+    "7": "Helms",
+    "8": "Armors",
+    "9": "Pants",
+    "10": "Gloves",
+    "11": "Boots",
+    "12": "Wings / Jewels / Misc 1",
+    "13": "Pets / Rings / Pendants",
+    "14": "Potions / Jewels / Misc 3",
+    "15": "Skill scrolls"
+  },
+  "toolbar": {
+    "search": "Search name (accents optional), 7:1, #3585 · Enter to edit",
+    "searchLabel": "Search",
+    "scopeLabel": "Slot type",
+    "problemLabel": "Filter",
+    "scope": {
+      "named": "Named slots",
+      "all": "All slots",
+      "empty": "Empty slots"
+    },
+    "problem": {
+      "any": "Any name",
+      "edited": "Edited (unsaved)",
+      "issues": "Has warnings / errors",
+      "nearLimit": "Near byte limit (≥ 40)",
+      "unknownEncoding": "Not UTF-8"
+    },
+    "rows": "{n} row | {n} rows"
+  },
+  "grid": {
+    "label": "Item list",
+    "type": "Type",
+    "index": "Index",
+    "name": "Name",
+    "bytes": "Bytes",
+    "notes": "Notes",
+    "empty": "(empty)",
+    "noMatch": "No slot matches the filter.",
+    "edited": "Edited",
+    "nonUtf8": "Not UTF-8",
+    "originalTitle": "Original: {name}",
+    "bytesTitle": "{bytes}/{max} bytes"
+  },
+  "encoding": {
+    "empty": "Empty",
+    "utf-8": "UTF-8",
+    "unknown": "Not UTF-8 (original Japanese/Korean name?)"
+  },
+  "issues": {
+    "too-long": "Over the 49-byte limit",
+    "control-char": "Contains control characters",
+    "lone-surrogate": "Broken Unicode character",
+    "edge-whitespace": "Leading/trailing spaces",
+    "double-space": "Two spaces in a row"
+  },
+  "issueDetail": {
+    "too-long": "The name is {bytes} bytes, over the {max}-byte limit (Vietnamese accented letters take 2–3 bytes each).",
+    "control-char": "The name contains control characters (tab, newline, 0x00…).",
+    "lone-surrogate": "The name contains a broken Unicode character (lone surrogate).",
+    "edge-whitespace": "The name has spaces at the start or end.",
+    "double-space": "The name has two spaces in a row."
+  },
+  "detail": {
+    "label": "Slot details",
+    "none": "Select a row to see details.",
+    "original": "Original name",
+    "originalNonUtf8": "(not UTF-8)",
+    "editedBy": "Edited by",
+    "group": "Group",
+    "typeIndex": "ItemType / Index",
+    "slot": "Slot",
+    "encoding": "Encoding",
+    "length": "Length",
+    "lengthValue": "{bytes} / {max} bytes, {chars} characters",
+    "nonUtf8Note": "This name is not UTF-8 – probably an untranslated Japanese/Korean original. It is kept as-is unless you edit it.",
+    "edit": "Edit name (Enter)",
+    "revert": "Restore original name",
+    "help": "Enter / Tab: save and go to the next row · Shift+Enter: previous row · Esc: cancel · Ctrl+S: save file",
+    "editing": "Editing: {bytes}/{max} bytes, {left} left",
+    "editingOver": "Editing: {bytes}/{max} bytes, {over} over"
+  },
+  "editor": {
+    "aria": "New name for {type}:{index}",
+    "unknownPlaceholder": "Original name is not UTF-8 – type a new name"
+  },
+  "translatorDialog": {
+    "title": "Translator name",
+    "body": "This name is saved with every change in the change log (changes.tsv), so when translations from several people are merged later you can tell who changed what.",
+    "label": "Name or nickname",
+    "placeholder": "e.g. Tuan Anh",
+    "save": "Save"
+  },
+  "discardDialog": {
+    "title": "Discard unsaved changes?",
+    "body": "{n} change has not been saved to the file. If you continue, it will be lost. | {n} changes have not been saved to the file. If you continue, they will be lost.",
+    "back": "Go back",
+    "discard": "Discard changes"
+  },
+  "draftDialog": {
+    "title": "Restore unsaved changes?",
+    "body": "Your previous session (draft saved {time}) has {n} change that was not saved to the file. | Your previous session (draft saved {time}) has {n} changes that were not saved to the file.",
+    "who": "Translators: {names}.",
+    "baseChanged": "Note: Item.bmd on disk has changed since then (Google Drive may have synced). The draft names will be applied to the current file – review them with the \"Edited\" filter.",
+    "discard": "Discard draft",
+    "restore": "Restore"
+  },
+  "conflictDialog": {
+    "title": "The file was changed outside this tool",
+    "body": "You can save to a different file so nothing is overwritten, or overwrite it (the version on disk is still backed up first).",
+    "force": "Overwrite",
+    "saveAs": "Save to another file…"
+  },
+  "toast": {
+    "saved": "Saved {n} change to {file}. | Saved {n} changes to {file}.",
+    "backup": "The previous version was backed up to {path}",
+    "nothingToSave": "There are no changes to save.",
+    "restored": "Restored {n} change. | Restored {n} changes.",
+    "restoredSkipped": "Skipped {n} invalid name. | Skipped {n} invalid names.",
+    "saveFailed": "Not saved: {reason}"
+  },
+  "errors": {
+    "bmd-size": "The file is {size} bytes; a MuMain Item.bmd must be exactly {expected} bytes.",
+    "invalid-slot": "Invalid {field}: {value} (allowed 0–{max}).",
+    "invalid-name": "The name is not valid.",
+    "name-bytes-length": "Internal error: wrong name length.",
+    "no-file": "No Item.bmd file is open.",
+    "dirty": "{count} change has not been saved yet. | {count} changes have not been saved yet.",
+    "conflict": "The file on disk was changed after you opened it (Google Drive may have just synced, or someone else saved it). Overwriting would lose that change.",
+    "save-verify-failed": "The final check before writing failed – nothing was saved.",
+    "file-not-found": "File not found.",
+    "file-locked": "Cannot write {file}: another program is holding it (is the game client running?). Close it and save again.",
+    "permission-denied": "No permission to read or write the file.",
+    "is-directory": "That path is a folder, not a file.",
+    "not-a-file": "That path is not a regular file.",
+    "disk-full": "The disk is full.",
+    "picker-unsupported": "No native file dialog on this system – paste the path instead.",
+    "picker-failed": "Could not open the file dialog: {detail}",
+    "missing-path": "Missing file path.",
+    "missing-name": "Missing name.",
+    "bad-json": "Invalid request.",
+    "unsupported-media": "Invalid request.",
+    "not-local": "Only reachable via localhost.",
+    "unknown-api": "Unknown request.",
+    "internal": "Unexpected error: {detail}",
+    "offline": "Lost connection to MuBMD-editor. Is its command-line window still running?",
+    "bad-response": "Server error ({status})."
+  }
+}

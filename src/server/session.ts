@@ -3,7 +3,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { ItemBmd, MAX_ITEM, checkName, typeIndexOf } from "../core";
+import { AppError, ItemBmd, MAX_ITEM, checkName, typeIndexOf } from "../core";
 import type { DocStatus, DraftInfo, EditInfo, EditMeta, FileInfo, ItemTuple, MutationResponse, SlotState } from "../shared/api";
 import {
   type Draft,
@@ -18,24 +18,21 @@ import {
   writeDraft,
 } from "./storage";
 
-export class DirtyError extends Error {
+export class DirtyError extends AppError {
   constructor(count: number) {
-    super(`Còn ${count} thay đổi chưa lưu.`);
-    this.name = "DirtyError";
+    super("dirty", `${count} unsaved change(s).`, { count });
   }
 }
 
-export class ConflictError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "ConflictError";
-  }
-}
-
-export class NoFileError extends Error {
+export class ConflictError extends AppError {
   constructor() {
-    super("Chưa mở file Item.bmd nào.");
-    this.name = "NoFileError";
+    super("conflict", "The file on disk changed after it was opened; overwriting would lose that change.");
+  }
+}
+
+export class NoFileError extends AppError {
+  constructor() {
+    super("no-file", "No Item.bmd file is open.");
   }
 }
 
@@ -85,11 +82,12 @@ export class Session {
   // Ném lỗi (ENOENT, BmdFormatError, DirtyError...) nếu không mở được; khi đó file đang mở vẫn giữ nguyên.
   open(filePath: string, opts: { discard?: boolean } = {}): FileInfo {
     const abs = path.resolve(filePath);
-    if (this.bmd?.isDirty && !opts.discard) throw new DirtyError(this.bmd.dirtySlots.length);
+    // Đọc + kiểm tra file mới trước: đường dẫn sai thì báo lỗi luôn, không hỏi "bỏ thay đổi?" vô ích.
     const stat = fs.statSync(abs);
-    if (!stat.isFile()) throw new Error(`Không phải file: ${abs}`);
+    if (!stat.isFile()) throw new AppError("not-a-file", `Not a file: ${abs}`, { path: abs });
     const bytes = new Uint8Array(fs.readFileSync(abs));
     const bmd = ItemBmd.parse(bytes);
+    if (this.bmd?.isDirty && !opts.discard) throw new DirtyError(this.bmd.dirtySlots.length);
 
     // Bỏ thay đổi của file cũ thì bỏ luôn nháp của nó, để lần sau không bị hỏi khôi phục.
     if (this.info && this.bmd?.isDirty) deleteDraft(this.info.path);
@@ -280,7 +278,7 @@ export class Session {
         edits: bmd.dirtySlots.map((slot) => ({ slot, name: bmd.getName(slot).text, ...(this.meta.get(slot) ?? { translator: "", at: "" }) })),
       });
     } catch (e) {
-      console.warn(`Không ghi được bản nháp: ${(e as Error).message}`);
+      console.warn(`Could not write draft: ${(e as Error).message}`);
     }
   }
 
@@ -294,10 +292,7 @@ export class Session {
 
     if (sameFile && !opts.force && fs.existsSync(target)) {
       if (sha1(new Uint8Array(fs.readFileSync(target))) !== this.diskSha1) {
-        throw new ConflictError(
-          "File trên ổ đĩa đã bị thay đổi sau khi bạn mở (Google Drive vừa đồng bộ, hoặc người/chương trình khác đã ghi). " +
-            "Ghi đè sẽ làm mất thay đổi đó.",
-        );
+        throw new ConflictError();
       }
     }
 
@@ -307,9 +302,11 @@ export class Session {
     const bytes = bmd.toBytes();
     // Kiểm tra lại trước khi ghi: đọc được, checksum đúng, tên khớp.
     const check = ItemBmd.parse(bytes);
-    if (!check.checksumValid) throw new Error("Lỗi nội bộ: checksum file sắp ghi không hợp lệ - đã huỷ lưu.");
+    if (!check.checksumValid) throw new AppError("save-verify-failed", "Internal error: checksum of output is invalid - save aborted.");
     for (const slot of bmd.dirtySlots) {
-      if (check.getName(slot).text !== bmd.getName(slot).text) throw new Error(`Lỗi nội bộ: slot ${slot} ghi sai - đã huỷ lưu.`);
+      if (check.getName(slot).text !== bmd.getName(slot).text) {
+        throw new AppError("save-verify-failed", `Internal error: slot ${slot} written incorrectly - save aborted.`, { slot });
+      }
     }
 
     const now = this.now();
@@ -322,7 +319,7 @@ export class Session {
         at: this.meta.get(slot)?.at || now.toISOString(),
         translator: this.meta.get(slot)?.translator ?? "",
         ...typeIndexOf(slot),
-        oldName: orig.encoding === "unknown" ? "(không phải UTF-8)" : orig.text,
+        oldName: orig.encoding === "unknown" ? "(non-UTF-8)" : orig.text,
         newName: bmd.getName(slot).text,
       };
     });

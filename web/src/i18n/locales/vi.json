@@ -1,0 +1,203 @@
+{
+  "app": {
+    "name": "MuBMD-editor"
+  },
+  "lang": {
+    "label": "Ngôn ngữ",
+    "en": "English",
+    "vi": "Tiếng Việt"
+  },
+  "common": {
+    "close": "Đóng",
+    "cancel": "Huỷ"
+  },
+  "welcome": {
+    "title": "Mở file Item.bmd",
+    "hint": "File tên vật phẩm của client MuMain (Mu Online season 6), thường nằm ở {path}.",
+    "pick": "Chọn file…",
+    "pasteLabel": "Hoặc dán đường dẫn đầy đủ",
+    "placeholder": "C:\\MU\\Data\\Local\\Item.bmd",
+    "open": "Mở",
+    "recent": "Mở gần đây",
+    "back": "← Quay lại file đang mở"
+  },
+  "topbar": {
+    "checksumOk": "Checksum OK",
+    "checksumBad": "Checksum sai",
+    "checksumOkTitle": "4 byte checksum cuối file khớp với nội dung.",
+    "checksumBadTitle": "Checksum cuối file không khớp: file có thể bị hỏng hoặc bị sửa bằng công cụ khác, client có thể từ chối đọc. Lưu lại bằng công cụ này sẽ tính lại checksum.",
+    "dirty": "{n} thay đổi chưa lưu",
+    "allSaved": "Đã lưu hết",
+    "undo": "Hoàn tác (Ctrl+Z)",
+    "redo": "Làm lại (Ctrl+Y)",
+    "save": "Lưu",
+    "saveTitle": "Lưu vào file (Ctrl+S)",
+    "saveAs": "Lưu thành…",
+    "translator": "Người dịch: {name}",
+    "setTranslator": "Đặt tên người dịch",
+    "translatorTitle": "Tên này được ghi vào nhật ký thay đổi",
+    "reload": "Tải lại",
+    "reloadTitle": "Đọc lại file từ ổ đĩa",
+    "openOther": "Mở file khác…"
+  },
+  "groups": {
+    "label": "Nhóm vật phẩm",
+    "all": "Tất cả nhóm",
+    "dirtyTitle": "{n} thay đổi chưa lưu"
+  },
+  "itemTypes": {
+    "0": "Kiếm",
+    "1": "Rìu",
+    "2": "Chùy / Quyền trượng",
+    "3": "Giáo / Thương",
+    "4": "Cung / Nỏ",
+    "5": "Gậy / Sách phép",
+    "6": "Khiên",
+    "7": "Mũ",
+    "8": "Giáp",
+    "9": "Quần",
+    "10": "Găng tay",
+    "11": "Giày",
+    "12": "Cánh / Ngọc / Khác 1",
+    "13": "Pet / Nhẫn / Dây chuyền",
+    "14": "Bình máu / Ngọc / Khác 3",
+    "15": "Sách kỹ năng (Scroll)"
+  },
+  "toolbar": {
+    "search": "Tìm tên (không cần dấu), 7:1, #3585 · Enter để sửa",
+    "searchLabel": "Tìm kiếm",
+    "scopeLabel": "Loại slot",
+    "problemLabel": "Bộ lọc",
+    "scope": {
+      "named": "Slot có tên",
+      "all": "Tất cả slot",
+      "empty": "Slot trống"
+    },
+    "problem": {
+      "any": "Mọi tên",
+      "edited": "Đã sửa (chưa lưu)",
+      "issues": "Có cảnh báo / lỗi",
+      "nearLimit": "Gần giới hạn byte (≥ 40)",
+      "unknownEncoding": "Không phải UTF-8"
+    },
+    "rows": "{n} dòng"
+  },
+  "grid": {
+    "label": "Danh sách vật phẩm",
+    "type": "Type",
+    "index": "Index",
+    "name": "Tên",
+    "bytes": "Byte",
+    "notes": "Ghi chú",
+    "empty": "(trống)",
+    "noMatch": "Không có slot nào khớp bộ lọc.",
+    "edited": "Đã sửa",
+    "nonUtf8": "Không phải UTF-8",
+    "originalTitle": "Tên gốc: {name}",
+    "bytesTitle": "{bytes}/{max} byte"
+  },
+  "encoding": {
+    "empty": "Trống",
+    "utf-8": "UTF-8",
+    "unknown": "Không phải UTF-8 (tên gốc Nhật/Hàn?)"
+  },
+  "issues": {
+    "too-long": "Vượt giới hạn 49 byte",
+    "control-char": "Có ký tự điều khiển",
+    "lone-surrogate": "Ký tự Unicode hỏng",
+    "edge-whitespace": "Khoảng trắng đầu/cuối",
+    "double-space": "Hai khoảng trắng liền nhau"
+  },
+  "issueDetail": {
+    "too-long": "Tên dài {bytes} byte, vượt giới hạn {max} byte (tiếng Việt có dấu tốn 2–3 byte/ký tự).",
+    "control-char": "Tên chứa ký tự điều khiển (tab, xuống dòng, 0x00…).",
+    "lone-surrogate": "Tên chứa ký tự Unicode hỏng (surrogate lẻ).",
+    "edge-whitespace": "Tên có khoảng trắng ở đầu hoặc cuối.",
+    "double-space": "Tên có 2 khoảng trắng liền nhau."
+  },
+  "detail": {
+    "label": "Chi tiết slot",
+    "none": "Chọn một dòng để xem chi tiết.",
+    "original": "Tên gốc",
+    "originalNonUtf8": "(không phải UTF-8)",
+    "editedBy": "Sửa bởi",
+    "group": "Nhóm",
+    "typeIndex": "ItemType / Index",
+    "slot": "Slot",
+    "encoding": "Mã hoá",
+    "length": "Độ dài",
+    "lengthValue": "{bytes} / {max} byte, {chars} ký tự",
+    "nonUtf8Note": "Tên không phải UTF-8 – có thể là tên gốc Nhật/Hàn chưa dịch. Giữ nguyên nếu không sửa.",
+    "edit": "Sửa tên (Enter)",
+    "revert": "Khôi phục tên gốc",
+    "help": "Enter / Tab: lưu và sang dòng dưới · Shift+Enter: lên dòng trên · Esc: huỷ · Ctrl+S: lưu file",
+    "editing": "Đang sửa: {bytes}/{max} byte, còn {left} byte",
+    "editingOver": "Đang sửa: {bytes}/{max} byte, thừa {over} byte"
+  },
+  "editor": {
+    "aria": "Tên mới cho {type}:{index}",
+    "unknownPlaceholder": "Tên gốc không phải UTF-8 – gõ tên mới"
+  },
+  "translatorDialog": {
+    "title": "Tên người dịch",
+    "body": "Tên này được ghi kèm mỗi thay đổi vào nhật ký (changes.tsv), để sau này gộp bản dịch của nhiều người biết ai sửa gì.",
+    "label": "Tên hoặc nickname",
+    "placeholder": "Ví dụ: Tuấn Anh",
+    "save": "Lưu"
+  },
+  "discardDialog": {
+    "title": "Bỏ thay đổi chưa lưu?",
+    "body": "Còn {n} thay đổi chưa lưu vào file. Nếu tiếp tục, các thay đổi này sẽ mất.",
+    "back": "Quay lại",
+    "discard": "Bỏ thay đổi"
+  },
+  "draftDialog": {
+    "title": "Khôi phục thay đổi chưa lưu?",
+    "body": "Lần làm việc trước (lưu nháp lúc {time}) còn {n} thay đổi chưa lưu vào file.",
+    "who": "Người dịch: {names}.",
+    "baseChanged": "Lưu ý: Item.bmd trên ổ đĩa đã thay đổi kể từ lúc đó (có thể do Google Drive đồng bộ). Các tên trong nháp sẽ được áp lên file hiện tại – hãy kiểm tra lại bằng bộ lọc \"Đã sửa\".",
+    "discard": "Bỏ nháp",
+    "restore": "Khôi phục"
+  },
+  "conflictDialog": {
+    "title": "File đã bị thay đổi bên ngoài",
+    "body": "Bạn có thể lưu thành file khác để không đè lên, hoặc ghi đè (bản trên đĩa vẫn được backup trước khi ghi).",
+    "force": "Ghi đè",
+    "saveAs": "Lưu thành file khác…"
+  },
+  "toast": {
+    "saved": "Đã lưu {n} thay đổi vào {file}.",
+    "backup": "Bản cũ đã được backup vào {path}",
+    "nothingToSave": "Không có thay đổi nào cần lưu.",
+    "restored": "Đã khôi phục {n} thay đổi.",
+    "restoredSkipped": "Bỏ qua {n} tên không hợp lệ.",
+    "saveFailed": "Chưa lưu được: {reason}"
+  },
+  "errors": {
+    "bmd-size": "File có {size} byte; Item.bmd của MuMain phải đúng {expected} byte.",
+    "invalid-slot": "{field} không hợp lệ: {value} (cho phép 0–{max}).",
+    "invalid-name": "Tên không hợp lệ.",
+    "name-bytes-length": "Lỗi nội bộ: độ dài tên sai.",
+    "no-file": "Chưa mở file Item.bmd nào.",
+    "dirty": "Còn {count} thay đổi chưa lưu.",
+    "conflict": "File trên ổ đĩa đã bị thay đổi sau khi bạn mở (Google Drive vừa đồng bộ, hoặc người khác đã lưu). Ghi đè sẽ làm mất thay đổi đó.",
+    "save-verify-failed": "Kiểm tra cuối trước khi ghi bị lỗi – chưa lưu gì cả.",
+    "file-not-found": "Không tìm thấy file.",
+    "file-locked": "Không ghi được {file}: file đang bị chương trình khác giữ (game client đang chạy?). Hãy đóng chương trình đó rồi lưu lại.",
+    "permission-denied": "Không có quyền đọc/ghi file.",
+    "is-directory": "Đường dẫn là thư mục, không phải file.",
+    "not-a-file": "Đường dẫn không phải file thông thường.",
+    "disk-full": "Ổ đĩa đầy.",
+    "picker-unsupported": "Hệ điều hành này không có hộp thoại chọn file – hãy dán đường dẫn.",
+    "picker-failed": "Không mở được hộp thoại chọn file: {detail}",
+    "missing-path": "Thiếu đường dẫn file.",
+    "missing-name": "Thiếu tên.",
+    "bad-json": "Yêu cầu không hợp lệ.",
+    "unsupported-media": "Yêu cầu không hợp lệ.",
+    "not-local": "Chỉ truy cập qua localhost.",
+    "unknown-api": "Yêu cầu không xác định.",
+    "internal": "Lỗi không mong muốn: {detail}",
+    "offline": "Mất kết nối tới MuBMD-editor. Cửa sổ dòng lệnh của công cụ còn đang chạy không?",
+    "bad-response": "Lỗi máy chủ ({status})."
+  }
+}

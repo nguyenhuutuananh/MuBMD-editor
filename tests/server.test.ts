@@ -7,9 +7,13 @@ import { createApp } from "../src/server/app";
 import type { ItemsResponse, StateResponse } from "../src/shared/api";
 
 const DATA = path.join(import.meta.dir, "../data/Item.bmd");
-const assets = { html: "<html>ui</html>", js: "/*js*/", css: "/*css*/" };
+const assets = {
+  "/index.html": { type: "text/html; charset=utf-8", body: "<html>ui</html>", base64: false },
+  "/assets/app-1.js": { type: "text/javascript; charset=utf-8", body: "/*js*/", base64: false },
+  "/assets/logo.png": { type: "image/png", body: Buffer.from([1, 2, 3]).toString("base64"), base64: true },
+};
 
-function setup(pick: () => Promise<string | null> = async () => null) {
+function setup(pick: (lang: "en" | "vi") => Promise<string | null> = async () => null) {
   return createApp({ assets, version: "test", pick });
 }
 
@@ -24,8 +28,12 @@ const post = (p: string, body: unknown, contentType = "application/json") =>
 describe("API", () => {
   test("phục vụ giao diện", async () => {
     const app = setup();
-    expect(await (await app.handle(get("/"))).text()).toBe(assets.html);
-    expect((await app.handle(get("/app.js"))).headers.get("content-type")).toContain("javascript");
+    expect(await (await app.handle(get("/"))).text()).toBe("<html>ui</html>");
+    const js = await app.handle(get("/assets/app-1.js"));
+    expect(js.headers.get("content-type")).toContain("javascript");
+    expect(js.headers.get("cache-control")).toContain("immutable");
+    expect([...new Uint8Array(await (await app.handle(get("/assets/logo.png"))).arrayBuffer())]).toEqual([1, 2, 3]);
+    expect((await app.handle(get("/khong-co.js"))).status).toBe(404);
   });
 
   test("chưa mở file", async () => {
@@ -54,20 +62,34 @@ describe("API", () => {
 
     const missing = await app.handle(post("/api/open", { path: "/khong/ton/tai/Item.bmd" }));
     expect(missing.status).toBe(400);
-    expect(((await missing.json()) as { error: string }).error).toBe("Không tìm thấy file.");
+    expect(await missing.json()).toMatchObject({ code: "file-not-found" });
 
     const tmp = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "mubmd-")), "bad.bmd");
     fs.writeFileSync(tmp, new Uint8Array(100));
     const bad = await app.handle(post("/api/open", { path: tmp }));
     expect(bad.status).toBe(400);
-    expect(((await bad.json()) as { error: string }).error).toContain("688132");
+    expect(await bad.json()).toMatchObject({ code: "bmd-size", params: { size: 100, expected: 688132 } });
 
     const state = (await (await app.handle(get("/api/state"))).json()) as StateResponse;
     expect(state.file?.path).toBe(path.resolve(DATA));
   });
 
   test("thiếu đường dẫn", async () => {
-    expect((await setup().handle(post("/api/open", { path: "  " }))).status).toBe(400);
+    const res = await setup().handle(post("/api/open", { path: "  " }));
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({ code: "missing-path" });
+  });
+
+  test("hộp thoại chọn file nhận ngôn ngữ", async () => {
+    let got = "";
+    const app = setup(async (lang) => {
+      got = lang;
+      return null;
+    });
+    await app.handle(post("/api/pick", { lang: "vi" }));
+    expect(got).toBe("vi");
+    await app.handle(post("/api/pick", { lang: "xx" }));
+    expect(got).toBe("en");
   });
 
   test("hộp thoại chọn file: huỷ và chọn", async () => {
@@ -80,7 +102,9 @@ describe("API", () => {
 
 describe("bảo vệ localhost", () => {
   test("từ chối Host lạ (DNS rebinding)", async () => {
-    expect((await setup().handle(get("/api/state", "evil.example:4817"))).status).toBe(403);
+    const evil = await setup().handle(get("/api/state", "evil.example:4817"));
+    expect(evil.status).toBe(403);
+    expect(await evil.json()).toMatchObject({ code: "not-local" });
     expect((await setup().handle(get("/api/state", "127.0.0.1:4817"))).status).toBe(200);
   });
 
@@ -131,7 +155,8 @@ describe("API sửa + lưu", () => {
     expect(res.status).toBe(422);
     const b = await body(res);
     expect(b.code).toBe("invalid-name");
-    expect(b.issues[0].code).toBe("too-long");
+    expect(b.params).toEqual({ slot: 0 });
+    expect(b.issues[0]).toMatchObject({ code: "too-long", params: { bytes: 60, max: 49 } });
   });
 
   test("mở file khác khi còn thay đổi -> 409 dirty, discard thì được", async () => {
@@ -141,7 +166,7 @@ describe("API sửa + lưu", () => {
     await app.handle(post("/api/edit", { slot: 0, name: "X", translator: "An" }));
     const res = await app.handle(post("/api/open", { path: file }));
     expect(res.status).toBe(409);
-    expect((await body(res)).code).toBe("dirty");
+    expect(await body(res)).toMatchObject({ code: "dirty", params: { count: 1 } });
     expect((await app.handle(post("/api/open", { path: file, discard: true }))).status).toBe(200);
   });
 
@@ -159,10 +184,14 @@ describe("API sửa + lưu", () => {
   test("slot sai -> 400", async () => {
     const app = setup();
     await app.handle(post("/api/open", { path: tempCopy() }));
-    expect((await app.handle(post("/api/edit", { slot: 99999, name: "X", translator: "An" }))).status).toBe(400);
+    const res = await app.handle(post("/api/edit", { slot: 99999, name: "X", translator: "An" }));
+    expect(res.status).toBe(400);
+    expect(await body(res)).toMatchObject({ code: "invalid-slot", params: { field: "slot", value: 99999, max: 8191 } });
   });
 
   test("sửa khi chưa mở file -> 409", async () => {
-    expect((await setup().handle(post("/api/edit", { slot: 0, name: "X", translator: "An" }))).status).toBe(409);
+    const res = await setup().handle(post("/api/edit", { slot: 0, name: "X", translator: "An" }));
+    expect(res.status).toBe(409);
+    expect(await res.json()).toMatchObject({ code: "no-file" });
   });
 });

@@ -1,7 +1,7 @@
 // search.ts - Tìm kiếm không phân biệt dấu + lọc danh sách slot. Thuần logic, không đụng DOM.
 
-import { MAX_ITEM_INDEX } from "../src/core/format";
-import type { EditInfo, ItemTuple, NameEncoding, NameIssueCode } from "../src/shared/api";
+import { MAX_ITEM_INDEX } from "../../../src/core/format";
+import type { EditInfo, ItemTuple, NameEncoding, NameIssueCode } from "../../../src/shared/api";
 
 export const NEAR_LIMIT_BYTES = 40;
 

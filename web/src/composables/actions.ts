@@ -1,0 +1,290 @@
+// actions.ts - Luồng thao tác của người dùng: mở / sửa / lưu, kèm hộp thoại và thông báo.
+
+import { ref } from "vue";
+import { toast } from "vue-sonner";
+import { checkName } from "../../../src/core/nameCodec";
+import type { DraftInfo, SaveRequest } from "../../../src/shared/api";
+import { currentLang, errorText, fmtTime, issueText, tr } from "@/i18n";
+import { ApiError, api } from "@/lib/api";
+import { ask, isDialogOpen } from "@/lib/dialogs";
+import { useDocStore } from "@/stores/doc";
+
+export const welcomeError = ref<string | null>(null);
+
+// ItemGrid đăng ký hàm cuộn tới dòng (theo vị trí trong danh sách đang lọc).
+let scroller: ((index: number) => void) | null = null;
+export function registerScroller(fn: ((index: number) => void) | null) {
+  scroller = fn;
+}
+
+const store = () => useDocStore();
+const visibleIndex = (slot: number) => store().visible.findIndex((r) => r.slot === slot);
+
+export function select(slot: number | null, scroll = false) {
+  const s = store();
+  s.selectedSlot = slot;
+  if (scroll && slot !== null) {
+    const i = visibleIndex(slot);
+    if (i >= 0) scroller?.(i);
+  }
+}
+
+// ---- mở file ----
+
+export function showWelcome() {
+  store().editor = null;
+  store().view = "welcome";
+}
+
+export function backToFile() {
+  welcomeError.value = null;
+  store().view = "workspace";
+}
+
+async function confirmDiscard(): Promise<boolean> {
+  const n = store().status.dirtyCount;
+  const r = await ask({
+    title: tr("discardDialog.title"),
+    body: [tr("discardDialog.body", { n })],
+    actions: [
+      { id: "cancel", label: tr("discardDialog.back") },
+      { id: "discard", label: tr("discardDialog.discard"), kind: "danger" },
+    ],
+  });
+  return r.action === "discard";
+}
+
+export async function openPath(path: string, discard = false): Promise<void> {
+  welcomeError.value = null;
+  try {
+    const draft = await store().open(path, discard);
+    if (draft) await offerDraft(draft);
+  } catch (e) {
+    if (e instanceof ApiError && e.code === "dirty") {
+      if (await confirmDiscard()) return openPath(path, true);
+      return;
+    }
+    showWelcome();
+    welcomeError.value = errorText(e);
+  }
+}
+
+export async function pickAndOpen() {
+  welcomeError.value = null;
+  try {
+    const { path } = await api.pick(currentLang());
+    if (path) await openPath(path);
+  } catch (e) {
+    welcomeError.value = errorText(e);
+  }
+}
+
+export async function reload() {
+  const f = store().file;
+  if (f) await openPath(f.path);
+}
+
+// Lúc khởi động: nếu server đã mở sẵn file (đường dẫn trên dòng lệnh) thì vào luôn.
+export async function start() {
+  try {
+    const state = await api.state();
+    if (state.file) {
+      const draft = await store().loadItems();
+      if (draft) await offerDraft(draft);
+    }
+  } catch (e) {
+    welcomeError.value = errorText(e);
+  }
+}
+
+async function offerDraft(d: DraftInfo) {
+  const body = [tr("draftDialog.body", { n: d.count, time: fmtTime(d.savedAt) })];
+  if (d.translators.length) body.push(tr("draftDialog.who", { names: d.translators.join(", ") }));
+  if (!d.baseMatches) body.push(tr("draftDialog.baseChanged"));
+  const r = await ask({
+    title: tr("draftDialog.title"),
+    body,
+    actions: [
+      { id: "discard", label: tr("draftDialog.discard"), kind: "danger" },
+      { id: "restore", label: tr("draftDialog.restore"), kind: "primary" },
+    ],
+  });
+  try {
+    if (r.action === "restore") {
+      const res = await store().restoreDraft();
+      const msg = [tr("toast.restored", { n: res.changed.length })];
+      if (res.skipped) msg.push(tr("toast.restoredSkipped", { n: res.skipped }));
+      toast.success(msg.join(" "));
+    } else if (r.action === "discard") {
+      await store().discardDraft();
+    }
+  } catch (e) {
+    toast.error(errorText(e));
+  }
+}
+
+// ---- người dịch ----
+
+export async function askTranslator(): Promise<boolean> {
+  const r = await ask({
+    title: tr("translatorDialog.title"),
+    body: [tr("translatorDialog.body")],
+    input: {
+      label: tr("translatorDialog.label"),
+      value: store().translator,
+      placeholder: tr("translatorDialog.placeholder"),
+      required: true,
+    },
+    actions: [
+      { id: "cancel", label: tr("common.cancel") },
+      { id: "ok", label: tr("translatorDialog.save"), kind: "primary" },
+    ],
+  });
+  if (r.action !== "ok" || !r.value) return false;
+  store().setTranslator(r.value);
+  return true;
+}
+
+const ensureTranslator = async () => Boolean(store().translator) || askTranslator();
+
+// ---- sửa ----
+
+export async function startEdit(slot: number) {
+  if (!(await ensureTranslator())) return;
+  const s = store();
+  const row = s.rows[slot];
+  if (!row || visibleIndex(slot) < 0) return;
+  select(slot, true);
+  // Tên không phải UTF-8 hiển thị sai (U+FFFD) nên không điền sẵn để khỏi ghi rác vào file.
+  const initial = row.encoding === "unknown" ? "" : row.text;
+  s.editor = { slot, value: initial, initial };
+}
+
+export function cancelEdit() {
+  store().editor = null;
+}
+
+// Trả về true nếu ô sửa đã đóng (lưu xong hoặc không có gì thay đổi).
+export async function commitEditor(opts: { quiet?: boolean } = {}): Promise<boolean> {
+  const s = store();
+  const ed = s.editor;
+  if (!ed) return true;
+  const row = s.rows[ed.slot];
+  if (!row) return true;
+  const c = checkName(ed.value);
+  const unchanged = c.normalized === ed.initial || (row.encoding === "unknown" && ed.value === "");
+  if (unchanged) {
+    if (s.editor === ed) s.editor = null;
+    return true;
+  }
+  if (!c.ok) {
+    if (!opts.quiet) toast.error(issueText(c.issues.find((i) => i.severity === "error")!));
+    return false;
+  }
+  try {
+    const value = ed.value;
+    await s.edit(ed.slot, value);
+    if (s.editor === ed) s.editor = null;
+    return true;
+  } catch (e) {
+    toast.error(errorText(e));
+    return false;
+  }
+}
+
+export async function moveEdit(step: number) {
+  const s = store();
+  const ed = s.editor;
+  if (!ed) return;
+  const from = visibleIndex(ed.slot);
+  if (!(await commitEditor())) return;
+  const next = s.visible[from + step];
+  if (next) await startEdit(next.slot);
+}
+
+export async function revert(slot: number) {
+  cancelEdit();
+  try {
+    await store().revert(slot);
+  } catch (e) {
+    toast.error(errorText(e));
+  }
+}
+
+export async function undoRedo(which: "undo" | "redo") {
+  if (!(await commitEditor())) return;
+  try {
+    const res = await (which === "undo" ? store().undo() : store().redo());
+    const first = res.changed[0]?.item[0];
+    if (first !== undefined && visibleIndex(first) >= 0) select(first, true);
+  } catch (e) {
+    toast.error(errorText(e));
+  }
+}
+
+// ---- lưu ----
+
+export async function saveFile(opts: SaveRequest = {}) {
+  if (!(await commitEditor())) return;
+  try {
+    const res = await store().save(opts);
+    await store().loadItems();
+    if (!res.savedCount) {
+      toast(tr("toast.nothingToSave"));
+      return;
+    }
+    toast.success(tr("toast.saved", { n: res.savedCount, file: res.file.fileName }), {
+      description: res.backupPath ? tr("toast.backup", { path: res.backupPath }) : undefined,
+      duration: 8000,
+    });
+  } catch (e) {
+    if (e instanceof ApiError && e.code === "conflict") return resolveConflict();
+    toast.error(tr("toast.saveFailed", { reason: errorText(e) }), { duration: 10000 });
+  }
+}
+
+async function resolveConflict() {
+  const r = await ask({
+    title: tr("conflictDialog.title"),
+    body: [tr("errors.conflict"), tr("conflictDialog.body")],
+    actions: [
+      { id: "cancel", label: tr("common.cancel") },
+      { id: "force", label: tr("conflictDialog.force"), kind: "danger" },
+      { id: "save-as", label: tr("conflictDialog.saveAs"), kind: "primary" },
+    ],
+  });
+  if (r.action === "force") await saveFile({ force: true });
+  else if (r.action === "save-as") await saveAs();
+}
+
+export async function saveAs() {
+  if (!(await commitEditor())) return;
+  try {
+    const { path } = await api.pickSave(currentLang());
+    if (path) await saveFile({ path });
+  } catch (e) {
+    toast.error(errorText(e));
+  }
+}
+
+// ---- phím tắt toàn cục ----
+
+const inTextField = (el: Element | null) => el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement;
+
+export function onGlobalKeydown(e: KeyboardEvent, focusSearch: () => void) {
+  if (store().view !== "workspace" || isDialogOpen.value) return;
+  if (!(e.ctrlKey || e.metaKey) || e.isComposing) return;
+  const key = e.key.toLowerCase();
+  if (key === "s") {
+    e.preventDefault();
+    if (e.shiftKey) saveAs();
+    else saveFile();
+  } else if (key === "f") {
+    e.preventDefault();
+    focusSearch();
+  } else if (!inTextField(document.activeElement) && (key === "z" || key === "y")) {
+    // Trong ô nhập thì để trình duyệt tự undo chữ đang gõ.
+    e.preventDefault();
+    undoRedo(key === "y" || e.shiftKey ? "redo" : "undo");
+  }
+}

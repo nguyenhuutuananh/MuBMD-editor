@@ -3,7 +3,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { ItemBmd, MAX_ITEM, MAX_ITEM_TYPE } from "../src/core";
 import type { ItemTuple } from "../src/shared/api";
-import { type Filter, applyFilter, fold, groupCounts, parseCoord, toRows } from "../web/search";
+import { type Filter, applyFilter, fold, groupCounts, parseCoord, toRows } from "../web/src/lib/search";
 
 const bmd = ItemBmd.parse(new Uint8Array(fs.readFileSync(path.join(import.meta.dir, "../data/Item.bmd"))));
 const rows = toRows(

@@ -5,6 +5,7 @@ import {
   BODY_SIZE,
   BmdFormatError,
   FILE_SIZE,
+  InvalidSlotError,
   MAX_ITEM,
   NAME_LEN,
   NameValidationError,
@@ -101,8 +102,8 @@ describe("ghi lại", () => {
   });
 
   test("slot ngoài phạm vi", () => {
-    expect(() => load().setName(MAX_ITEM, "x")).toThrow(RangeError);
-    expect(() => slotOf(16, 0)).toThrow(RangeError);
+    expect(() => load().setName(MAX_ITEM, "x")).toThrow(InvalidSlotError);
+    expect(() => slotOf(16, 0)).toThrow(InvalidSlotError);
   });
 });
 

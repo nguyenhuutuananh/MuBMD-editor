@@ -86,6 +86,7 @@ describe("sửa + undo/redo", () => {
     const s = opened();
     s.edit(0, "A", "An");
     expect(() => s.open(file)).toThrow(DirtyError);
+    expect(() => s.open(path.join(dir, "khong-co.bmd"))).toThrow(expect.objectContaining({ code: "ENOENT" }));
     s.open(file, { discard: true });
     expect(s.status().dirtyCount).toBe(0);
     expect(readDraft(file)).toBeNull();

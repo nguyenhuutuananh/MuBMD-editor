@@ -3,6 +3,7 @@
 // Khác tool cũ: tên quá dài KHÔNG bị cắt ngầm nữa mà báo lỗi, để người dịch
 // biết và tự rút gọn.
 
+import { AppError } from "./errors";
 import { NAME_LEN } from "./format";
 
 export const MAX_NAME_BYTES = NAME_LEN - 1; // chừa 1 byte cho 0x00
@@ -36,10 +37,12 @@ export function decodeName(raw: Uint8Array): DecodedName {
 
 export type NameIssueCode = "too-long" | "control-char" | "lone-surrogate" | "edge-whitespace" | "double-space";
 
+// `message` tiếng Anh chỉ để log; giao diện dịch theo `code` + `params`.
 export interface NameIssue {
   code: NameIssueCode;
   severity: "error" | "warning";
   message: string;
+  params?: Record<string, number>;
 }
 
 export interface NameCheck {
@@ -61,20 +64,21 @@ export function checkName(name: string): NameCheck {
     issues.push({
       code: "too-long",
       severity: "error",
-      message: `Tên dài ${bytes.length} byte, vượt giới hạn ${MAX_NAME_BYTES} byte (tiếng Việt có dấu tốn 2-3 byte/ký tự).`,
+      message: `Name is ${bytes.length} bytes, over the ${MAX_NAME_BYTES}-byte limit.`,
+      params: { bytes: bytes.length, max: MAX_NAME_BYTES },
     });
   }
   if (/[\u0000-\u001f\u007f]/.test(normalized)) {
-    issues.push({ code: "control-char", severity: "error", message: "Tên chứa ký tự điều khiển (tab, xuống dòng, 0x00...)." });
+    issues.push({ code: "control-char", severity: "error", message: "Name contains control characters (tab, newline, 0x00...)." });
   }
   if (/\p{Cs}/u.test(normalized)) {
-    issues.push({ code: "lone-surrogate", severity: "error", message: "Tên chứa ký tự Unicode hỏng (surrogate lẻ)." });
+    issues.push({ code: "lone-surrogate", severity: "error", message: "Name contains broken Unicode (lone surrogate)." });
   }
   if (normalized !== normalized.trim()) {
-    issues.push({ code: "edge-whitespace", severity: "warning", message: "Tên có khoảng trắng ở đầu hoặc cuối." });
+    issues.push({ code: "edge-whitespace", severity: "warning", message: "Name has leading or trailing spaces." });
   }
   if (/ {2,}/.test(normalized)) {
-    issues.push({ code: "double-space", severity: "warning", message: "Tên có 2 khoảng trắng liền nhau." });
+    issues.push({ code: "double-space", severity: "warning", message: "Name has two spaces in a row." });
   }
 
   return {
@@ -86,15 +90,14 @@ export function checkName(name: string): NameCheck {
   };
 }
 
-export class NameValidationError extends Error {
+export class NameValidationError extends AppError {
   constructor(
     readonly check: NameCheck,
     readonly slot?: number,
   ) {
     const where = slot === undefined ? "" : ` (slot ${slot})`;
     const errors = check.issues.filter((i) => i.severity === "error").map((i) => i.message);
-    super(`Tên không hợp lệ${where}: ${errors.join(" ")}`);
-    this.name = "NameValidationError";
+    super("invalid-name", `Invalid name${where}: ${errors.join(" ")}`, slot === undefined ? {} : { slot });
   }
 }
 

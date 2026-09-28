@@ -1,9 +1,14 @@
 // api.ts - Kiểu dữ liệu dùng chung giữa server (src/server) và giao diện (web/).
 // Chỉ chứa type + hằng số thuần, không import gì từ node/bun.
 
-import type { NameEncoding, NameIssueCode } from "../core/nameCodec";
+import type { ErrorCode, ErrorParams } from "../core/errors";
+import type { NameEncoding, NameIssue, NameIssueCode } from "../core/nameCodec";
 
-export type { NameEncoding, NameIssueCode };
+export type { ErrorCode, ErrorParams, NameEncoding, NameIssue, NameIssueCode };
+
+export const LANGS = ["en", "vi"] as const;
+export type Lang = (typeof LANGS)[number];
+export const isLang = (v: unknown): v is Lang => LANGS.includes(v as Lang);
 
 export interface FileInfo {
   path: string;
@@ -98,48 +103,18 @@ export interface SaveResponse {
   status: DocStatus;
 }
 
+export interface PickRequest {
+  lang?: Lang; // ngôn ngữ chữ trên hộp thoại của hệ điều hành
+}
+
 export interface PickResponse {
   path: string | null; // null = người dùng bấm Huỷ
 }
 
-export type ErrorCode = "dirty" | "conflict" | "invalid-name";
-
+// `error` là câu tiếng Anh (log / dự phòng); giao diện dịch theo `code` + `params`.
 export interface ErrorResponse {
   error: string;
-  code?: ErrorCode;
-  issues?: { code: NameIssueCode; severity: "error" | "warning"; message: string }[];
+  code: ErrorCode;
+  params: ErrorParams;
+  issues?: NameIssue[];
 }
-
-export const ENCODING_LABELS: Record<NameEncoding, string> = {
-  empty: "Trống",
-  "utf-8": "UTF-8",
-  unknown: "Không phải UTF-8 (tên gốc Nhật/Hàn?)",
-};
-
-export const ISSUE_LABELS: Record<NameIssueCode, string> = {
-  "too-long": "Vượt giới hạn 49 byte",
-  "control-char": "Có ký tự điều khiển",
-  "lone-surrogate": "Ký tự Unicode hỏng",
-  "edge-whitespace": "Khoảng trắng đầu/cuối",
-  "double-space": "Hai khoảng trắng liền nhau",
-};
-
-// Tên nhóm ItemType của MU season 6 (dùng cho cây bên trái).
-export const ITEM_TYPE_LABELS: readonly string[] = [
-  "Kiếm",
-  "Rìu",
-  "Chùy / Quyền trượng",
-  "Giáo / Thương",
-  "Cung / Nỏ",
-  "Gậy / Sách phép",
-  "Khiên",
-  "Mũ",
-  "Giáp",
-  "Quần",
-  "Găng tay",
-  "Giày",
-  "Cánh / Ngọc / Khác 1",
-  "Pet / Nhẫn / Dây chuyền",
-  "Bình máu / Ngọc / Khác 3",
-  "Sách kỹ năng (Scroll)",
-];

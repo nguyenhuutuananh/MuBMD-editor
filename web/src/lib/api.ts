@@ -1,22 +1,29 @@
-// api.ts - Gọi API của server cục bộ.
+// api.ts - Gọi API của server cục bộ. Lỗi mang mã + tham số để giao diện tự dịch.
 
 import type {
   ErrorCode,
+  ErrorParams,
   ErrorResponse,
   ItemsResponse,
+  Lang,
   MutationResponse,
+  NameIssue,
   PickResponse,
   SaveRequest,
   SaveResponse,
   StateResponse,
-} from "../src/shared/api";
+} from "../../../src/shared/api";
+
+// Mã lỗi riêng của phía giao diện (không đến từ server).
+export type ClientErrorCode = "offline" | "bad-response";
 
 export class ApiError extends Error {
   constructor(
     message: string,
     readonly status: number,
-    readonly code?: ErrorCode,
-    readonly issues?: ErrorResponse["issues"],
+    readonly code: ErrorCode | ClientErrorCode,
+    readonly params: ErrorParams = {},
+    readonly issues?: NameIssue[],
   ) {
     super(message);
   }
@@ -32,12 +39,13 @@ async function request<T>(path: string, body?: unknown): Promise<T> {
         : { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) },
     );
   } catch {
-    throw new ApiError("Mất kết nối tới MuBMD-editor. Cửa sổ dòng lệnh của công cụ còn đang chạy không?", 0);
+    throw new ApiError("Lost connection to MuBMD-editor.", 0, "offline");
   }
-  const data = (await res.json().catch(() => ({ error: `Lỗi máy chủ (${res.status})` }))) as T | ErrorResponse;
-  if (!res.ok) {
-    const err = data as ErrorResponse;
-    throw new ApiError(err.error ?? `Lỗi ${res.status}`, res.status, err.code, err.issues);
+  const data = (await res.json().catch(() => null)) as T | ErrorResponse | null;
+  if (!res.ok || data === null) {
+    const err = data as ErrorResponse | null;
+    if (!err?.code) throw new ApiError(`Server error (${res.status})`, res.status, "bad-response", { status: res.status });
+    throw new ApiError(err.error, res.status, err.code, err.params ?? {}, err.issues);
   }
   return data as T;
 }
@@ -46,8 +54,8 @@ export const api = {
   state: () => request<StateResponse>("/api/state"),
   items: () => request<ItemsResponse>("/api/items"),
   open: (path: string, discard = false) => request<StateResponse>("/api/open", { path, discard }),
-  pick: () => request<PickResponse>("/api/pick", {}),
-  pickSave: () => request<PickResponse>("/api/pick-save", {}),
+  pick: (lang: Lang) => request<PickResponse>("/api/pick", { lang }),
+  pickSave: (lang: Lang) => request<PickResponse>("/api/pick-save", { lang }),
   edit: (slot: number, name: string, translator: string) =>
     request<MutationResponse>("/api/edit", { slot, name, translator }),
   revert: (slot: number, translator: string) => request<MutationResponse>("/api/revert", { slot, translator }),

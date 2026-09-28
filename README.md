@@ -14,16 +14,20 @@ dịch của nhiều người thuộc giai đoạn 4.
 | 1 | Lõi đọc/ghi Item.bmd + test khớp từng byte | Xong |
 | 2 | Server API + bảng chỉ đọc (cây nhóm, bộ lọc) | Xong |
 | 3 | Sửa trên bảng, bộ đếm byte, kiểm tra, undo, lưu kèm backup | Xong |
+| 3b | Chuyển giao diện sang Vue 3 + shadcn-vue + đa ngôn ngữ (English mặc định, Tiếng Việt) | Xong |
 | 4 | Xuất/nhập TSV, cột tham chiếu, file dự án + trạng thái dịch, gộp bản dịch nhiều người | Chưa |
 | 5 | Thuật ngữ, so sánh file, đóng gói .exe/.app | Chưa |
 
 ## Chạy
 
+Cần Bun (server, test, build file chạy) và Node 20.19+ (Vite).
+
 ```
 bun install
-bun run dev              # build giao diện + mở data/Item.bmd, tự mở trình duyệt
-bun run start            # như trên nhưng chưa mở file nào
-bun run build            # file chạy độc lập vào dist/ (Windows x64, macOS arm64/x64)
+bun run dev              # server (4817) + Vite dev (5173, HMR), mở data/Item.bmd, tự mở trình duyệt
+bun run dev -- đường/dẫn/Item.bmd
+bun run start            # build giao diện rồi chạy như bản phát hành (http://localhost:4817)
+bun run build            # file chạy độc lập vào dist/ (Windows x64, macOS arm64/x64), nhúng sẵn giao diện
 ```
 
 File chạy độc lập: `MuBMD-editor [đường/dẫn/Item.bmd] [--port 4817] [--no-open]`.
@@ -32,6 +36,17 @@ Nếu cổng 4817 bận, công cụ tự thử cổng kế tiếp.
 **Lưu ý:** thư mục này nằm trên Google Drive - `dist/` (~230 MB) và
 `node_modules/` sẽ bị đồng bộ lên Drive nếu để ở đây. Nên build ra rồi chuyển
 file chạy đi chỗ khác, hoặc cho Drive bỏ qua 2 thư mục đó.
+
+## Ngôn ngữ giao diện
+
+- Tiếng Anh là mặc định và **luôn hiện ở lần mở đầu tiên**; chọn Tiếng Việt ở nút ngôn
+  ngữ góc trên bên phải, lựa chọn được nhớ trong trình duyệt.
+- File ngôn ngữ: `web/src/i18n/locales/en.json`, `vi.json`. `bun test` kiểm tra 2 file
+  có cùng bộ key, cùng tham số `{…}`, và có bản dịch cho mọi mã lỗi.
+- Server/lõi không trả câu chữ mà trả **mã lỗi + tham số** (`{ code: "bmd-size", params: { size, expected } }`),
+  giao diện tự dịch. Thêm mã lỗi mới: `src/core/errors.ts` + 2 file ngôn ngữ.
+- Dữ liệu game (tên vật phẩm, `changes.tsv`) không bao giờ bị dịch.
+- Hộp thoại chọn/lưu file của hệ điều hành cũng theo ngôn ngữ đang chọn.
 
 ## Giao diện
 
@@ -75,12 +90,18 @@ thể tới ~14 MB backup) cũng sẽ được đồng bộ.
 ## Cấu trúc
 
 ```
-src/core/     lõi đọc/ghi Item.bmd (không phụ thuộc server/UI)
+src/core/     lõi đọc/ghi Item.bmd + errors.ts (mã lỗi) - không phụ thuộc server/UI
 src/shared/   kiểu dữ liệu API dùng chung server <-> giao diện
 src/server/   Bun.serve: app.ts (API), session.ts (sửa/undo/nháp/lưu), storage.ts (ghi đĩa), filePicker.ts, main.ts
-web/          giao diện TypeScript thuần: main.ts, search.ts, virtualList.ts, ui.ts (hộp thoại, thông báo)
-scripts/      build-web.ts (sinh build/web/assets.ts), build-bin.ts
-tests/        bun test
+web/          giao diện Vue 3 (Vite, Tailwind 4, shadcn-vue, Pinia, vue-i18n)
+  src/components/        AppTopbar, GroupSidebar, ItemToolbar, ItemGrid (cuộn ảo), InlineEditor, DetailPanel, AppDialogs…
+  src/components/ui/     component shadcn-vue (chép vào dự án, sửa tự do; thêm bằng `npx shadcn-vue add <tên>` trong web/)
+  src/composables/actions.ts   luồng thao tác (mở / sửa / lưu + hộp thoại, thông báo)
+  src/stores/doc.ts      trạng thái file đang mở (8192 dòng trong shallowRef)
+  src/lib/               api.ts, search.ts (tìm không dấu, lọc), dialogs.ts, storage.ts
+  src/i18n/              cấu hình + locales/en.json, vi.json
+scripts/      dev.ts, build-web.ts (Vite build -> build/web/assets.ts để nhúng), build-bin.ts
+tests/        bun test (lõi, server, session, tìm kiếm, file ngôn ngữ); e2e/run.ts (Chrome thật)
 ```
 
 API: `GET /api/state`, `GET /api/items`; POST `/api/open {path, discard?}`, `/api/pick`,
@@ -113,8 +134,9 @@ Khác với `../tools/item_ts`:
 ## Chạy test
 
 ```
-bun run test         # build giao diện rồi chạy bun test
-bun run typecheck
+bun run test         # unit test (lõi, server, session, tìm kiếm, file ngôn ngữ)
+bun run test:e2e     # build giao diện rồi chạy e2e trên Chrome thật với bản sao data/Item.bmd (cả EN và VI)
+bun run typecheck    # tsc (server/lõi) + vue-tsc (giao diện)
 ```
 
 Test dùng `data/Item.bmd`, và nếu có `../tools/item_ts` + `../items.tsv` thì

@@ -7,6 +7,7 @@
 import {
   BODY_SIZE,
   FILE_SIZE,
+  InvalidSlotError,
   MAX_ITEM,
   NAME_LEN,
   RECORD_SIZE,
@@ -14,12 +15,17 @@ import {
   genCheckSum2,
   typeIndexOf,
 } from "./format";
+import { AppError } from "./errors";
 import { type DecodedName, decodeName, encodeName } from "./nameCodec";
 
-export class BmdFormatError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "BmdFormatError";
+export class BmdFormatError extends AppError {
+  constructor(size: number) {
+    super(
+      "bmd-size",
+      `File is ${size} bytes, expected exactly ${FILE_SIZE} bytes ` +
+        `(${MAX_ITEM} items x ${RECORD_SIZE} bytes + 4-byte checksum, MuMain Item.bmd format).`,
+      { size, expected: FILE_SIZE },
+    );
   }
 }
 
@@ -52,10 +58,7 @@ export class ItemBmd {
 
   static parse(bytes: Uint8Array): ItemBmd {
     if (bytes.length !== FILE_SIZE) {
-      throw new BmdFormatError(
-        `Kích thước file ${bytes.length} byte, cần đúng ${FILE_SIZE} byte ` +
-          `(${MAX_ITEM} item x ${RECORD_SIZE} byte + 4 byte checksum, định dạng Item.bmd của MuMain).`,
-      );
+      throw new BmdFormatError(bytes.length);
     }
     return new ItemBmd(bytes);
   }
@@ -67,7 +70,7 @@ export class ItemBmd {
 
   private nameBytes(slot: number): Uint8Array {
     if (!Number.isInteger(slot) || slot < 0 || slot >= MAX_ITEM) {
-      throw new RangeError(`Slot không hợp lệ: ${slot} (0..${MAX_ITEM - 1})`);
+      throw new InvalidSlotError("slot", slot, MAX_ITEM - 1);
     }
     const off = slot * RECORD_SIZE;
     return this.decoded.subarray(off, off + NAME_LEN);
@@ -115,7 +118,9 @@ export class ItemBmd {
 
   // Ghi nguyên 50 byte tên (lấy từ getNameBytes) - không kiểm tra nội dung.
   setNameBytes(slot: number, raw: Uint8Array): void {
-    if (raw.length !== NAME_LEN) throw new RangeError(`Tên phải đúng ${NAME_LEN} byte, nhận ${raw.length}.`);
+    if (raw.length !== NAME_LEN) {
+      throw new AppError("name-bytes-length", `Name must be exactly ${NAME_LEN} bytes, got ${raw.length}.`, { expected: NAME_LEN, got: raw.length });
+    }
     this.writeName(slot, raw);
   }
 
