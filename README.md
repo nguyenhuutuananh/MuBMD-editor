@@ -6,6 +6,11 @@ A GUI tool (runs on `localhost`, Windows + macOS) for a team to translate the it
 Team model: **each translator runs the tool on their own machine** (the server only listens on
 `127.0.0.1`) and translations are exchanged as files (e.g. via Google Drive), then merged.
 
+> **Built with AI.** This project (code, tests, and documentation) was written with an AI coding
+> assistant ([Claude Code](https://claude.com/claude-code)), directed and reviewed by a human
+> maintainer. It is covered by automated tests, but review it as you would any other code, and
+> keep a backup of your `Item.bmd` (the tool also makes one on every save).
+
 ## Status
 
 | Phase | Scope | Status |
