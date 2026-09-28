@@ -15,7 +15,7 @@ dịch của nhiều người thuộc giai đoạn 4.
 | 2 | Server API + bảng chỉ đọc (cây nhóm, bộ lọc) | Xong |
 | 3 | Sửa trên bảng, bộ đếm byte, kiểm tra, undo, lưu kèm backup | Xong |
 | 3b | Chuyển giao diện sang Vue 3 + shadcn-vue + đa ngôn ngữ (English mặc định, Tiếng Việt) | Xong |
-| 4 | Xuất/nhập TSV, cột tham chiếu, file dự án + trạng thái dịch, gộp bản dịch nhiều người | Chưa |
+| 4 | Xuất/nhập TSV, cột tham chiếu, file dự án + trạng thái dịch, gộp bản dịch nhiều người | Xong |
 | 5 | Thuật ngữ, so sánh file, đóng gói .exe/.app | Chưa |
 
 ## Chạy
@@ -78,14 +78,53 @@ file chạy đi chỗ khác, hoặc cho Drive bỏ qua 2 thư mục đó.
 duyệt / mất điện → lần sau mở lại file sẽ được hỏi khôi phục. Nếu bỏ qua câu hỏi
 mà sửa tiếp, nháp cũ được cất thành `draft-<thời gian>.json` chứ không bị ghi đè.
 
+## Làm việc nhóm (Giai đoạn 4)
+
+**Trạng thái mỗi slot:** Chưa dịch / Đã dịch / Đã duyệt + ghi chú + người sửa cuối. Sửa tên tự
+chuyển sang "Đã dịch". Đổi trạng thái ở khung chi tiết, bằng Alt+1 / Alt+2 / Alt+3 trên danh
+sách, hoặc hàng loạt: *Thao tác → Đánh dấu N dòng đang hiện là…* (dùng cùng bộ lọc/tìm kiếm).
+Trạng thái được lưu cùng lúc với Item.bmd (Ctrl+S), undo được, có trong bản nháp.
+
+**File tham chiếu:** *Thao tác → Chọn file tham chiếu…* - một Item.bmd khác (ví dụ bản gốc) hoặc
+TSV (ví dụ `item_names_MuHuyenThoai_JAPANESE.tsv`). Hiện thêm cột "Tham chiếu", tìm kiếm cũng
+tìm trong cột này. Mỗi trình duyệt nhớ file tham chiếu riêng cho từng Item.bmd.
+
+**Xuất / nhập TSV** (*Thao tác → Xuất… / Nhập…*): cột `ItemType, ItemIndex, Name, Status,
+Translator, UpdatedAt, BaseName, Reference, Note`, UTF-8 có BOM (mở thẳng bằng Excel). Nhập
+nhận cả file cũ chỉ có `ItemType, ItemIndex, Name`. Tên trống trong file nhập **không** xoá tên.
+
+Gộp 3 bên dựa trên cột `BaseName` (tên lúc người kia bắt đầu dịch):
+
+| Trường hợp | Kết quả trong màn hình xem trước |
+|---|---|
+| Chỉ người kia sửa | "Thay đổi", được chọn sẵn |
+| Chỉ mình sửa | bỏ qua (bản ở đây mới hơn) |
+| Cả hai sửa khác nhau | "Xung đột", mặc định giữ bản của mình |
+| Tên giống, trạng thái khác | "Trạng thái", chọn sẵn nếu bên kia tiến xa hơn |
+| Tên quá 49 byte / lỗi | "Không hợp lệ", không áp dụng được |
+| File không có BaseName | mọi tên khác đều là "Thay đổi" (không phát hiện được xung đột) |
+
+Cả lần nhập là **một bước undo**; nhập xong tự lọc "Đã sửa" để xem lại trước khi lưu.
+
+**Quy trình gợi ý (mỗi người chạy công cụ trên máy mình):**
+1. Người điều phối giữ Item.bmd chính, chia sẻ qua Google Drive.
+2. Mỗi người dịch **chép riêng file Item.bmd** về máy (không cần chép thư mục `.mubmd`), mở,
+   dịch nhóm được giao, lưu.
+3. Người dịch: *Xuất… → Các slot tôi đã sửa* → gửi file TSV cho người điều phối.
+4. Người điều phối: *Nhập…* từng file, xử lý xung đột, lưu, rồi chia sẻ Item.bmd mới.
+5. Người dịch thay Item.bmd trên máy bằng bản mới. Công cụ nhận ra file đã được thay từ bên
+   ngoài và đặt lại tên gốc để gộp ở vòng sau (có thông báo).
+
 ### Dữ liệu phụ cạnh file
 
 ```
 Item.bmd
 Item.bmd.mubmd/
   backups/Item-20260928-111300.bmd   bản trước mỗi lần lưu (giữ 20 bản mới nhất)
+  backups/project-20260928-111300.json  bản project.json trước mỗi lần lưu
   changes.tsv                        nhật ký: Time, Translator, ItemType, ItemIndex, OldName, NewName
-  draft.json                         thay đổi chưa lưu
+  project.json                       trạng thái / ghi chú / người dịch / tên gốc để gộp của từng slot
+  draft.json                         thay đổi chưa lưu (tên + trạng thái)
 ```
 
 Nếu `Item.bmd` nằm trong thư mục Google Drive dùng chung, thư mục `.mubmd` (có
@@ -94,7 +133,7 @@ thể tới ~14 MB backup) cũng sẽ được đồng bộ.
 ## Cấu trúc
 
 ```
-src/core/     lõi đọc/ghi Item.bmd + errors.ts (mã lỗi) - không phụ thuộc server/UI
+src/core/     lõi đọc/ghi Item.bmd, tsv.ts (đọc/ghi TSV), merge.ts (gộp 3 bên), errors.ts - không phụ thuộc server/UI
 src/shared/   kiểu dữ liệu API dùng chung server <-> giao diện
 src/server/   app.ts (API), session.ts (sửa/undo/nháp/lưu), storage.ts (ghi đĩa), filePicker.ts,
               main.ts (Bun.serve)
@@ -111,7 +150,10 @@ tests/        bun test (lõi, server, session, tìm kiếm, file ngôn ngữ); e
 
 API: `GET /api/state`, `GET /api/items`; POST `/api/open {path, discard?}`, `/api/pick`,
 `/api/pick-save`, `/api/edit {slot, name, translator}`, `/api/revert`, `/api/undo`, `/api/redo`,
+`/api/status {slots, status}`, `/api/note`, `/api/reference {path|null}`, `/api/export {path, slots}`,
+`/api/import/preview {path}`, `/api/import/apply {path, token, take}`,
 `/api/draft/restore`, `/api/draft/discard`, `/api/save {path?, force?}`.
+Biến môi trường `MUBMD_FAKE_PICK` (chỉ dùng cho e2e) trả lời hộp thoại chọn file từ một file JSON.
 Server chỉ nhận Host `localhost`/`127.0.0.1` (chống DNS rebinding) và POST phải
 là JSON (trang web khác không gửi ngầm được).
 

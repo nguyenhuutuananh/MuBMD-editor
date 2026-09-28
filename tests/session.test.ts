@@ -4,7 +4,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { ItemBmd, NameValidationError, slotOf } from "../src/core";
 import { ConflictError, DirtyError, Session } from "../src/server/session";
-import { MAX_BACKUPS, readDraft, workDir } from "../src/server/storage";
+import { MAX_BACKUPS, projectPath, readDraft, workDir } from "../src/server/storage";
 
 const DATA = path.join(import.meta.dir, "../data/Item.bmd");
 const ORIGINAL = new Uint8Array(fs.readFileSync(DATA));
@@ -165,7 +165,9 @@ describe("save", () => {
       tick();
       s.save();
     }
-    expect(fs.readdirSync(path.join(workDir(file), "backups")).length).toBe(MAX_BACKUPS);
+    const backups = fs.readdirSync(path.join(workDir(file), "backups"));
+    expect(backups.filter((f) => /^Item-.*\.bmd$/.test(f)).length).toBe(MAX_BACKUPS);
+    expect(backups.filter((f) => /^project-.*\.json$/.test(f)).length).toBe(MAX_BACKUPS);
   });
 });
 
@@ -173,7 +175,9 @@ describe("draft", () => {
   test("every edit writes the draft; undoing everything deletes it", () => {
     const s = opened();
     s.edit(0, "A", "An");
-    expect(readDraft(file)?.edits).toEqual([{ slot: 0, name: "A", translator: "An", at: "2026-09-28T04:00:00.000Z" }]);
+    expect(readDraft(file)?.slots).toEqual([
+      { slot: 0, name: "A", record: { status: "translated", note: "", translator: "An", updatedAt: "2026-09-28T04:00:00.000Z", origin: "Chùy Thủy" } },
+    ]);
     s.undo();
     expect(readDraft(file)).toBeNull();
   });
@@ -208,7 +212,7 @@ describe("draft", () => {
     s2.edit(1, "B", "Bình");
     const files = fs.readdirSync(workDir(file));
     expect(files.some((f) => /^draft-\d{8}-\d{6}\.json$/.test(f))).toBe(true);
-    expect(readDraft(file)?.edits.map((e) => e.slot)).toEqual([1]);
+    expect(readDraft(file)?.slots.map((e) => e.slot)).toEqual([1]);
   });
 
   test("discard draft", () => {
@@ -217,5 +221,190 @@ describe("draft", () => {
     s2.discardDraft();
     expect(readDraft(file)).toBeNull();
     expect(opened().draftInfo()).toBeNull();
+  });
+});
+
+describe("status, note and project.json", () => {
+  const project = () => JSON.parse(fs.readFileSync(projectPath(file), "utf-8"));
+
+  test("editing a name marks it translated and remembers the merge base", () => {
+    const s = opened();
+    s.edit(0, "A", "An");
+    expect(s.record(0)).toMatchObject({ status: "translated", translator: "An", origin: "Chùy Thủy" });
+    s.edit(0, "B", "Bình");
+    expect(s.record(0).origin).toBe("Chùy Thủy"); // base stays the name before the first change
+  });
+
+  test("bulk status change is one undo step and counts as unsaved", () => {
+    const s = opened();
+    const r = s.setStatus([0, 1, 2], "reviewed", "An");
+    expect(r.changed.map((c) => [c.item[0], c.record.status, c.dirty])).toEqual([
+      [0, "reviewed", true],
+      [1, "reviewed", true],
+      [2, "reviewed", true],
+    ]);
+    expect(r.status.dirtyCount).toBe(3);
+    s.undo();
+    expect(s.status().dirtyCount).toBe(0);
+  });
+
+  test("setting the saved status / note back makes the slot clean again", () => {
+    const s = opened();
+    s.setStatus([0], "reviewed", "An");
+    s.setStatus([0], "untranslated", "An");
+    expect(s.status().dirtyCount).toBe(0);
+    s.setNote(0, "check\twith team", "An");
+    expect(s.record(0).note).toBe("check with team");
+    s.setNote(0, "", "An");
+    expect(s.status().dirtyCount).toBe(0);
+  });
+
+  test("typing the original name again restores the saved record", () => {
+    const s = opened();
+    s.edit(0, "A", "An");
+    s.edit(0, "Chùy Thủy", "An");
+    expect(s.status().dirtyCount).toBe(0);
+    expect(s.record(0).status).toBe("untranslated");
+  });
+
+  test("save writes project.json; reopening restores statuses", () => {
+    const s = opened();
+    s.edit(0, "A", "An");
+    s.setStatus([1], "reviewed", "Bình");
+    s.setNote(2, "ghi chú", "Bình");
+    expect(s.save().savedCount).toBe(3);
+    expect(project().records).toMatchObject({ 0: { status: "translated" }, 1: { status: "reviewed" }, 2: { note: "ghi chú" } });
+
+    const s2 = opened();
+    expect(s2.wasRebased()).toBe(false);
+    expect(s2.record(1)).toMatchObject({ status: "reviewed", translator: "Bình" });
+    expect(s2.status().dirtyCount).toBe(0);
+  });
+
+  test("status-only save does not rewrite Item.bmd", () => {
+    const s = opened();
+    s.setStatus([0], "reviewed", "An");
+    const r = s.save();
+    expect(r.backupPath).toBeNull();
+    expect(Buffer.from(fs.readFileSync(file)).equals(Buffer.from(ORIGINAL))).toBe(true);
+  });
+
+  test("project.json changed on disk after opening -> conflict", () => {
+    const s = opened();
+    s.setStatus([0], "reviewed", "An");
+    fs.mkdirSync(workDir(file), { recursive: true });
+    fs.writeFileSync(projectPath(file), '{"version":1,"bmdSha1":"x","records":{}}');
+    expect(() => s.save()).toThrow(ConflictError);
+  });
+
+  test("Item.bmd replaced from outside since the last save -> merge bases reset once", () => {
+    const s = opened();
+    s.edit(0, "A", "An");
+    s.save();
+    // a new master copy arrives with a different name in slot 0
+    const master = ItemBmd.parse(ORIGINAL);
+    master.setName(0, "Master");
+    fs.writeFileSync(file, master.toBytes());
+
+    const s2 = opened();
+    expect(s2.wasRebased()).toBe(true);
+    expect(s2.record(0).origin).toBe("Master");
+    expect(opened().wasRebased()).toBe(false); // persisted: reported only once
+  });
+
+  test("draft keeps status-only changes too", () => {
+    opened().setStatus([5], "reviewed", "An");
+    const s2 = opened();
+    expect(s2.draftInfo()?.count).toBe(1);
+    s2.restoreDraft();
+    expect(s2.record(5).status).toBe("reviewed");
+  });
+
+  test("a version-1 draft (names only) is still restored", () => {
+    fs.mkdirSync(workDir(file), { recursive: true });
+    fs.writeFileSync(
+      path.join(workDir(file), "draft.json"),
+      JSON.stringify({ version: 1, baseSha1: "", savedAt: "2026-09-28T04:00:00.000Z", edits: [{ slot: 0, name: "Cũ", translator: "An", at: "t" }] }),
+    );
+    const s = opened();
+    s.restoreDraft();
+    expect(s.item(0)[1]).toBe("Cũ");
+    expect(s.record(0)).toMatchObject({ status: "translated", translator: "An" });
+  });
+});
+
+describe("TSV export / import", () => {
+  const tsvPath = () => path.join(dir, "out.tsv");
+
+  test("export -> another copy edits -> import applies only their changes", () => {
+    // Translator copy
+    const theirDir = fs.mkdtempSync(path.join(os.tmpdir(), "mubmd-their-"));
+    const theirFile = path.join(theirDir, "Item.bmd");
+    fs.writeFileSync(theirFile, ORIGINAL);
+    const them = new Session(now);
+    them.open(theirFile);
+    them.edit(0, "Chùy Của Họ", "Bình"); // only they change slot 0
+    them.edit(1, "Đao Của Họ", "Bình"); // both change slot 1 -> conflict
+    them.setStatus([2], "reviewed", "Bình"); // status-only change on slot 2
+    them.exportTsv(tsvPath(), [0, 1, 2, 3]);
+    fs.rmSync(theirDir, { recursive: true, force: true });
+
+    // Master copy
+    const s = opened();
+    s.edit(1, "Đao Của Mình", "An");
+    const p = s.previewImport(tsvPath());
+    expect(p.hasBase).toBe(true);
+    expect(p.items.map((i) => [i.slot, i.kind, i.take])).toEqual([
+      [0, "apply", true],
+      [1, "conflict", false],
+      [2, "status", true],
+    ]);
+    expect(p.items[1]).toMatchObject({ base: "Đoản Đao", ours: "Đao Của Mình", theirs: "Đao Của Họ" });
+    expect(p.counts.same).toBe(1); // slot 3 unchanged on both sides
+
+    const r = s.applyImport(tsvPath(), p.token, [0, 2], "An");
+    expect(r.changed.map((c) => c.item[0])).toEqual([0, 2]);
+    expect(s.item(0)[1]).toBe("Chùy Của Họ");
+    expect(s.record(0)).toMatchObject({ status: "translated", translator: "Bình", origin: "Chùy Thủy" });
+    expect(s.item(1)[1]).toBe("Đao Của Mình");
+    expect(s.record(2).status).toBe("reviewed");
+    s.undo(); // the whole import is one step
+    expect(s.item(0)[1]).toBe("Chùy Thủy");
+    expect(s.record(2).status).toBe("untranslated");
+  });
+
+  test("apply refuses if the file changed after the preview", () => {
+    const s = opened();
+    fs.writeFileSync(tsvPath(), "ItemType\tItemIndex\tName\n0\t0\tX\n");
+    const p = s.previewImport(tsvPath());
+    fs.writeFileSync(tsvPath(), "ItemType\tItemIndex\tName\n0\t0\tY\n");
+    expect(() => s.applyImport(tsvPath(), p.token, [0], "An")).toThrow(expect.objectContaining({ code: "import-changed" }));
+  });
+
+  test("the old items.tsv (no BaseName) imports as plain changes", () => {
+    const s = opened();
+    fs.writeFileSync(tsvPath(), "ItemType\tItemIndex\tName\n0\t0\tChùy Thủy\n0\t1\tĐoản Đao Mới\n");
+    const p = s.previewImport(tsvPath());
+    expect(p.hasBase).toBe(false);
+    expect(p.items.map((i) => [i.slot, i.kind, i.base])).toEqual([[1, "apply", null]]);
+  });
+
+  test("export includes status, base, note and reference names", () => {
+    const s = opened();
+    const ref = path.join(dir, "ref.tsv");
+    fs.writeFileSync(ref, "ItemType\tItemIndex\tName(Japanese)\n0\t0\tクリス\n");
+    expect(s.setReference(ref)?.entries).toEqual([[0, "クリス"]]);
+    s.edit(0, "Chùy Mới", "An");
+    s.setNote(0, "ok", "An");
+    s.exportTsv(tsvPath(), [0]);
+    const text = fs.readFileSync(tsvPath(), "utf-8");
+    expect(text.startsWith("\uFEFF")).toBe(true);
+    expect(text.split("\n")[1]).toBe("0\t0\tChùy Mới\ttranslated\tAn\t2026-09-28T04:00:00.000Z\tChùy Thủy\tクリス\tok");
+  });
+
+  test("an Item.bmd can be used as reference", () => {
+    const s = opened();
+    expect(s.setReference(DATA)?.entries.length).toBe(488);
+    expect(s.setReference(null)).toBeNull();
   });
 });

@@ -1,15 +1,19 @@
 // actions.ts - User flows: open / edit / save, including dialogs and toasts.
 
-import { ref } from "vue";
+import { ref, shallowRef } from "vue";
 import { toast } from "vue-sonner";
 import { checkName } from "../../../src/core/nameCodec";
-import type { DraftInfo, SaveRequest } from "../../../src/shared/api";
+import type { DraftInfo, ImportPreview, SaveRequest, Status } from "../../../src/shared/api";
 import { currentLang, errorText, fmtTime, issueText, tr } from "@/i18n";
 import { ApiError, api } from "@/lib/api";
 import { ask, isDialogOpen } from "@/lib/dialogs";
 import { useDocStore } from "@/stores/doc";
 
 export const welcomeError = ref<string | null>(null);
+export const exportOpen = ref(false);
+export const importPreview = shallowRef<ImportPreview | null>(null);
+
+export const anyDialogOpen = () => isDialogOpen.value || exportOpen.value || importPreview.value !== null;
 
 // ItemGrid registers a function that scrolls to a row (by index in the filtered list).
 let scroller: ((index: number) => void) | null = null;
@@ -54,11 +58,26 @@ async function confirmDiscard(): Promise<boolean> {
   return r.action === "discard";
 }
 
+// After a file is opened: re-load its remembered reference file, report a rebase, offer the draft.
+async function afterOpen(draft: DraftInfo | null) {
+  const s = store();
+  const refPath = s.file ? s.referenceFor(s.file.path) : null;
+  if (refPath) {
+    try {
+      await s.loadReference(refPath);
+    } catch (e) {
+      toast.error(errorText(e));
+      await s.loadReference(null).catch(() => undefined);
+    }
+  }
+  if (s.rebased) toast.info(tr("toast.rebased"), { duration: 10000 });
+  if (draft) await offerDraft(draft);
+}
+
 export async function openPath(path: string, discard = false): Promise<void> {
   welcomeError.value = null;
   try {
-    const draft = await store().open(path, discard);
-    if (draft) await offerDraft(draft);
+    await afterOpen(await store().open(path, discard));
   } catch (e) {
     if (e instanceof ApiError && e.code === "dirty") {
       if (await confirmDiscard()) return openPath(path, true);
@@ -88,10 +107,7 @@ export async function reload() {
 export async function start() {
   try {
     const state = await api.state();
-    if (state.file) {
-      const draft = await store().loadItems();
-      if (draft) await offerDraft(draft);
-    }
+    if (state.file) await afterOpen(await store().loadItems(false));
   } catch (e) {
     welcomeError.value = errorText(e);
   }
@@ -222,6 +238,102 @@ export async function undoRedo(which: "undo" | "redo") {
   }
 }
 
+// ---- status / note ----
+
+export async function setStatus(slots: number[], status: Status) {
+  if (!slots.length || !(await ensureTranslator())) return;
+  if (!(await commitEditor())) return;
+  try {
+    const res = await store().setStatus(slots, status);
+    if (slots.length > 1) toast.success(tr("toast.statusSet", { n: res.changed.length, status: tr(`status.${status}`) }));
+  } catch (e) {
+    toast.error(errorText(e));
+  }
+}
+
+export async function setNote(slot: number, note: string) {
+  if (!(await ensureTranslator())) return;
+  try {
+    await store().setNote(slot, note);
+  } catch (e) {
+    toast.error(errorText(e));
+  }
+}
+
+// ---- reference ----
+
+export async function chooseReference() {
+  try {
+    const { path } = await api.pick(currentLang(), "reference");
+    if (!path) return;
+    const info = await store().loadReference(path);
+    if (info) toast.success(tr("toast.referenceLoaded", { file: info.fileName, n: info.entries.length }));
+  } catch (e) {
+    toast.error(errorText(e));
+  }
+}
+
+export async function clearReference() {
+  try {
+    await store().loadReference(null);
+  } catch (e) {
+    toast.error(errorText(e));
+  }
+}
+
+// ---- TSV export / import ----
+
+// Slots "I changed": last touched by me and different from the merge base.
+export function mySlots(): number[] {
+  const s = store();
+  const me = s.translator;
+  if (!me) return [];
+  return s.rows.filter((r) => r.record.translator === me && r.record.origin !== undefined && r.record.origin !== r.text).map((r) => r.slot);
+}
+
+export async function exportTsv(slots: number[]) {
+  if (!(await commitEditor())) return;
+  const s = store();
+  const d = new Date();
+  const ymd = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+  const who = (s.translator || "export").replace(/[^\p{L}\p{N}_-]+/gu, "_");
+  const base = (s.file?.fileName ?? "Item.bmd").replace(/\.bmd$/i, "");
+  try {
+    const { path } = await api.pickSave(currentLang(), "tsv", `${base}-${who}-${ymd}.tsv`);
+    if (!path) return;
+    const res = await api.exportTsv(path, slots);
+    exportOpen.value = false;
+    toast.success(tr("toast.exported", { n: res.count, file: res.path.split(/[\\/]/).pop() ?? res.path }), { duration: 8000 });
+  } catch (e) {
+    toast.error(errorText(e));
+  }
+}
+
+export async function startImport() {
+  if (!(await commitEditor())) return;
+  try {
+    const { path } = await api.pick(currentLang(), "tsv");
+    if (!path) return;
+    importPreview.value = await api.importPreview(path);
+  } catch (e) {
+    toast.error(errorText(e));
+  }
+}
+
+export async function applyImport(take: number[]) {
+  const p = importPreview.value;
+  if (!p || !(await ensureTranslator())) return;
+  try {
+    const res = await store().importApply(p.path, p.token, take);
+    importPreview.value = null;
+    toast.success(tr("toast.imported", { n: res.changed.length }), { duration: 8000 });
+    store().filter.problem = "edited"; // show what came in, for review
+  } catch (e) {
+    toast.error(errorText(e));
+    if (e instanceof ApiError && e.code === "import-changed") importPreview.value = null;
+  }
+}
+
 // ---- save ----
 
 export async function saveFile(opts: SaveRequest = {}) {
@@ -272,7 +384,7 @@ export async function saveAs() {
 const inTextField = (el: Element | null) => el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement;
 
 export function onGlobalKeydown(e: KeyboardEvent, focusSearch: () => void) {
-  if (store().view !== "workspace" || isDialogOpen.value) return;
+  if (store().view !== "workspace" || anyDialogOpen()) return;
   if (!(e.ctrlKey || e.metaKey) || e.isComposing) return;
   const key = e.key.toLowerCase();
   if (key === "s") {

@@ -4,14 +4,19 @@ import type {
   ErrorCode,
   ErrorParams,
   ErrorResponse,
+  ExportResponse,
+  ImportPreview,
   ItemsResponse,
   Lang,
   MutationResponse,
   NameIssue,
+  PickKind,
   PickResponse,
+  ReferenceInfo,
   SaveRequest,
   SaveResponse,
   StateResponse,
+  Status,
 } from "../../../src/shared/api";
 
 // Client-side error codes (not sent by the server).
@@ -54,11 +59,20 @@ export const api = {
   state: () => request<StateResponse>("/api/state"),
   items: () => request<ItemsResponse>("/api/items"),
   open: (path: string, discard = false) => request<StateResponse>("/api/open", { path, discard }),
-  pick: (lang: Lang) => request<PickResponse>("/api/pick", { lang }),
-  pickSave: (lang: Lang) => request<PickResponse>("/api/pick-save", { lang }),
+  pick: (lang: Lang, kind: PickKind = "bmd") => request<PickResponse>("/api/pick", { lang, kind }),
+  pickSave: (lang: Lang, kind: "bmd" | "tsv" = "bmd", defaultName?: string) =>
+    request<PickResponse>("/api/pick-save", { lang, kind, defaultName }),
   edit: (slot: number, name: string, translator: string) =>
     request<MutationResponse>("/api/edit", { slot, name, translator }),
   revert: (slot: number, translator: string) => request<MutationResponse>("/api/revert", { slot, translator }),
+  status: (slots: number[], status: Status, translator: string) =>
+    request<MutationResponse>("/api/status", { slots, status, translator }),
+  note: (slot: number, note: string, translator: string) => request<MutationResponse>("/api/note", { slot, note, translator }),
+  reference: (path: string | null) => request<{ reference: ReferenceInfo | null }>("/api/reference", { path }),
+  exportTsv: (path: string, slots: number[]) => request<ExportResponse>("/api/export", { path, slots }),
+  importPreview: (path: string) => request<ImportPreview>("/api/import/preview", { path }),
+  importApply: (path: string, token: string, take: number[], translator: string) =>
+    request<MutationResponse>("/api/import/apply", { path, token, take, translator }),
   undo: () => request<MutationResponse>("/api/undo", {}),
   redo: () => request<MutationResponse>("/api/redo", {}),
   restoreDraft: () => request<MutationResponse & { skipped: number }>("/api/draft/restore", {}),

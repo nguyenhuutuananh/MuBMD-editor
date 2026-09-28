@@ -1,7 +1,16 @@
 // search.ts - Accent-insensitive search + slot filtering. Pure logic, no DOM.
 
 import { MAX_ITEM_INDEX } from "../../../src/core/format";
-import type { EditInfo, ItemTuple, NameEncoding, NameIssueCode } from "../../../src/shared/api";
+import {
+  DEFAULT_RECORD,
+  type EditInfo,
+  type ItemTuple,
+  type NameEncoding,
+  type NameIssueCode,
+  type SlotRecord,
+  type SlotState,
+  type Status,
+} from "../../../src/shared/api";
 
 export const NEAR_LIMIT_BYTES = 40;
 
@@ -15,44 +24,71 @@ export interface Row {
   itemType: number;
   itemIndex: number;
   text: string;
-  folded: string;
+  folded: string; // name + reference, folded for search
   encoding: NameEncoding;
   byteLength: number;
   issues: NameIssueCode[];
-  edit: EditInfo | null; // differs from the original file (unsaved)
+  edit: EditInfo | null; // name differs from the file on disk (unsaved)
+  record: SlotRecord;
+  dirty: boolean; // unsaved change of any kind (name, status, note)
+  reference: string; // name from the reference file, "" if none
 }
 
-export function toRow([slot, text, encoding, byteLength, issues]: ItemTuple, edit: EditInfo | null = null): Row {
+export function toRow(
+  [slot, text, encoding, byteLength, issues]: ItemTuple,
+  edit: EditInfo | null = null,
+  record: SlotRecord = DEFAULT_RECORD,
+  dirty = edit !== null,
+  reference = "",
+): Row {
   return {
     slot,
     itemType: Math.floor(slot / MAX_ITEM_INDEX),
     itemIndex: slot % MAX_ITEM_INDEX,
     text,
-    folded: fold(text),
+    folded: fold(reference ? `${text} ${reference}` : text),
     encoding,
     byteLength,
     issues,
     edit,
+    record,
+    dirty,
+    reference,
   };
 }
 
-export function toRows(items: ItemTuple[], edits: EditInfo[] = []): Row[] {
+export function toRows(
+  items: ItemTuple[],
+  edits: EditInfo[] = [],
+  records: [number, SlotRecord][] = [],
+  dirty: number[] = [],
+): Row[] {
   const bySlot = new Map(edits.map((e) => [e.slot, e]));
-  return items.map((t) => toRow(t, bySlot.get(t[0]) ?? null));
+  const rec = new Map(records);
+  const dirtySet = new Set(dirty);
+  return items.map((t) => toRow(t, bySlot.get(t[0]) ?? null, rec.get(t[0]) ?? DEFAULT_RECORD, dirtySet.has(t[0])));
 }
 
 // Update in place (same object, so the filtered list is not reshuffled).
-export function patchRow(row: Row, item: ItemTuple, edit: EditInfo | null) {
-  Object.assign(row, toRow(item, edit));
+export function patchRow(row: Row, s: SlotState) {
+  Object.assign(row, toRow(s.item, s.edit, s.record, s.dirty, row.reference));
+}
+
+export function setReference(row: Row, reference: string) {
+  row.reference = reference;
+  row.folded = fold(reference ? `${row.text} ${reference}` : row.text);
 }
 
 export type SlotScope = "named" | "all" | "empty";
 export type Problem = "any" | "edited" | "issues" | "unknown-encoding" | "near-limit";
 
+export type StatusFilter = "any" | Status;
+
 export interface Filter {
   group: number | null; // null = every ItemType
   scope: SlotScope;
   problem: Problem;
+  status: StatusFilter;
   query: string;
 }
 
@@ -78,7 +114,7 @@ export function matchesProblem(r: Row, problem: Problem): boolean {
     case "any":
       return true;
     case "edited":
-      return r.edit !== null;
+      return r.dirty;
     case "issues":
       return r.issues.length > 0;
     case "unknown-encoding":
@@ -102,18 +138,22 @@ export function applyFilter(rows: Row[], f: Filter): Row[] {
       (f.group === null || r.itemType === f.group) &&
       matchesScope(r, f.scope) &&
       matchesProblem(r, f.problem) &&
+      (f.status === "any" || r.record.status === f.status) &&
       terms.every((t) => r.folded.includes(t)),
   );
 }
 
-// Named slots / total slots per ItemType (for the group list).
-export function groupCounts(rows: Row[], groups: number): { named: number; total: number }[] {
-  const out = Array.from({ length: groups }, () => ({ named: 0, total: 0 }));
+// Per ItemType: named slots, total slots, translated-or-reviewed named slots (for the group list).
+export function groupCounts(rows: Row[], groups: number): { named: number; total: number; done: number }[] {
+  const out = Array.from({ length: groups }, () => ({ named: 0, total: 0, done: 0 }));
   for (const r of rows) {
     const g = out[r.itemType];
     if (!g) continue;
     g.total++;
-    if (r.encoding !== "empty") g.named++;
+    if (r.encoding !== "empty") {
+      g.named++;
+      if (r.record.status !== "untranslated") g.done++;
+    }
   }
   return out;
 }

@@ -1,6 +1,7 @@
 // app.ts - HTTP handling: JSON API + serving the UI. Kept separate from Bun.serve so it is testable.
 
-import { AppError, type ErrorCode, type ErrorParams, NameValidationError } from "../core";
+import { dirname as pathDirname, join as pathJoin } from "node:path";
+import { AppError, type ErrorCode, type ErrorParams, NameValidationError, isStatus } from "../core";
 import {
   type EditRequest,
   type ErrorResponse,
@@ -8,6 +9,7 @@ import {
   type ItemsResponse,
   type Lang,
   type OpenRequest,
+  type PickKind,
   type PickResponse,
   type RevertRequest,
   type SaveRequest,
@@ -29,8 +31,8 @@ export interface AppOptions {
   assets: WebAssets;
   version: string;
   session?: Session;
-  pick?: (lang: Lang) => Promise<string | null>;
-  pickSave?: (defaultPath: string, lang: Lang) => Promise<string | null>;
+  pick?: (lang: Lang, kind: PickKind, dir?: string) => Promise<string | null>;
+  pickSave?: (defaultPath: string, lang: Lang, kind: "bmd" | "tsv") => Promise<string | null>;
 }
 
 const json = (body: unknown, status = 200) =>
@@ -57,6 +59,7 @@ function isJson(req: Request): boolean {
 
 const STATUS: Partial<Record<ErrorCode, number>> = {
   "invalid-name": 422,
+  "import-changed": 409,
   dirty: 409,
   conflict: 409,
   "no-file": 409,
@@ -102,7 +105,16 @@ export function createApp(opts: AppOptions) {
   function itemsResponse(): ItemsResponse {
     const file = session.file;
     if (!file) throw new NoFileError();
-    return { file, items: session.items(), edits: session.edits(), status: session.status(), draft: session.draftInfo() };
+    return {
+      file,
+      items: session.items(),
+      edits: session.edits(),
+      records: session.recordList(),
+      dirty: session.dirtySlots(),
+      status: session.status(),
+      draft: session.draftInfo(),
+      rebased: session.wasRebased(),
+    };
   }
 
   // Used at startup when a path is given on the command line.
@@ -118,6 +130,13 @@ export function createApp(opts: AppOptions) {
   type Handler = (body: Record<string, unknown>) => unknown;
 
   const langOf = (b: Record<string, unknown>): Lang => (isLang(b.lang) ? b.lang : "en");
+  const slotsOf = (v: unknown): number[] => (Array.isArray(v) ? v.map(Number).filter(Number.isInteger) : []);
+  const pathOf = (b: Record<string, unknown>) => {
+    const p = str(b.path).trim();
+    if (!p) throw new AppError("missing-path", "Missing file path.");
+    return p;
+  };
+  const openDir = () => (session.file ? pathDirname(session.file.path) : undefined);
 
   const posts: Record<string, Handler> = {
     "/api/open": (b) => {
@@ -126,10 +145,16 @@ export function createApp(opts: AppOptions) {
       session.open(path, { discard: b.discard === true });
       return state();
     },
-    "/api/pick": async (b) => ({ path: await pick(langOf(b)) }) satisfies PickResponse,
+    "/api/pick": async (b) => {
+      const kind: PickKind = b.kind === "tsv" || b.kind === "reference" ? b.kind : "bmd";
+      return { path: await pick(langOf(b), kind, openDir()) } satisfies PickResponse;
+    },
     "/api/pick-save": async (b) => {
       if (!session.file) throw new NoFileError();
-      return { path: await pickSave(session.file.path, langOf(b)) } satisfies PickResponse;
+      const kind = b.kind === "tsv" ? "tsv" : "bmd";
+      const name = str(b.defaultName).replace(/[\\/:*?"<>|]/g, "_").trim();
+      const def = name ? pathJoin(pathDirname(session.file.path), name) : session.file.path;
+      return { path: await pickSave(def, langOf(b), kind) } satisfies PickResponse;
     },
     "/api/edit": (b) => {
       const r = b as Partial<EditRequest>;
@@ -137,6 +162,15 @@ export function createApp(opts: AppOptions) {
       return session.edit(Number(r.slot), r.name, str(r.translator));
     },
     "/api/revert": (b) => session.revert(Number((b as Partial<RevertRequest>).slot), str(b.translator)),
+    "/api/status": (b) => {
+      if (!isStatus(b.status)) return fail(400, "bad-json", "Invalid status.");
+      return session.setStatus(slotsOf(b.slots), b.status, str(b.translator));
+    },
+    "/api/note": (b) => session.setNote(Number(b.slot), str(b.note), str(b.translator)),
+    "/api/reference": (b) => ({ reference: session.setReference(b.path ? pathOf(b) : null) }),
+    "/api/export": (b) => session.exportTsv(pathOf(b), slotsOf(b.slots)),
+    "/api/import/preview": (b) => session.previewImport(pathOf(b)),
+    "/api/import/apply": (b) => session.applyImport(pathOf(b), str(b.token), slotsOf(b.take), str(b.translator)),
     "/api/undo": () => session.undo(),
     "/api/redo": () => session.redo(),
     "/api/draft/restore": () => session.restoreDraft(),

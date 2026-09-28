@@ -98,6 +98,11 @@ export class ItemBmd {
     return this.nameBytes(slot).slice();
   }
 
+  // Copy of the slot's 50 name bytes in the file as opened (before any edits).
+  originalNameBytes(slot: number): Uint8Array {
+    return (this.originalNames.get(slot) ?? this.nameBytes(slot)).slice();
+  }
+
   // The slot's name in the file as opened (before any edits).
   originalName(slot: number): DecodedName {
     const orig = this.originalNames.get(slot);

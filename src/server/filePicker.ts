@@ -4,7 +4,7 @@
 import { spawn } from "node:child_process";
 import * as path from "node:path";
 import { AppError } from "../core";
-import type { Lang } from "../shared/api";
+import type { Lang, PickKind } from "../shared/api";
 
 export class FilePickerUnavailableError extends AppError {
   constructor(code: "picker-unsupported" | "picker-failed", detail = "") {
@@ -16,18 +16,48 @@ export class FilePickerUnavailableError extends AppError {
 
 // Dialog captions follow the UI language.
 const TEXT = {
-  en: { open: "Choose Item.bmd", save: "Save Item.bmd as", all: "All files" },
-  vi: { open: "Chọn file Item.bmd", save: "Lưu Item.bmd thành", all: "Tất cả" },
+  en: {
+    open: "Choose Item.bmd",
+    save: "Save Item.bmd as",
+    openTsv: "Choose a translation file (TSV)",
+    saveTsv: "Export translations as",
+    openRef: "Choose a reference file (Item.bmd or TSV)",
+    all: "All files",
+  },
+  vi: {
+    open: "Chọn file Item.bmd",
+    save: "Lưu Item.bmd thành",
+    openTsv: "Chọn file bản dịch (TSV)",
+    saveTsv: "Xuất bản dịch thành",
+    openRef: "Chọn file tham chiếu (Item.bmd hoặc TSV)",
+    all: "Tất cả",
+  },
 } satisfies Record<Lang, Record<string, string>>;
 
-function pickerCommand(lang: Lang): string[] {
+// macOS uniform type identifiers / file extensions, and the Windows filter per file kind.
+const MAC_TYPES: Record<PickKind, string> = {
+  bmd: '{"bmd", "public.data"}',
+  tsv: '{"tsv", "txt", "public.plain-text", "public.tab-separated-values-text"}',
+  reference: '{"bmd", "tsv", "txt", "public.data", "public.plain-text"}',
+};
+const WIN_FILTER = (kind: PickKind, all: string) =>
+  ({
+    bmd: "BMD (*.bmd)|*.bmd",
+    tsv: "TSV (*.tsv;*.txt)|*.tsv;*.txt",
+    reference: "BMD / TSV (*.bmd;*.tsv;*.txt)|*.bmd;*.tsv;*.txt",
+  })[kind] + `|${all} (*.*)|*.*`;
+
+function pickerCommand(lang: Lang, kind: PickKind, dir?: string): string[] {
   const t = TEXT[lang];
+  const prompt = kind === "tsv" ? t.openTsv : kind === "reference" ? t.openRef : t.open;
   switch (process.platform) {
     case "darwin":
       return [
         "osascript",
         "-e",
-        `POSIX path of (choose file with prompt ${appleString(t.open)} of type {"bmd", "public.data"})`,
+        `POSIX path of (choose file with prompt ${appleString(prompt)} of type ${MAC_TYPES[kind]}${
+          dir ? ` default location (POSIX file ${appleString(dir)})` : ""
+        })`,
       ];
     case "win32":
       return [
@@ -39,8 +69,9 @@ function pickerCommand(lang: Lang): string[] {
           "[Console]::OutputEncoding = [Text.Encoding]::UTF8;",
           "Add-Type -AssemblyName System.Windows.Forms;",
           "$d = New-Object System.Windows.Forms.OpenFileDialog;",
-          `$d.Title = ${psString(t.open)};`,
-          `$d.Filter = ${psString(`BMD (*.bmd)|*.bmd|${t.all} (*.*)|*.*`)};`,
+          `$d.Title = ${psString(prompt)};`,
+          `$d.Filter = ${psString(WIN_FILTER(kind, t.all))};`,
+          dir ? `$d.InitialDirectory = ${psString(dir)};` : "",
           "if ($d.ShowDialog() -eq 'OK') { $d.FileName }",
         ].join(" "),
       ];
@@ -49,8 +80,9 @@ function pickerCommand(lang: Lang): string[] {
   }
 }
 
-function savePickerCommand(defaultPath: string, lang: Lang): string[] {
+function savePickerCommand(defaultPath: string, lang: Lang, kind: "bmd" | "tsv"): string[] {
   const t = TEXT[lang];
+  const prompt = kind === "tsv" ? t.saveTsv : t.save;
   const dir = path.dirname(defaultPath);
   const name = path.basename(defaultPath);
   switch (process.platform) {
@@ -58,7 +90,7 @@ function savePickerCommand(defaultPath: string, lang: Lang): string[] {
       return [
         "osascript",
         "-e",
-        `POSIX path of (choose file name with prompt ${appleString(t.save)} default name ${appleString(name)} default location (POSIX file ${appleString(dir)}))`,
+        `POSIX path of (choose file name with prompt ${appleString(prompt)} default name ${appleString(name)} default location (POSIX file ${appleString(dir)}))`,
       ];
     case "win32":
       return [
@@ -70,8 +102,8 @@ function savePickerCommand(defaultPath: string, lang: Lang): string[] {
           "[Console]::OutputEncoding = [Text.Encoding]::UTF8;",
           "Add-Type -AssemblyName System.Windows.Forms;",
           "$d = New-Object System.Windows.Forms.SaveFileDialog;",
-          `$d.Title = ${psString(t.save)};`,
-          `$d.Filter = ${psString(`BMD (*.bmd)|*.bmd|${t.all} (*.*)|*.*`)};`,
+          `$d.Title = ${psString(prompt)};`,
+          `$d.Filter = ${psString(WIN_FILTER(kind, t.all))};`,
           `$d.InitialDirectory = ${psString(dir)};`,
           `$d.FileName = ${psString(name)};`,
           "if ($d.ShowDialog() -eq 'OK') { $d.FileName }",
@@ -107,8 +139,9 @@ async function runPicker(cmd: string[]): Promise<string | null> {
   throw new FilePickerUnavailableError("picker-failed", err.trim() || `exit code ${code}`);
 }
 
-export const pickFile = (lang: Lang = "en"): Promise<string | null> => runPicker(pickerCommand(lang));
+export const pickFile = (lang: Lang = "en", kind: PickKind = "bmd", dir?: string): Promise<string | null> =>
+  runPicker(pickerCommand(lang, kind, dir));
 
 // "Save as" dialog (the OS itself asks before overwriting an existing file).
-export const pickSaveFile = (defaultPath: string, lang: Lang = "en"): Promise<string | null> =>
-  runPicker(savePickerCommand(defaultPath, lang));
+export const pickSaveFile = (defaultPath: string, lang: Lang = "en", kind: "bmd" | "tsv" = "bmd"): Promise<string | null> =>
+  runPicker(savePickerCommand(defaultPath, lang, kind));

@@ -2,10 +2,9 @@
 import { computed, onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { MAX_NAME_BYTES, checkName } from "../../../src/core/nameCodec";
-import { cancelEdit, commitEditor, moveEdit } from "@/composables/actions";
+import { anyDialogOpen, cancelEdit, commitEditor, moveEdit } from "@/composables/actions";
 import { issueText } from "@/i18n";
 import { byteLevel } from "@/lib/bytes";
-import { isDialogOpen } from "@/lib/dialogs";
 import type { Row } from "@/lib/search";
 import { useDocStore } from "@/stores/doc";
 
@@ -43,7 +42,7 @@ function onKeydown(e: KeyboardEvent) {
 function onBlur() {
   const ed = store.editor;
   setTimeout(() => {
-    if (store.editor === ed && document.activeElement !== input.value && !isDialogOpen.value) commitEditor({ quiet: true });
+    if (store.editor === ed && document.activeElement !== input.value && !anyDialogOpen()) commitEditor({ quiet: true });
   }, 0);
 }
 

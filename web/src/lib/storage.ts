@@ -22,4 +22,5 @@ export const KEYS = {
   recent: "mubmd.recent",
   filter: "mubmd.filter",
   translator: "mubmd.translator",
+  references: "mubmd.references", // { [Item.bmd path]: reference file path }
 } as const;

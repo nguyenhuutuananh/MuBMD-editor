@@ -39,7 +39,7 @@ describe("locale files", () => {
   test("every error code and name-issue code is translated", () => {
     // Listed by hand: adding a code to core/errors.ts without translating it fails this test (and tsc).
     const errorCodes: Record<ErrorCode | "offline" | "bad-response", true> = {
-      "bmd-size": true, "invalid-slot": true, "invalid-name": true, "name-bytes-length": true,
+      "bmd-size": true, "invalid-slot": true, "invalid-name": true, "name-bytes-length": true, "tsv-header": true, "import-changed": true,
       "no-file": true, dirty: true, conflict: true, "save-verify-failed": true,
       "file-not-found": true, "file-locked": true, "permission-denied": true, "is-directory": true,
       "not-a-file": true, "disk-full": true, "picker-unsupported": true, "picker-failed": true,

@@ -5,7 +5,9 @@ import "vue-sonner/style.css";
 import AppDialogs from "@/components/AppDialogs.vue";
 import AppTopbar from "@/components/AppTopbar.vue";
 import DetailPanel from "@/components/DetailPanel.vue";
+import ExportDialog from "@/components/ExportDialog.vue";
 import GroupSidebar from "@/components/GroupSidebar.vue";
+import ImportDialog from "@/components/ImportDialog.vue";
 import ItemGrid from "@/components/ItemGrid.vue";
 import ItemToolbar from "@/components/ItemToolbar.vue";
 import WelcomeScreen from "@/components/WelcomeScreen.vue";
@@ -47,6 +49,8 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
       </div>
     </div>
     <AppDialogs />
+    <ExportDialog />
+    <ImportDialog />
     <Toaster rich-colors close-button position="bottom-right" :theme="dark ? 'dark' : 'light'" />
   </TooltipProvider>
 </template>

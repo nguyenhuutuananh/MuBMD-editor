@@ -20,11 +20,18 @@ fs.copyFileSync(path.join(ROOT, "data/Item.bmd"), FILE);
 let server: ReturnType<typeof Bun.spawn> | null = null;
 let browser: Browser | null = null;
 let failures = 0;
+let mainPage: Page | null = null; // screenshot on failure
+
+// Native file dialogs are answered from this queue (see MUBMD_FAKE_PICK in src/server/main.ts).
+const PICK = path.join(WORK, "pick.json");
+const setPick = (...paths: (string | null)[]) => fs.writeFileSync(PICK, JSON.stringify(paths));
+setPick();
 
 async function startServer() {
   server = Bun.spawn(["bun", path.join(ROOT, "src/server/main.ts"), FILE, "--no-open", "--port", String(PORT)], {
     stdout: "ignore",
     stderr: "ignore",
+    env: { ...process.env, MUBMD_FAKE_PICK: PICK },
   });
   for (let i = 0; i < 60; i++) {
     try {
@@ -70,6 +77,7 @@ async function main() {
   browser = await chromium.launch({ channel: "chrome", headless: true });
   const p = await browser.newPage({ viewport: { width: 1440, height: 860 } });
   p.setDefaultTimeout(8000);
+  mainPage = p;
   const errors: string[] = [];
   p.on("pageerror", (e) => errors.push(String(e)));
 
@@ -200,6 +208,106 @@ async function main() {
   await p.waitForFunction(() => document.querySelector("[data-testid=dirty-status]")?.textContent?.trim() === "Đã lưu hết");
   check("changes discarded", (await text(p, "[data-testid=result-count]")) === "0 dòng");
 
+  // 14. Phase 4: status, note, bulk mark, reference, export, import (3-way merge)
+  const choose = async (trigger: string, option: string) => {
+    await p.click(`[data-testid=${trigger}]`);
+    await p.click(`[data-testid=${option}]`);
+  };
+  const action = (id: string) => choose("actions", `action-${id}`);
+  const statusOf = (slot: number) => p.getAttribute(`[data-testid=grid] [data-slot='${slot}'] [data-status]`, "data-status");
+  await choose("problem", "problem-any");
+  await p.waitForFunction(() => document.querySelector("[data-testid=result-count]")?.textContent?.trim() === "488 dòng");
+
+  await p.click(rowSel(5));
+  await p.keyboard.press("Alt+Digit2");
+  await p.waitForFunction(() => document.querySelector("[data-testid=dirty-status]")?.textContent?.includes("1 thay đổi"));
+  check("Alt+2 marks the row translated", (await statusOf(5)) === "translated");
+  await p.click("[data-testid=detail-status-reviewed]");
+  await p.fill("[data-testid=detail-note]", "kiểm tra lại");
+  await p.keyboard.press("Enter");
+  await p.waitForFunction(() => document.querySelector("[data-testid=grid] [data-slot='5']")?.textContent?.includes("kiểm tra lại"));
+  check("detail status + note", (await statusOf(5)) === "reviewed");
+
+  await p.fill("[data-testid=search]", "rong do");
+  await p.keyboard.press("Enter");
+  await p.waitForFunction(() => document.querySelector("[data-testid=result-count]")?.textContent?.trim() === "10 dòng");
+  await choose("actions", "mark-reviewed");
+  const marked = await toastWith(p, "Đã đánh dấu 10 dòng");
+  check("bulk mark the listed rows", marked.includes("Đã duyệt"), marked);
+  await p.fill("[data-testid=search]", "");
+  await p.keyboard.press("Enter");
+
+  await p.keyboard.press("Control+s");
+  await toastWith(p, "Đã lưu 11 thay đổi");
+  const project = JSON.parse(fs.readFileSync(`${FILE}.mubmd/project.json`, "utf-8"));
+  check("status-only save writes project.json", project.records["5"]?.status === "reviewed" && project.records["5"]?.note === "kiểm tra lại");
+
+  const ref = path.join(WORK, "ref.tsv");
+  fs.writeFileSync(ref, "ItemType\tItemIndex\tName(Japanese)\n0\t0\tクリス\n0\t1\tダガー\n");
+  setPick(ref);
+  await action("reference");
+  const refToast = await toastWith(p, "Tham chiếu: ref.tsv");
+  check("reference file loaded", refToast.includes("2 tên") && (await p.isVisible("text=クリス")), refToast);
+  await p.fill("[data-testid=search]", "dagaa");
+  await p.fill("[data-testid=search]", "ダガー");
+  await p.keyboard.press("Enter");
+  await p.waitForFunction(() => document.querySelector("[data-testid=result-count]")?.textContent?.trim() === "1 dòng");
+  check("search matches reference names", true);
+  await p.fill("[data-testid=search]", "");
+  await p.keyboard.press("Enter");
+  await shot(p, "09-status-reference-vi");
+
+  const exported = path.join(WORK, "export.tsv");
+  setPick(exported);
+  await action("export");
+  await p.waitForSelector("[data-testid=export-dialog]");
+  await p.click("[data-testid=export-named]");
+  await shot(p, "10-export-vi");
+  await p.click("[data-testid=export-go]");
+  const exp = await toastWith(p, "Đã xuất");
+  const expText = fs.existsSync(exported) ? fs.readFileSync(exported, "utf-8") : "";
+  check(
+    "export all named slots",
+    exp.includes("488 dòng") && expText.startsWith("\uFEFFItemType\tItemIndex\tName\tStatus") && expText.includes("\tクリス\t"),
+    exp,
+  );
+
+  // Another translator's file: 0:4 changed only by them, 0:6 changed on both sides, 0:7 too long.
+  await p.dblclick(rowSel(6));
+  await p.fill(EDITOR, "Kiếm La Mã Của Mình");
+  await p.keyboard.press("Enter");
+  await p.waitForTimeout(200);
+  await p.keyboard.press("Escape");
+  const theirs = path.join(WORK, "theirs.tsv");
+  fs.writeFileSync(
+    theirs,
+    [
+      "ItemType\tItemIndex\tName\tStatus\tTranslator\tBaseName",
+      "0\t4\tĐao Sát Thủ Mới\ttranslated\tBình\tĐao Sát Thủ",
+      "0\t6\tKiếm La Mã Của Họ\ttranslated\tBình\tKiếm La mã",
+      `0\t7\t${"Đ".repeat(30)}\ttranslated\tBình\tMã Tấu`,
+      "0\t8\tXà Đao\ttranslated\tBình\tXà Đao",
+    ].join("\n"),
+  );
+  setPick(theirs);
+  await action("import");
+  await p.waitForSelector("[data-testid=import-dialog]");
+  const summary = await text(p, "[data-testid=import-summary]");
+  check("import preview summary", summary === "1 thay đổi · 1 xung đột · 1 đổi trạng thái · 1 không hợp lệ", summary);
+  const conflictBox = p.locator("[data-testid=import-dialog] tr[data-kind=conflict] input");
+  check("conflict unchecked by default", !(await conflictBox.isChecked()));
+  await shot(p, "11-import-vi");
+  await p.click("[data-testid=import-apply]");
+  const imported = await toastWith(p, "Đã nhập 2 thay đổi");
+  check("import applies only the chosen rows", imported.length > 0, imported);
+  const nameOf = async (slot: number) => text(p, `[data-testid=grid] [data-slot='${slot}'] > span:nth-child(3)`);
+  check("their change applied, my conflicting edit kept", (await nameOf(4)) === "Đao Sát Thủ Mới" && (await nameOf(6)) === "Kiếm La Mã Của Mình");
+  await choose("problem", "problem-any");
+  await p.focus("[data-testid=grid]");
+  await p.keyboard.press("Control+z");
+  await p.waitForFunction(() => document.querySelector("[data-testid=grid] [data-slot='4']")?.textContent?.includes("Đao Sát Thủ") && !document.querySelector("[data-testid=grid] [data-slot='4']")?.textContent?.includes("Mới"));
+  check("the whole import is one undo step", (await nameOf(6)) === "Kiếm La Mã Của Mình");
+
   // 13. Dark theme + narrow screen (new context = first launch -> English)
   const dark = await browser.newPage({ viewport: { width: 1440, height: 860 }, colorScheme: "dark" });
   await dark.goto(URL);
@@ -224,6 +332,7 @@ try {
 } catch (e) {
   failures++;
   console.log(`✗ error: ${(e as Error).message}`);
+  await (mainPage as Page | null)?.screenshot({ path: path.join(SHOTS, "failure.png") }).catch(() => undefined);
 } finally {
   clearTimeout(timer);
   await (browser as Browser | null)?.close(); // assigned inside main(), so TS narrows it to null

@@ -43,7 +43,8 @@
   "groups": {
     "label": "Item groups",
     "all": "All groups",
-    "dirtyTitle": "{n} unsaved change | {n} unsaved changes"
+    "dirtyTitle": "{n} unsaved change | {n} unsaved changes",
+    "progressTitle": "{done} of {named} named slots translated or reviewed"
   },
   "itemTypes": {
     "0": "Swords",
@@ -80,7 +81,10 @@
       "nearLimit": "Near byte limit (≥ 40)",
       "unknownEncoding": "Not UTF-8"
     },
-    "rows": "{n} row | {n} rows"
+    "rows": "{n} row | {n} rows",
+    "statusLabel": "Status filter",
+    "statusAny": "Any status",
+    "actions": "Actions"
   },
   "grid": {
     "label": "Item list",
@@ -94,7 +98,9 @@
     "edited": "Edited",
     "nonUtf8": "Not UTF-8",
     "originalTitle": "Original: {name}",
-    "bytesTitle": "{bytes}/{max} bytes"
+    "bytesTitle": "{bytes}/{max} bytes",
+    "status": "Status",
+    "reference": "Reference"
   },
   "encoding": {
     "empty": "Empty",
@@ -132,7 +138,11 @@
     "revert": "Restore original name",
     "help": "Enter / Tab: save and go to the next row · Shift+Enter: previous row · Esc: cancel · Ctrl+S: save file",
     "editing": "Editing: {bytes}/{max} bytes, {left} left",
-    "editingOver": "Editing: {bytes}/{max} bytes, {over} over"
+    "editingOver": "Editing: {bytes}/{max} bytes, {over} over",
+    "status": "Status",
+    "note": "Note",
+    "notePlaceholder": "Note for the team (Enter to save)",
+    "reference": "Reference"
   },
   "editor": {
     "aria": "New name for {type}:{index}",
@@ -171,7 +181,12 @@
     "nothingToSave": "There are no changes to save.",
     "restored": "Restored {n} change. | Restored {n} changes.",
     "restoredSkipped": "Skipped {n} invalid name. | Skipped {n} invalid names.",
-    "saveFailed": "Not saved: {reason}"
+    "saveFailed": "Not saved: {reason}",
+    "exported": "Exported {n} row to {file}. | Exported {n} rows to {file}.",
+    "imported": "Imported {n} change. Review and save. | Imported {n} changes. Review and save.",
+    "referenceLoaded": "Reference: {file} ({n} names)",
+    "rebased": "Item.bmd was replaced from outside since your last save (e.g. a new master copy). Merge bases were reset to its current names.",
+    "statusSet": "Marked {n} row as {status}. | Marked {n} rows as {status}."
   },
   "errors": {
     "bmd-size": "The file is {size} bytes; a MuMain Item.bmd must be exactly {expected} bytes.",
@@ -198,6 +213,54 @@
     "unknown-api": "Unknown request.",
     "internal": "Unexpected error: {detail}",
     "offline": "Lost connection to MuBMD-editor. Is its command-line window still running?",
-    "bad-response": "Server error ({status})."
+    "bad-response": "Server error ({status}).",
+    "tsv-header": "The TSV file needs ItemType, ItemIndex and Name columns (found: {columns}).",
+    "import-changed": "{file} changed after the preview – preview it again."
+  },
+  "status": {
+    "untranslated": "Untranslated",
+    "translated": "Translated",
+    "reviewed": "Reviewed",
+    "label": "Status",
+    "shortcut": "Alt+1 / Alt+2 / Alt+3 on the list"
+  },
+  "actions": {
+    "export": "Export translations (TSV)…",
+    "import": "Import translations (TSV)…",
+    "reference": "Set reference file…",
+    "clearReference": "Clear reference",
+    "markList": "Mark the {n} listed row as | Mark the {n} listed rows as"
+  },
+  "exportDialog": {
+    "title": "Export translations",
+    "body": "Creates a TSV file (opens in Excel / Google Sheets) with names, status, translator, note and the merge base, so another copy can import it without losing anyone's work.",
+    "scopeView": "Rows in the current list ({n})",
+    "scopeNamed": "All named slots ({n})",
+    "scopeMine": "Slots I changed ({n})",
+    "mineHint": "Changed by \"{name}\" since the file you started from.",
+    "export": "Export…"
+  },
+  "importDialog": {
+    "title": "Import translations",
+    "file": "File: {file}",
+    "noBase": "This file has no BaseName column (an older or hand-made file), so conflicts cannot be detected: every different name is listed as a change. Review before applying.",
+    "summary": "{apply} to apply · {conflict} conflicts · {status} status changes · {invalid} invalid",
+    "skipped": "Unchanged: {same} · newer here: {newerHere} · empty name ignored: {emptyName}",
+    "problems": "{n} line was skipped (bad ItemType/ItemIndex or duplicate). | {n} lines were skipped (bad ItemType/ItemIndex or duplicate).",
+    "nothing": "Nothing to import: every row already matches this file.",
+    "selectAll": "Select all",
+    "selectNone": "Select none",
+    "takeConflicts": "Take theirs for all conflicts",
+    "kind": {
+      "apply": "Change",
+      "conflict": "Conflict",
+      "status": "Status",
+      "invalid": "Invalid"
+    },
+    "ours": "Here",
+    "theirs": "In file",
+    "base": "Base",
+    "by": "by {name}",
+    "apply": "Apply {n} change | Apply {n} changes"
   }
 }

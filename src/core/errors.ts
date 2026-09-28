@@ -7,11 +7,13 @@ export type ErrorCode =
   | "invalid-slot"
   | "invalid-name"
   | "name-bytes-length"
+  | "tsv-header"
   // session
   | "no-file"
   | "dirty"
   | "conflict"
   | "save-verify-failed"
+  | "import-changed"
   // file system
   | "file-not-found"
   | "file-locked"

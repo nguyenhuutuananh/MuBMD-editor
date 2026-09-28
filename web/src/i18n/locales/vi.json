@@ -43,7 +43,8 @@
   "groups": {
     "label": "Nhóm vật phẩm",
     "all": "Tất cả nhóm",
-    "dirtyTitle": "{n} thay đổi chưa lưu"
+    "dirtyTitle": "{n} thay đổi chưa lưu",
+    "progressTitle": "{done}/{named} slot có tên đã dịch hoặc đã duyệt"
   },
   "itemTypes": {
     "0": "Kiếm",
@@ -80,7 +81,10 @@
       "nearLimit": "Gần giới hạn byte (≥ 40)",
       "unknownEncoding": "Không phải UTF-8"
     },
-    "rows": "{n} dòng"
+    "rows": "{n} dòng",
+    "statusLabel": "Lọc trạng thái",
+    "statusAny": "Mọi trạng thái",
+    "actions": "Thao tác"
   },
   "grid": {
     "label": "Danh sách vật phẩm",
@@ -94,7 +98,9 @@
     "edited": "Đã sửa",
     "nonUtf8": "Không phải UTF-8",
     "originalTitle": "Tên gốc: {name}",
-    "bytesTitle": "{bytes}/{max} byte"
+    "bytesTitle": "{bytes}/{max} byte",
+    "status": "Trạng thái",
+    "reference": "Tham chiếu"
   },
   "encoding": {
     "empty": "Trống",
@@ -132,7 +138,11 @@
     "revert": "Khôi phục tên gốc",
     "help": "Enter / Tab: lưu và sang dòng dưới · Shift+Enter: lên dòng trên · Esc: huỷ · Ctrl+S: lưu file",
     "editing": "Đang sửa: {bytes}/{max} byte, còn {left} byte",
-    "editingOver": "Đang sửa: {bytes}/{max} byte, thừa {over} byte"
+    "editingOver": "Đang sửa: {bytes}/{max} byte, thừa {over} byte",
+    "status": "Trạng thái",
+    "note": "Ghi chú",
+    "notePlaceholder": "Ghi chú cho nhóm (Enter để lưu)",
+    "reference": "Tham chiếu"
   },
   "editor": {
     "aria": "Tên mới cho {type}:{index}",
@@ -171,7 +181,12 @@
     "nothingToSave": "Không có thay đổi nào cần lưu.",
     "restored": "Đã khôi phục {n} thay đổi.",
     "restoredSkipped": "Bỏ qua {n} tên không hợp lệ.",
-    "saveFailed": "Chưa lưu được: {reason}"
+    "saveFailed": "Chưa lưu được: {reason}",
+    "exported": "Đã xuất {n} dòng ra {file}.",
+    "imported": "Đã nhập {n} thay đổi. Hãy xem lại rồi lưu.",
+    "referenceLoaded": "Tham chiếu: {file} ({n} tên)",
+    "rebased": "Item.bmd đã bị thay bằng file khác kể từ lần lưu trước (ví dụ nhận bản chính mới). Tên gốc để gộp đã được đặt lại theo tên hiện tại.",
+    "statusSet": "Đã đánh dấu {n} dòng là {status}."
   },
   "errors": {
     "bmd-size": "File có {size} byte; Item.bmd của MuMain phải đúng {expected} byte.",
@@ -198,6 +213,54 @@
     "unknown-api": "Yêu cầu không xác định.",
     "internal": "Lỗi không mong muốn: {detail}",
     "offline": "Mất kết nối tới MuBMD-editor. Cửa sổ dòng lệnh của công cụ còn đang chạy không?",
-    "bad-response": "Lỗi máy chủ ({status})."
+    "bad-response": "Lỗi máy chủ ({status}).",
+    "tsv-header": "File TSV cần có cột ItemType, ItemIndex và Name (đang có: {columns}).",
+    "import-changed": "{file} đã thay đổi sau khi xem trước – hãy xem trước lại."
+  },
+  "status": {
+    "untranslated": "Chưa dịch",
+    "translated": "Đã dịch",
+    "reviewed": "Đã duyệt",
+    "label": "Trạng thái",
+    "shortcut": "Alt+1 / Alt+2 / Alt+3 trên danh sách"
+  },
+  "actions": {
+    "export": "Xuất bản dịch (TSV)…",
+    "import": "Nhập bản dịch (TSV)…",
+    "reference": "Chọn file tham chiếu…",
+    "clearReference": "Bỏ file tham chiếu",
+    "markList": "Đánh dấu {n} dòng đang hiện là"
+  },
+  "exportDialog": {
+    "title": "Xuất bản dịch",
+    "body": "Tạo file TSV (mở bằng Excel / Google Sheets) gồm tên, trạng thái, người dịch, ghi chú và tên gốc để gộp, để bản sao khác nhập vào mà không làm mất công của ai.",
+    "scopeView": "Các dòng trong danh sách đang hiện ({n})",
+    "scopeNamed": "Tất cả slot có tên ({n})",
+    "scopeMine": "Các slot tôi đã sửa ({n})",
+    "mineHint": "Do \"{name}\" sửa so với file lúc bắt đầu.",
+    "export": "Xuất…"
+  },
+  "importDialog": {
+    "title": "Nhập bản dịch",
+    "file": "File: {file}",
+    "noBase": "File này không có cột BaseName (file cũ hoặc tự soạn) nên không phát hiện được xung đột: mọi tên khác đều được liệt kê là thay đổi. Hãy xem lại trước khi áp dụng.",
+    "summary": "{apply} thay đổi · {conflict} xung đột · {status} đổi trạng thái · {invalid} không hợp lệ",
+    "skipped": "Giống nhau: {same} · bản ở đây mới hơn: {newerHere} · bỏ qua tên trống: {emptyName}",
+    "problems": "Bỏ qua {n} dòng (ItemType/ItemIndex sai hoặc bị trùng).",
+    "nothing": "Không có gì để nhập: mọi dòng đã giống file này.",
+    "selectAll": "Chọn hết",
+    "selectNone": "Bỏ chọn hết",
+    "takeConflicts": "Lấy bản trong file cho mọi xung đột",
+    "kind": {
+      "apply": "Thay đổi",
+      "conflict": "Xung đột",
+      "status": "Trạng thái",
+      "invalid": "Không hợp lệ"
+    },
+    "ours": "Ở đây",
+    "theirs": "Trong file",
+    "base": "Gốc",
+    "by": "bởi {name}",
+    "apply": "Áp dụng {n} thay đổi"
   }
 }

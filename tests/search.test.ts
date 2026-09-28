@@ -9,7 +9,7 @@ const bmd = ItemBmd.parse(new Uint8Array(fs.readFileSync(path.join(import.meta.d
 const rows = toRows(
   bmd.entries({ includeEmpty: true }).map((e): ItemTuple => [e.slot, e.text, e.encoding, e.byteLength, []]),
 );
-const base: Filter = { group: null, scope: "named", problem: "any", query: "" };
+const base: Filter = { group: null, scope: "named", problem: "any", status: "any", query: "" };
 
 describe("fold", () => {
   test("strips Vietnamese accents, đ -> d", () => {

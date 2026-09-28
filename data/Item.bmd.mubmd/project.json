@@ -1,0 +1,3422 @@
+{
+ "version": 1,
+ "bmdSha1": "d4268922cf80005e6207e46245ddc71949e7fd39",
+ "records": {
+  "0": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.102Z",
+   "origin": "Chùy Thủy"
+  },
+  "1": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.102Z",
+   "origin": "Đoản Đao"
+  },
+  "2": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.102Z",
+   "origin": "Trường Kiếm"
+  },
+  "3": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.102Z",
+   "origin": "Kiếm Nhật"
+  },
+  "4": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.102Z",
+   "origin": "Đao Sát Thủ"
+  },
+  "5": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.102Z",
+   "origin": "Khoái Đao"
+  },
+  "6": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.102Z",
+   "origin": "Kiếm La mã"
+  },
+  "7": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.102Z",
+   "origin": "Mã Tấu"
+  },
+  "8": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.102Z",
+   "origin": "Xà Đao"
+  },
+  "9": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.102Z",
+   "origin": "Kiếm Rồng Lửa"
+  },
+  "10": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.102Z",
+   "origin": "Kiếm Ánh Sáng"
+  },
+  "11": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.102Z",
+   "origin": "Kiếm Ma Thuật"
+  },
+  "12": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.102Z",
+   "origin": "Thiết Kiếm"
+  },
+  "13": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.102Z",
+   "origin": "Hỏa Đao"
+  },
+  "14": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.102Z",
+   "origin": "Kiếm Điện"
+  },
+  "15": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.102Z",
+   "origin": "Kiếm Băng"
+  },
+  "16": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.102Z",
+   "origin": "Kiếm Hủy Diệt"
+  },
+  "17": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Thiên Ma Kiếm"
+  },
+  "18": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Lôi Phong Đao"
+  },
+  "19": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Thiên Tử Kiếm"
+  },
+  "20": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Cuồng Phong Đao"
+  },
+  "21": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Đao Sinh Mệnh"
+  },
+  "22": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Đao Quyền Năng"
+  },
+  "23": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Đao Hồng Long"
+  },
+  "24": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Ỷ Thiên Đao"
+  },
+  "25": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Hỏa Tinh Kiếm"
+  },
+  "26": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Hỏa Long Kiếm"
+  },
+  "27": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Ngọc Bích Kiếm"
+  },
+  "28": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Bá Vương Kiếm"
+  },
+  "31": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Ảo Ảnh Đao"
+  },
+  "32": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Bao Tay Địa Long"
+  },
+  "33": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Bao Tay Bạch Hổ"
+  },
+  "34": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Bao Tay Quyền Lực"
+  },
+  "35": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Găng Phượng Hoàng (RF)"
+  },
+  "512": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Rìu Nhỏ"
+  },
+  "513": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Rìu Nhẹ"
+  },
+  "514": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Rìu Hai Lưỡi"
+  },
+  "515": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Rìu Thợ Săn"
+  },
+  "516": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Rìu Tiên Nữ"
+  },
+  "517": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Rìu Chiến"
+  },
+  "518": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Rìu Lưỡi Bạc"
+  },
+  "519": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Rìu Lưỡi Vàng"
+  },
+  "520": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Rìu Bán Nguyệt"
+  },
+  "1024": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Chùy"
+  },
+  "1025": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Chùy Gai"
+  },
+  "1026": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Chùy Dây"
+  },
+  "1027": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Búa Chiến"
+  },
+  "1028": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Búa Băng"
+  },
+  "1029": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Chùy Băng"
+  },
+  "1030": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Rìu Hỏa Long"
+  },
+  "1031": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Chùy Thánh Nữ"
+  },
+  "1032": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Quyền Trượng Chiến"
+  },
+  "1033": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Quyền Trượng Thép"
+  },
+  "1034": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Quyền Trượng Bóng Tối"
+  },
+  "1035": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Quyền Trượng Kim Vương"
+  },
+  "1036": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Quyền Trượng Đại Vương"
+  },
+  "1037": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Quyền Trượng Thiên Tử"
+  },
+  "1038": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Quyền Trượng Thái Dương"
+  },
+  "1039": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Quyền Trượng Tối Cao"
+  },
+  "1040": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Chùy Băng Tinh"
+  },
+  "1041": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Lôi Phong Trượng"
+  },
+  "1042": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Quyền Trượng Băng Giá"
+  },
+  "1536": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Giáo Ánh Sáng"
+  },
+  "1537": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Giáo"
+  },
+  "1538": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Thương"
+  },
+  "1539": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Đinh Ba"
+  },
+  "1540": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Xà Giáo"
+  },
+  "1541": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Giáo Hai Lưỡi"
+  },
+  "1542": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Kích"
+  },
+  "1543": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Kích Hai Đầu"
+  },
+  "1544": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Lưỡi Hái"
+  },
+  "1545": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Lưỡi Hái Tử Thần"
+  },
+  "1546": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Đại Long Đao"
+  },
+  "1547": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Vuốt Quỷ"
+  },
+  "2048": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Cung Nhỏ"
+  },
+  "2049": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Cung"
+  },
+  "2050": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Cung Hoa"
+  },
+  "2051": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Cung Chiến"
+  },
+  "2052": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Cung Hổ"
+  },
+  "2053": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Cung Bạc"
+  },
+  "2054": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Mai Hoa Cung"
+  },
+  "2056": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Nỏ"
+  },
+  "2057": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Nỏ Vàng"
+  },
+  "2058": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Nỏ Thép"
+  },
+  "2059": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Nỏ Ánh Sáng"
+  },
+  "2060": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Nỏ Rắn"
+  },
+  "2061": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.103Z",
+   "origin": "Nỏ Thiên Thanh"
+  },
+  "2062": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Nỏ Kim Ngân"
+  },
+  "2064": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Nỏ Thánh"
+  },
+  "2065": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Cung Thiên Mệnh"
+  },
+  "2066": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Nỏ Hỏa Long"
+  },
+  "2067": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Nỏ Thánh Nữ"
+  },
+  "2068": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Mỹ Nhân Cung"
+  },
+  "2069": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Cung Thái Bình"
+  },
+  "2070": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Cung Thiên Thần"
+  },
+  "2071": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Cung Thiên Vũ"
+  },
+  "2072": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Cung Thần Ưng"
+  },
+  "2560": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Gậy Xương"
+  },
+  "2561": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Gậy Tiên"
+  },
+  "2562": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Gậy Rắn"
+  },
+  "2563": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Gậy Sét"
+  },
+  "2564": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Gậy Đầu Lâu"
+  },
+  "2565": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Gậy Ma Thuật"
+  },
+  "2566": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Gậy Phục Sinh"
+  },
+  "2567": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Gậy Lôi Phong"
+  },
+  "2568": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Gậy Hủy Duệt"
+  },
+  "2569": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Gậy Triệu Hồn"
+  },
+  "2570": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Gậy Hỏa Long"
+  },
+  "2571": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Gậy Kundun"
+  },
+  "2572": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Gậy Thần Ma"
+  },
+  "2573": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Gậy Thiên Sứ"
+  },
+  "2574": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Gậy Phép Thuật"
+  },
+  "2575": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Khuyển Xích Quỷ"
+  },
+  "2576": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Gậy Triệu Hồi"
+  },
+  "2577": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Gậy Gió"
+  },
+  "2578": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Gậy Ánh Bạc"
+  },
+  "2579": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Gậy Bùng Nổ"
+  },
+  "2580": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Gậy Đoạt Mệnh"
+  },
+  "2581": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Sách Hỏa Kỳ Lân"
+  },
+  "2582": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Sách Quỷ Kiếm"
+  },
+  "2583": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Sách Ma Công"
+  },
+  "2590": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Gậy Giác Đấu"
+  },
+  "2591": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Gậy Quỷ Vương"
+  },
+  "2592": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Gậy Chiêm Tinh"
+  },
+  "2593": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Gậy Mãng Xà"
+  },
+  "2594": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Gậy Hồng Ngọc"
+  },
+  "2596": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Gậy Thần Ưng"
+  },
+  "3072": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Khiên Tròn"
+  },
+  "3073": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Khiên Sừng"
+  },
+  "3074": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Khiên Diều"
+  },
+  "3075": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Khiên Tiên Nữ"
+  },
+  "3076": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Khiên Sắt"
+  },
+  "3077": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Khiên Kim Long"
+  },
+  "3078": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Khiên Xương"
+  },
+  "3079": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Khiên Chông"
+  },
+  "3080": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Khiên Trụ"
+  },
+  "3081": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Khiên Gia Huy"
+  },
+  "3082": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Khiên Bạc"
+  },
+  "3083": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Khiên Rắn"
+  },
+  "3084": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Khiên Ngưu Vương"
+  },
+  "3085": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Khiên Hỏa Long"
+  },
+  "3086": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Khiên Ma Thuật"
+  },
+  "3087": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Khiên Triệu Hồn"
+  },
+  "3088": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Khiên Thánh Nữ"
+  },
+  "3089": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Khiên Vinh Quang"
+  },
+  "3090": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Khiên Giác Đấu"
+  },
+  "3091": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Khiên Băng Tinh"
+  },
+  "3092": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.104Z",
+   "origin": "Khiên Quỷ Vương"
+  },
+  "3093": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Khiên Thập Tự"
+  },
+  "3584": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Đồng"
+  },
+  "3585": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Rồng Đỏ"
+  },
+  "3586": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Bải Thô"
+  },
+  "3587": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Ma Thuật"
+  },
+  "3588": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Xương"
+  },
+  "3589": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Da"
+  },
+  "3590": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Trâu Xanh"
+  },
+  "3591": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mặt Nạ Nhân Sư"
+  },
+  "3592": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Thiên Kim"
+  },
+  "3593": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Thiết Phiến"
+  },
+  "3594": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Trinh Nữ"
+  },
+  "3595": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Đồ Lụa"
+  },
+  "3596": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Thiên Thanh"
+  },
+  "3597": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Ngọc Bích"
+  },
+  "3598": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Kim Ngân"
+  },
+  "3600": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Rồng Đen"
+  },
+  "3601": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Rồng Xanh"
+  },
+  "3602": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Triệu Hồn"
+  },
+  "3603": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Giai Nhân"
+  },
+  "3605": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Thần Long"
+  },
+  "3606": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Ma Vương"
+  },
+  "3608": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Thánh Nữ"
+  },
+  "3609": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mặt Nạ Thiết Ma"
+  },
+  "3610": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mặt Nạ Huyền Thiết"
+  },
+  "3611": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mặt Nạ Hắc Vương"
+  },
+  "3612": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mặt Nạ Chí Tôn"
+  },
+  "3613": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Quyền Năng"
+  },
+  "3614": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Thần Ma"
+  },
+  "3615": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Thái Bình"
+  },
+  "3617": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mặt Nạ Thái Dương"
+  },
+  "3618": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Hắc Điểu"
+  },
+  "3619": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Ánh Trăng"
+  },
+  "3620": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Nữ Thần"
+  },
+  "3622": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mặt Nạ Hoàng Kim"
+  },
+  "3623": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Thuật Sĩ"
+  },
+  "3624": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Hỏa Thiên"
+  },
+  "3625": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Ma Pháp"
+  },
+  "3626": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Phục Ma"
+  },
+  "3627": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Thạch Anh"
+  },
+  "3628": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Huyền Vương"
+  },
+  "3629": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Thần Thoại"
+  },
+  "3630": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Hoàng Long"
+  },
+  "3633": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Thiên Vũ"
+  },
+  "3634": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Anh Vũ"
+  },
+  "3635": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mặt Nạ Đế Vương"
+  },
+  "3636": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Quỷ Vương"
+  },
+  "3637": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Chiêm Tinh"
+  },
+  "3643": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Địa Long"
+  },
+  "3644": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Bạch Hổ"
+  },
+  "3645": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Quyền Lực"
+  },
+  "3646": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Trâu Xanh"
+  },
+  "3647": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Lụa"
+  },
+  "3648": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Nhân Sư"
+  },
+  "3649": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Thiên Thanh"
+  },
+  "3650": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Ma Vương"
+  },
+  "3651": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Rồng Đỏ"
+  },
+  "3652": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ SU"
+  },
+  "3653": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Ma Thuật"
+  },
+  "3654": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Hỏa Thiên"
+  },
+  "3656": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Bạch Hổ"
+  },
+  "3657": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Mũ Phượng Hoàng (RF)"
+  },
+  "4096": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Giáp Đồng"
+  },
+  "4097": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Giáp Rồng Đỏ"
+  },
+  "4098": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Giáp Vải Thô"
+  },
+  "4099": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Giáp Ma Thuật"
+  },
+  "4100": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Giáp Xương"
+  },
+  "4101": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Giáp Da"
+  },
+  "4102": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Giáp Trâu Xanh"
+  },
+  "4103": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Giáp Nhân Sư"
+  },
+  "4104": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Giáp Thiên Kim"
+  },
+  "4105": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Giáp Thiết Phiến"
+  },
+  "4106": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Giáp Trinh Nữ"
+  },
+  "4107": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Giáp Lụa"
+  },
+  "4108": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Giáp Thiên Thanh"
+  },
+  "4109": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Giáp Ngọc Bích"
+  },
+  "4110": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Giáp Kim Ngân"
+  },
+  "4111": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Giáp Phong Vũ"
+  },
+  "4112": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.105Z",
+   "origin": "Giáp Rồng Đen"
+  },
+  "4113": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Rồng Xanh"
+  },
+  "4114": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Triệu Hồn"
+  },
+  "4115": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Giai Nhân"
+  },
+  "4116": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Lôi Phong"
+  },
+  "4117": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Thần Long"
+  },
+  "4118": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Ma Vương"
+  },
+  "4119": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Cuồng Phong"
+  },
+  "4120": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Thánh Nữ"
+  },
+  "4121": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Thiết Ma"
+  },
+  "4122": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Huyền Thiết"
+  },
+  "4123": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Hắc Vương"
+  },
+  "4124": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Chí Tôn"
+  },
+  "4125": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Quyền Năng"
+  },
+  "4126": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Thần Ma"
+  },
+  "4127": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Thái Bình"
+  },
+  "4128": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Hồng Long"
+  },
+  "4129": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Thái Dương"
+  },
+  "4130": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Hắc Điểu"
+  },
+  "4131": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Ánh Trăng"
+  },
+  "4132": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Nữ Thần"
+  },
+  "4133": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Hỏa Thần"
+  },
+  "4134": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Hoàng Kim"
+  },
+  "4135": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Thuật Sĩ"
+  },
+  "4136": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Hỏa Thiên"
+  },
+  "4137": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Ma Pháp"
+  },
+  "4138": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Phục Ma"
+  },
+  "4139": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Thạch Anh"
+  },
+  "4140": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Huyền Vương"
+  },
+  "4141": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Thần Thoại"
+  },
+  "4142": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Hoàng Long"
+  },
+  "4143": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Bóng Ma"
+  },
+  "4144": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Hủy Diệt"
+  },
+  "4145": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Thiên Vũ"
+  },
+  "4146": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Anh Vũ"
+  },
+  "4147": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Đế Vương"
+  },
+  "4148": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Quỷ Vương"
+  },
+  "4149": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Chiêm Tinh"
+  },
+  "4155": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Địa Long"
+  },
+  "4156": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Bạch Hổ"
+  },
+  "4157": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Quyền Lực"
+  },
+  "4158": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Trâu Xanh"
+  },
+  "4159": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Lụa"
+  },
+  "4160": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Nhân Sư"
+  },
+  "4161": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Thiên Thanh"
+  },
+  "4162": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Ma Vương"
+  },
+  "4163": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Rồng Đỏ"
+  },
+  "4164": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp SU"
+  },
+  "4165": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Ma Thuật"
+  },
+  "4166": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Hỏa Thiên"
+  },
+  "4167": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Atlantis"
+  },
+  "4168": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Bạch Hổ"
+  },
+  "4169": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Giáp Phượng Hoàng (RF)"
+  },
+  "4608": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Đồng"
+  },
+  "4609": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Rồng Đỏ"
+  },
+  "4610": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Vải Thô"
+  },
+  "4611": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Ma Thuật"
+  },
+  "4612": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Xương"
+  },
+  "4613": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Da"
+  },
+  "4614": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Trâu Xanh"
+  },
+  "4615": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Nhân Sư"
+  },
+  "4616": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Thiên Kim"
+  },
+  "4617": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Thiết Phiến"
+  },
+  "4618": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Trinh Nữ"
+  },
+  "4619": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Lụa"
+  },
+  "4620": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Thiên Thanh"
+  },
+  "4621": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Ngọc Bích"
+  },
+  "4622": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Kim Ngân"
+  },
+  "4623": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Phong Vũ"
+  },
+  "4624": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Rồng Đen"
+  },
+  "4625": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Rồng Xanh"
+  },
+  "4626": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Triệu Hồn"
+  },
+  "4627": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Giai Nhân"
+  },
+  "4628": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Lôi Phong"
+  },
+  "4629": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Thần Long"
+  },
+  "4630": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Ma Vương"
+  },
+  "4631": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Cuồng Phong"
+  },
+  "4632": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Thánh Nữ"
+  },
+  "4633": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Thiết Ma"
+  },
+  "4634": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Huyền Thiết"
+  },
+  "4635": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Hắc Vương"
+  },
+  "4636": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Chí Tôn"
+  },
+  "4637": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Quyền Năng"
+  },
+  "4638": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Thần Ma"
+  },
+  "4639": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Thái Bình"
+  },
+  "4640": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Hồng Long"
+  },
+  "4641": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Thái Dương"
+  },
+  "4642": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Hắc Điểu"
+  },
+  "4643": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Ánh Trăng"
+  },
+  "4644": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Nữ Thần"
+  },
+  "4645": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Hỏa Thần"
+  },
+  "4646": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Hoàng Kim"
+  },
+  "4647": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Thuật Sĩ"
+  },
+  "4648": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Hỏa Thiên"
+  },
+  "4649": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Ma Pháp"
+  },
+  "4650": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Phục Ma"
+  },
+  "4651": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Thạch Anh"
+  },
+  "4652": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Huyền Vương"
+  },
+  "4653": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Thần Thoại"
+  },
+  "4654": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Hoàng Long"
+  },
+  "4655": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Bóng Ma"
+  },
+  "4656": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Hủy Diệt"
+  },
+  "4657": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Thiên Vũ"
+  },
+  "4658": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Anh Vũ"
+  },
+  "4659": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Đế Vương"
+  },
+  "4660": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Quỷ Vương"
+  },
+  "4661": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Chiêm Tinh pants"
+  },
+  "4667": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Địa Long"
+  },
+  "4668": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Bạch Hổ"
+  },
+  "4669": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Quyền Lực"
+  },
+  "4670": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Trâu Xanh"
+  },
+  "4671": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.106Z",
+   "origin": "Quần Lụa"
+  },
+  "4672": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Quần Nhân Sư"
+  },
+  "4673": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Quần Thiên Thanh"
+  },
+  "4674": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Quần Ma Vương"
+  },
+  "4675": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Quần Rồng Đỏ"
+  },
+  "4676": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Quần SU"
+  },
+  "4677": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Quần Ma Thuật"
+  },
+  "4678": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Quần Hỏa Thiên"
+  },
+  "4679": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Quần Atlantis"
+  },
+  "4680": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Quần Bạch Hổ"
+  },
+  "4681": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Quần Phượng Hoàng (RF)"
+  },
+  "5120": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Đồng"
+  },
+  "5121": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Rồng Đỏ"
+  },
+  "5122": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Vải Thô"
+  },
+  "5123": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Ma Thuật"
+  },
+  "5124": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Xương"
+  },
+  "5125": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Da"
+  },
+  "5126": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Trâu Xanh"
+  },
+  "5127": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Nhân Sư"
+  },
+  "5128": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Thiên Kim"
+  },
+  "5129": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Thiết Phiến"
+  },
+  "5130": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Trinh Nữ"
+  },
+  "5131": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Lụa"
+  },
+  "5132": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Thiên Thanh"
+  },
+  "5133": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Ngọc Bích"
+  },
+  "5134": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Kim Ngân"
+  },
+  "5135": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Phong Vũ"
+  },
+  "5136": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Rồng Đen"
+  },
+  "5137": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Rồng Xanh"
+  },
+  "5138": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Triệu Hồn"
+  },
+  "5139": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Giai Nhân"
+  },
+  "5140": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Lôi Phong"
+  },
+  "5141": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Thần Long"
+  },
+  "5142": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Ma Vương"
+  },
+  "5143": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Cuồng Phong"
+  },
+  "5144": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Thánh Nữ"
+  },
+  "5145": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Thiết Ma"
+  },
+  "5146": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Huyền Thiết"
+  },
+  "5147": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Hắc Vương"
+  },
+  "5148": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Chí Tôn"
+  },
+  "5149": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Quyền Năng"
+  },
+  "5150": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Thần Ma"
+  },
+  "5151": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Thái Bình"
+  },
+  "5152": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Hồng Long"
+  },
+  "5153": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Thái Dương"
+  },
+  "5154": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Hắc Điểu"
+  },
+  "5155": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Ánh Trăng"
+  },
+  "5156": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Nữ Thần"
+  },
+  "5157": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Hỏa Thần"
+  },
+  "5158": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Hoàng Kim"
+  },
+  "5159": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Thuật Sĩ"
+  },
+  "5160": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Hỏa Thiên"
+  },
+  "5161": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Ma Pháp"
+  },
+  "5162": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Phục Ma"
+  },
+  "5163": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Thạch Anh"
+  },
+  "5164": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Huyền Vương"
+  },
+  "5165": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Thần Thoại"
+  },
+  "5166": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Hoàng Long"
+  },
+  "5167": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Bóng Ma"
+  },
+  "5168": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Hủy Diệt"
+  },
+  "5169": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Thiên Vũ"
+  },
+  "5170": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Anh Vũ"
+  },
+  "5171": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Đế Vương"
+  },
+  "5172": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Quỷ Vương"
+  },
+  "5173": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Chiêm Tinh"
+  },
+  "5182": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Trâu Xanh"
+  },
+  "5183": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Lụa"
+  },
+  "5184": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Nhân Sư"
+  },
+  "5185": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Thiên Thanh"
+  },
+  "5186": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Ma Vương"
+  },
+  "5187": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Rồng Đỏ"
+  },
+  "5188": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay SU"
+  },
+  "5189": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Ma Thuật"
+  },
+  "5190": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Hỏa Thiên"
+  },
+  "5191": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Găng Tay Atlantis"
+  },
+  "5632": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Đồng"
+  },
+  "5633": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Rồng Đỏ"
+  },
+  "5634": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Vải Thô"
+  },
+  "5635": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Ma Thuật"
+  },
+  "5636": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Xương"
+  },
+  "5637": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Da"
+  },
+  "5638": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Trâu Xanh"
+  },
+  "5639": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Nhân Sư"
+  },
+  "5640": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Thiên Kim"
+  },
+  "5641": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Thiết Phiến"
+  },
+  "5642": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Trinh Nữ"
+  },
+  "5643": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Lụa"
+  },
+  "5644": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Thiên Thanh"
+  },
+  "5645": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Ngọc Bích"
+  },
+  "5646": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Kim Ngân"
+  },
+  "5647": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Phong Vũ"
+  },
+  "5648": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Rồng Đen"
+  },
+  "5649": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Rồng Xanh"
+  },
+  "5650": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Triệu Hồn"
+  },
+  "5651": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Giai Nhân"
+  },
+  "5652": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Lôi Phong"
+  },
+  "5653": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Thần Long"
+  },
+  "5654": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Ma Vương"
+  },
+  "5655": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Cuồng Phong"
+  },
+  "5656": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Thánh Nữ"
+  },
+  "5657": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Thiết Ma"
+  },
+  "5658": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Huyền Thiết"
+  },
+  "5659": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Hắc Vương"
+  },
+  "5660": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Chí Tôn"
+  },
+  "5661": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Quyền Năng"
+  },
+  "5662": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Thần Ma"
+  },
+  "5663": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Thái Bình"
+  },
+  "5664": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Hồng Long"
+  },
+  "5665": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Thái Dương"
+  },
+  "5666": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Hắc Điểu"
+  },
+  "5667": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Ánh Trăng"
+  },
+  "5668": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Nữ Thần"
+  },
+  "5669": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Hỏa Thần"
+  },
+  "5670": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Hoàng Kim"
+  },
+  "5671": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Thuật Sĩ"
+  },
+  "5672": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Hỏa Thiên"
+  },
+  "5673": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Ma Pháp"
+  },
+  "5674": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Phục Ma"
+  },
+  "5675": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Thạch Anh"
+  },
+  "5676": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Huyền Vương"
+  },
+  "5677": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Thần Thoại"
+  },
+  "5678": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Hoàng Long"
+  },
+  "5679": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Bóng Ma"
+  },
+  "5680": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Hủy Diệt"
+  },
+  "5681": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Thiên Vũ"
+  },
+  "5682": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Anh Vũ"
+  },
+  "5683": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Đế Vương"
+  },
+  "5684": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Quỷ Vương"
+  },
+  "5685": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Chiêm Tinh"
+  },
+  "5691": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Địa Long"
+  },
+  "5692": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Bạch Hổ"
+  },
+  "5693": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Quyền Lực"
+  },
+  "5694": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Trâu Xanh"
+  },
+  "5695": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Lụa"
+  },
+  "5696": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Nhân Sư"
+  },
+  "5697": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Thiên Thanh"
+  },
+  "5698": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Ma Vương"
+  },
+  "5699": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Rồng Đỏ"
+  },
+  "5700": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày SU"
+  },
+  "5701": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Ma Thuật"
+  },
+  "5702": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Hỏa Thiên"
+  },
+  "5703": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Atlantis"
+  },
+  "5704": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Bạch Hổ"
+  },
+  "5705": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Giày Phượng Hoàng (RF)"
+  },
+  "6147": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Cánh Tinh Thần (EFL)"
+  },
+  "6148": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Cánh Linh Hồn (SOUL)"
+  },
+  "6149": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Cánh Rồng (DK)"
+  },
+  "6150": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Cánh Bóng Đêm (MG)"
+  },
+  "6186": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.107Z",
+   "origin": "Cánh Hỏa Thiên (SM)"
+  },
+  "6194": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.108Z",
+   "origin": "Áo Choàng Chiến Binh"
+  },
+  "6686": {
+   "status": "translated",
+   "note": "",
+   "translator": "Tuân Anh",
+   "updatedAt": "2026-09-28T06:33:42.108Z",
+   "origin": "Áo Choàng Chúa Tể"
+  }
+ }
+}

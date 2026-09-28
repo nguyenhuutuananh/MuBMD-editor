@@ -4,20 +4,30 @@ import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import BytesMeter from "@/components/BytesMeter.vue";
 import InlineEditor from "@/components/InlineEditor.vue";
-import { registerScroller, select, startEdit } from "@/composables/actions";
+import StatusDot from "@/components/StatusDot.vue";
+import { registerScroller, select, setStatus, startEdit } from "@/composables/actions";
 import type { Row } from "@/lib/search";
 import { cn } from "@/lib/utils";
 import { useDocStore } from "@/stores/doc";
 
 const ROW = 32;
 const HEAD = 32; // sticky header inside the scroll area, above the list
-// Shared by the header and the rows so columns always line up.
-const COLS =
-  "grid grid-cols-[36px_44px_minmax(120px,1fr)_64px] md:grid-cols-[52px_60px_minmax(160px,1fr)_92px_minmax(120px,0.8fr)] items-center gap-2 px-3";
+// Shared by the header and the rows so columns always line up. The md+ column list depends on whether
+// a reference file is loaded, so it is passed through a CSS variable (Tailwind classes must be static).
+const COLS = "grid grid-cols-[36px_44px_minmax(120px,1fr)_64px_20px] md:[grid-template-columns:var(--cols)] items-center gap-2 px-3";
+const STATUS_KEYS: Record<string, "untranslated" | "translated" | "reviewed"> = {
+  Digit1: "untranslated",
+  Digit2: "translated",
+  Digit3: "reviewed",
+};
 
 const { t } = useI18n();
 const store = useDocStore();
 const scrollEl = ref<HTMLElement | null>(null);
+const hasRef = computed(() => store.reference !== null);
+const colsVar = computed(() => ({
+  "--cols": `52px 60px minmax(160px,1fr) 92px 112px ${hasRef.value ? "minmax(120px,0.8fr) " : ""}minmax(100px,0.6fr)`,
+}));
 
 const virtualizer = useVirtualizer(
   computed(() => ({
@@ -39,9 +49,10 @@ const items = computed(() => {
 
 function flags(r: Row): string[] {
   return [
-    r.edit ? t("grid.edited") : "",
+    r.dirty ? t("grid.edited") : "",
     r.encoding === "unknown" ? t("grid.nonUtf8") : "",
     ...r.issues.map((c) => t(`issues.${c}`)),
+    r.record.note ? `“${r.record.note}”` : "",
   ].filter(Boolean);
 }
 
@@ -64,6 +75,12 @@ function onDblclick(e: MouseEvent) {
 function onKeydown(e: KeyboardEvent) {
   if (e.target !== scrollEl.value || !store.visible.length) return;
   const sel = store.selectedSlot;
+  // Alt+1/2/3: set status (e.code, because Alt changes e.key on macOS).
+  if (e.altKey && !e.ctrlKey && !e.metaKey && STATUS_KEYS[e.code] && sel !== null) {
+    e.preventDefault();
+    setStatus([sel], STATUS_KEYS[e.code]!);
+    return;
+  }
   if ((e.key === "Enter" || e.key === "F2") && sel !== null) {
     e.preventDefault();
     startEdit(sel);
@@ -91,6 +108,7 @@ onBeforeUnmount(() => registerScroller(null));
     <div
       id="grid-body"
       ref="scrollEl"
+      :style="colsVar"
       class="focus-visible:ring-ring/50 relative min-h-0 flex-1 overflow-auto outline-none focus-visible:ring-2 focus-visible:ring-inset"
       tabindex="0"
       data-testid="grid"
@@ -103,6 +121,8 @@ onBeforeUnmount(() => registerScroller(null));
         <span class="text-right">{{ t("grid.index") }}</span>
         <span>{{ t("grid.name") }}</span>
         <span>{{ t("grid.bytes") }}</span>
+        <span class="hidden md:block">{{ t("grid.status") }}</span>
+        <span v-if="hasRef" class="hidden truncate md:block" :title="store.reference?.fileName">{{ t("grid.reference") }}</span>
         <span class="hidden md:block">{{ t("grid.notes") }}</span>
       </div>
       <div class="relative" :style="{ height: `${virtualizer.getTotalSize()}px` }">
@@ -117,7 +137,7 @@ onBeforeUnmount(() => registerScroller(null));
               COLS,
               'bg-card hover:bg-muted absolute inset-x-0 top-0 h-8 border-b tabular-nums',
               row.slot === store.selectedSlot && 'bg-row-selected hover:bg-row-selected',
-              row.edit && 'shadow-[inset_3px_0_0_var(--brand)]',
+              row.dirty && 'shadow-[inset_3px_0_0_var(--brand)]',
             )
           "
           :style="{ transform: `translateY(${v.start - HEAD}px)` }"
@@ -134,9 +154,12 @@ onBeforeUnmount(() => registerScroller(null));
             </span>
             <BytesMeter :bytes="row.byteLength" />
           </template>
+          <StatusDot :status="row.record.status" class="md:hidden" />
+          <StatusDot :status="row.record.status" with-label class="hidden md:flex" />
+          <span v-if="hasRef" class="text-muted-foreground hidden truncate md:block" :title="row.reference">{{ row.reference }}</span>
           <span
             class="hidden truncate text-xs md:block"
-            :class="row.edit ? 'text-brand' : 'text-warn'"
+            :class="row.dirty ? 'text-brand' : 'text-warn'"
             :title="flags(row).join('\n')"
           >
             {{ flags(row).join(" · ") }}
