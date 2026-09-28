@@ -4,3 +4,4 @@ export * from "./nameCodec";
 export * from "./itemBmd";
 export * from "./tsv";
 export * from "./merge";
+export * from "./glossary";

@@ -2,11 +2,12 @@
 // Types + plain constants only; nothing imported from node/bun.
 
 import type { ErrorCode, ErrorParams } from "../core/errors";
+import type { GlossaryEntry } from "../core/glossary";
 import type { MergeCounts, MergeItem } from "../core/merge";
 import type { NameEncoding, NameIssue, NameIssueCode } from "../core/nameCodec";
 import type { Status, TsvProblem } from "../core/tsv";
 
-export type { ErrorCode, ErrorParams, MergeCounts, MergeItem, NameEncoding, NameIssue, NameIssueCode, Status, TsvProblem };
+export type { ErrorCode, ErrorParams, GlossaryEntry, MergeCounts, MergeItem, NameEncoding, NameIssue, NameIssueCode, Status, TsvProblem };
 export { STATUSES } from "../core/tsv";
 
 export const LANGS = ["en", "vi"] as const;
@@ -147,6 +148,7 @@ export interface ImportPreviewRequest {
 export interface ImportPreview {
   path: string;
   fileName: string;
+  source: "tsv" | "bmd"; // "bmd" = comparing with another Item.bmd (no merge base)
   token: string; // SHA-1 of the file; apply refuses if the file changed since the preview
   items: MergeItem[];
   counts: MergeCounts;
@@ -174,7 +176,14 @@ export interface SaveResponse {
   status: DocStatus;
 }
 
-export type PickKind = "bmd" | "tsv" | "reference";
+export interface GlossaryInfo {
+  path: string;
+  fileName: string;
+  format: "tsv" | "legacy-csv"; // legacy CSV is read-only: saving writes a TSV
+  entries: GlossaryEntry[];
+}
+
+export type PickKind = "bmd" | "tsv" | "reference" | "glossary" | "compare";
 
 export interface PickRequest {
   lang?: Lang; // language of the native OS dialog captions
@@ -183,7 +192,7 @@ export interface PickRequest {
 
 export interface PickSaveRequest {
   lang?: Lang;
-  kind?: "bmd" | "tsv";
+  kind?: "bmd" | "tsv" | "glossary";
   defaultName?: string; // file name suggestion (folder = the open file's folder)
 }
 

@@ -1,6 +1,7 @@
 // search.ts - Accent-insensitive search + slot filtering. Pure logic, no DOM.
 
 import { MAX_ITEM_INDEX } from "../../../src/core/format";
+import { type GlossaryEntry, checkGlossary, isProblemHint } from "../../../src/core/glossary";
 import {
   DEFAULT_RECORD,
   type EditInfo,
@@ -80,7 +81,7 @@ export function setReference(row: Row, reference: string) {
 }
 
 export type SlotScope = "named" | "all" | "empty";
-export type Problem = "any" | "edited" | "issues" | "unknown-encoding" | "near-limit";
+export type Problem = "any" | "edited" | "issues" | "unknown-encoding" | "near-limit" | "glossary";
 
 export type StatusFilter = "any" | Status;
 
@@ -109,8 +110,13 @@ export function matchesScope(r: Row, scope: SlotScope): boolean {
   return scope === "empty" ? r.encoding === "empty" : r.encoding !== "empty";
 }
 
-export function matchesProblem(r: Row, problem: Problem): boolean {
+export const glossaryProblems = (r: Row, glossary: GlossaryEntry[]) =>
+  r.encoding === "unknown" ? [] : checkGlossary(glossary, r.text, r.reference).filter(isProblemHint);
+
+export function matchesProblem(r: Row, problem: Problem, glossary: GlossaryEntry[] = []): boolean {
   switch (problem) {
+    case "glossary":
+      return glossaryProblems(r, glossary).length > 0;
     case "any":
       return true;
     case "edited":
@@ -124,7 +130,7 @@ export function matchesProblem(r: Row, problem: Problem): boolean {
   }
 }
 
-export function applyFilter(rows: Row[], f: Filter): Row[] {
+export function applyFilter(rows: Row[], f: Filter, glossary: GlossaryEntry[] = []): Row[] {
   const coord = parseCoord(f.query);
   if (coord) {
     // A coordinate query ignores the other filters: the user wants exactly that slot.
@@ -137,7 +143,7 @@ export function applyFilter(rows: Row[], f: Filter): Row[] {
     (r) =>
       (f.group === null || r.itemType === f.group) &&
       matchesScope(r, f.scope) &&
-      matchesProblem(r, f.problem) &&
+      matchesProblem(r, f.problem, glossary) &&
       (f.status === "any" || r.record.status === f.status) &&
       terms.every((t) => r.folded.includes(t)),
   );

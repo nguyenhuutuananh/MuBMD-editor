@@ -2,3 +2,9 @@ dist/
 build/
 node_modules/
 *.bak
+releases/
+.DS_Store
+.idea/
+e2e-shots/
+# side data created when running the tool on the sample file
+data/*

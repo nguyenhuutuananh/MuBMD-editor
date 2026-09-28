@@ -412,7 +412,14 @@ export class Session {
       const ref = ItemBmd.parse(new Uint8Array(fs.readFileSync(abs)));
       for (const e of ref.entries()) if (e.encoding === "utf-8") names.set(e.slot, e.text);
     } else {
-      for (const r of parseTranslationTsv(fs.readFileSync(abs, "utf-8")).rows) if (r.name) names.set(r.slot, r.name);
+      // A file with a source column (e.g. MuMain_VI_Item.csv: Nguon = Japanese original) shows that
+      // column; otherwise its Name column.
+      const parsed = parseTranslationTsv(fs.readFileSync(abs, "utf-8"));
+      const useRef = parsed.columns.reference && parsed.rows.some((r) => r.reference);
+      for (const r of parsed.rows) {
+        const name = useRef ? r.reference : r.name;
+        if (name) names.set(r.slot, name);
+      }
     }
     this.reference = { path: abs, names };
     return { path: abs, fileName: path.basename(abs), entries: [...names].sort((a, b) => a[0] - b[0]) };
@@ -444,8 +451,18 @@ export class Session {
     return { path: abs, count: rows.length };
   }
 
-  private analyze(text: string): { analysis: MergeAnalysis; parsed: ReturnType<typeof parseTranslationTsv> } {
-    const parsed = parseTranslationTsv(text);
+  // Rows of a translation file; another Item.bmd is read as a plain name list (2-way compare).
+  private readRows(bytes: Uint8Array, isBmd: boolean): ReturnType<typeof parseTranslationTsv> {
+    if (!isBmd) return parseTranslationTsv(new TextDecoder().decode(bytes));
+    const other = ItemBmd.parse(bytes);
+    const rows = other
+      .entries()
+      .filter((e) => e.encoding === "utf-8")
+      .map((e) => ({ line: e.slot + 1, itemType: e.itemType, itemIndex: e.itemIndex, slot: e.slot, name: e.text }));
+    return { rows, problems: [], columns: { base: false, status: false, translator: false, note: false, reference: false } };
+  }
+
+  private analyze(parsed: ReturnType<typeof parseTranslationTsv>): { analysis: MergeAnalysis; parsed: ReturnType<typeof parseTranslationTsv> } {
     const bmd = this.doc();
     const analysis = analyzeImport(parsed.rows, (slot) => {
       const n = bmd.getName(slot);
@@ -458,10 +475,12 @@ export class Session {
     this.doc();
     const abs = path.resolve(source);
     const bytes = new Uint8Array(fs.readFileSync(abs));
-    const { analysis, parsed } = this.analyze(new TextDecoder().decode(bytes));
+    const isBmd = abs.toLowerCase().endsWith(".bmd");
+    const { analysis, parsed } = this.analyze(this.readRows(bytes, isBmd));
     return {
       path: abs,
       fileName: path.basename(abs),
+      source: isBmd ? "bmd" : "tsv",
       token: sha1(bytes),
       items: analysis.items,
       counts: analysis.counts,
@@ -476,7 +495,7 @@ export class Session {
     const abs = path.resolve(source);
     const bytes = new Uint8Array(fs.readFileSync(abs));
     if (sha1(bytes) !== token) throw new AppError("import-changed", "The file changed since the preview.", { file: path.basename(abs) });
-    const { analysis, parsed } = this.analyze(new TextDecoder().decode(bytes));
+    const { analysis, parsed } = this.analyze(this.readRows(bytes, abs.toLowerCase().endsWith(".bmd")));
     const rows = new Map(parsed.rows.map((r) => [r.slot, r]));
     const wanted = new Set(take);
     const changes: Change[] = [];

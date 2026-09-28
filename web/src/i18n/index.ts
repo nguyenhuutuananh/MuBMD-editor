@@ -1,6 +1,7 @@
 // i18n - English is the default and always shown on first launch; Vietnamese is picked from the menu and remembered.
 
 import { createI18n } from "vue-i18n";
+import type { GlossaryHint } from "../../../src/core/glossary";
 import { isLang, type Lang, type NameIssue } from "../../../src/shared/api";
 import { ApiError } from "@/lib/api";
 import { KEYS, load, save } from "@/lib/storage";
@@ -60,6 +61,11 @@ export function fmtNumber(n: number): string {
 
 export function issueText(issue: Pick<NameIssue, "code" | "params">): string {
   return tr(`issueDetail.${issue.code}`, issue.params ?? {});
+}
+
+export function glossaryHintText(h: GlossaryHint): string {
+  if (h.kind === "ok") return h.translation ? tr("glossaryHint.ok", { term: h.term, translation: h.translation }) : tr("glossaryHint.okKeep", { term: h.term });
+  return tr(`glossaryHint.${h.kind}`, { term: h.term, translation: h.translation ?? "" });
 }
 
 // Server / client error -> sentence in the current language.

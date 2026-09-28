@@ -1,0 +1,77 @@
+MuBMD-editor {{VERSION}} - Hướng dẫn sử dụng
+=============================================
+
+Công cụ dịch tên vật phẩm trong Item.bmd của client MuMain (Mu Online season 6).
+Chạy trên máy của bạn, giao diện mở trong trình duyệt (http://localhost:4817).
+Giao diện có Tiếng Anh (mặc định) và Tiếng Việt - chọn ở nút ngôn ngữ góc trên bên phải.
+
+
+1. CHẠY CHƯƠNG TRÌNH
+--------------------
+Windows:
+  - Giải nén, nhấp đúp MuBMD-editor.exe. Một cửa sổ dòng lệnh mở ra và trình duyệt tự mở.
+  - Nếu Windows SmartScreen chặn: "More info" -> "Run anyway" (chương trình chưa được ký số).
+  - Giữ cửa sổ dòng lệnh mở trong lúc dịch. Đóng cửa sổ đó = tắt chương trình.
+
+macOS:
+  - Giải nén. Lần đầu, mở Terminal trong thư mục vừa giải nén và chạy:
+        xattr -d com.apple.quarantine MuBMD-editor
+        ./MuBMD-editor
+    (máy Mac chip Intel dùng bản macos-x64, chip Apple M1/M2/M3... dùng bản macos-arm64)
+  - Các lần sau: nhấp đúp file MuBMD-editor, hoặc chạy ./MuBMD-editor trong Terminal.
+
+Tuỳ chọn dòng lệnh: MuBMD-editor [đường/dẫn/Item.bmd] [--port 4817] [--no-open] [--help]
+
+
+2. DỊCH
+-------
+  - "Chọn file…" -> chọn Data/Local/Item.bmd (nên làm trên BẢN SAO, không phải file của game đang chạy).
+  - Chọn một dòng, bấm Enter (hoặc nhấp đúp) để sửa tên. Lần đầu sẽ hỏi tên người dịch.
+  - Bộ đếm byte: tên tối đa 49 byte (chữ có dấu tốn 2-3 byte). Quá giới hạn thì không lưu được.
+  - Enter / Tab: lưu và sang dòng dưới. Shift+Enter: lên dòng trên. Esc: huỷ.
+  - Ctrl+S: lưu vào file. Ctrl+Z / Ctrl+Y: hoàn tác / làm lại. Ctrl+F: tìm.
+  - Tìm không cần gõ dấu ("rong do" tìm được "Rồng Đỏ"), hoặc theo vị trí: 7:1, #3585.
+  - Trạng thái: Chưa dịch / Đã dịch / Đã duyệt. Alt+1 / Alt+2 / Alt+3, hoặc ở khung bên phải.
+    Đánh dấu hàng loạt: Thao tác -> "Đánh dấu N dòng đang hiện là…".
+
+
+3. LÀM VIỆC NHÓM
+----------------
+  1. Người điều phối giữ Item.bmd chính, chia sẻ qua Google Drive.
+  2. Mỗi người dịch chép riêng file Item.bmd về máy mình, mở, dịch phần được giao, lưu.
+  3. Người dịch: Thao tác -> "Xuất bản dịch (TSV)…" -> "Các slot tôi đã sửa" -> gửi file TSV.
+  4. Người điều phối: Thao tác -> "Nhập bản dịch (TSV)…". Màn hình xem trước cho biết:
+       Thay đổi   = chỉ người kia sửa (được chọn sẵn)
+       Xung đột   = cả hai cùng sửa (mặc định giữ bản của mình)
+     Chọn xong bấm "Áp dụng", xem lại bằng bộ lọc "Đã sửa", rồi Ctrl+S.
+  5. Người điều phối chia sẻ Item.bmd mới; người dịch thay file trên máy bằng bản mới.
+
+  File TSV mở được bằng Excel / Google Sheets. File items.tsv kiểu cũ cũng nhập được.
+  "So sánh với Item.bmd khác…" liệt kê các tên khác nhau giữa 2 file và cho lấy tên từ file kia.
+
+
+4. THUẬT NGỮ VÀ THAM CHIẾU
+--------------------------
+  - Thao tác -> "Bảng thuật ngữ…": mở bảng thuật ngữ của nhóm (TSV, hoặc MuMain_VI_Glossary.csv cũ),
+    thêm / xoá thuật ngữ, lưu thành TSV để chia sẻ.
+    Bộ lọc "Lệch thuật ngữ" tìm các tên chưa theo thuật ngữ (ví dụ "Đồng Helm" khi đã chốt Helm -> Mũ).
+  - Thao tác -> "Chọn file tham chiếu…": hiện thêm cột tên gốc (Item.bmd khác, TSV,
+    hoặc MuMain_VI_Item.csv - cột Nguon). Tìm kiếm cũng tìm trong cột này.
+
+
+5. DỮ LIỆU ĐƯỢC LƯU Ở ĐÂU
+-------------------------
+Cạnh file Item.bmd có thư mục "Item.bmd.mubmd":
+  backups/       bản trước mỗi lần lưu (20 bản mới nhất)
+  changes.tsv    nhật ký: ai đổi tên slot nào, từ gì sang gì
+  project.json   trạng thái / ghi chú của từng slot
+  draft.json     thay đổi chưa lưu (tắt ngang vẫn khôi phục được)
+
+
+6. XỬ LÝ SỰ CỐ
+--------------
+  - "File đã bị thay đổi bên ngoài": Google Drive hoặc người khác vừa ghi file. Chọn
+    "Lưu thành file khác…" để không mất gì, hoặc "Ghi đè" (bản trên đĩa vẫn được backup).
+  - "file đang bị chương trình khác giữ": đóng game client rồi lưu lại.
+  - Cổng 4817 đang bận: chương trình tự dùng cổng kế tiếp (xem địa chỉ in trong cửa sổ dòng lệnh).
+  - Lỡ tắt khi chưa lưu: mở lại file, chương trình hỏi khôi phục bản nháp.

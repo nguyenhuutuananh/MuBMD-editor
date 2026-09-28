@@ -5,7 +5,17 @@
 
 import { defineStore } from "pinia";
 import { reactive, ref, shallowRef, watch } from "vue";
-import type { DocStatus, DraftInfo, FileInfo, MutationResponse, ReferenceInfo, SaveRequest, Status } from "../../../src/shared/api";
+import type {
+  DocStatus,
+  DraftInfo,
+  FileInfo,
+  GlossaryEntry,
+  GlossaryInfo,
+  MutationResponse,
+  ReferenceInfo,
+  SaveRequest,
+  Status,
+} from "../../../src/shared/api";
 import { api } from "@/lib/api";
 import { type Filter, type Row, applyFilter, patchRow, setReference, toRows } from "@/lib/search";
 import { KEYS, load, save } from "@/lib/storage";
@@ -39,6 +49,8 @@ export const useDocStore = defineStore("doc", () => {
   const recent = ref(load<string[]>(KEYS.recent, []));
   const reference = ref<{ path: string; fileName: string; count: number } | null>(null);
   const rebased = ref(false);
+  const glossary = shallowRef<GlossaryInfo | null>(null);
+  const glossaryEntries = () => glossary.value?.entries ?? [];
 
   const saved = load<Partial<Filter>>(KEYS.filter, {});
   const filter = reactive<Filter>({
@@ -52,7 +64,7 @@ export const useDocStore = defineStore("doc", () => {
   // Re-filter when the filter changes. After an edit we do NOT re-filter (only bump rev) so the edited row does not jump away.
   function refilter() {
     editor.value = null;
-    visible.value = applyFilter(rows.value, filter);
+    visible.value = applyFilter(rows.value, filter, glossaryEntries());
   }
   watch(
     () => [filter.group, filter.scope, filter.problem, filter.status] as const,
@@ -62,6 +74,24 @@ export const useDocStore = defineStore("doc", () => {
     },
   );
   watch(() => filter.query, refilter);
+  watch(glossary, () => {
+    if (filter.problem === "glossary") refilter();
+    rev.value++;
+  });
+
+  async function loadGlossary(path: string): Promise<GlossaryInfo> {
+    glossary.value = await api.glossaryLoad(path);
+    save(KEYS.glossary, glossary.value.path);
+    return glossary.value;
+  }
+
+  async function saveGlossary(path: string, entries: GlossaryEntry[]): Promise<GlossaryInfo> {
+    glossary.value = await api.glossarySave(path, entries);
+    save(KEYS.glossary, glossary.value.path);
+    return glossary.value;
+  }
+
+  const rememberedGlossary = () => load<string | null>(KEYS.glossary, null);
 
   function setTranslator(name: string) {
     translator.value = name;
@@ -152,6 +182,10 @@ export const useDocStore = defineStore("doc", () => {
     recent,
     reference,
     rebased,
+    glossary,
+    loadGlossary,
+    saveGlossary,
+    rememberedGlossary,
     filter,
     loadReference,
     referenceFor,

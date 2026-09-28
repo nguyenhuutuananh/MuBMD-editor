@@ -79,7 +79,8 @@
       "edited": "Edited (unsaved)",
       "issues": "Has warnings / errors",
       "nearLimit": "Near byte limit (≥ 40)",
-      "unknownEncoding": "Not UTF-8"
+      "unknownEncoding": "Not UTF-8",
+      "glossary": "Glossary mismatch"
     },
     "rows": "{n} row | {n} rows",
     "statusLabel": "Status filter",
@@ -100,7 +101,8 @@
     "originalTitle": "Original: {name}",
     "bytesTitle": "{bytes}/{max} bytes",
     "status": "Status",
-    "reference": "Reference"
+    "reference": "Reference",
+    "glossary": "Glossary"
   },
   "encoding": {
     "empty": "Empty",
@@ -142,7 +144,8 @@
     "status": "Status",
     "note": "Note",
     "notePlaceholder": "Note for the team (Enter to save)",
-    "reference": "Reference"
+    "reference": "Reference",
+    "glossary": "Glossary"
   },
   "editor": {
     "aria": "New name for {type}:{index}",
@@ -186,7 +189,9 @@
     "imported": "Imported {n} change. Review and save. | Imported {n} changes. Review and save.",
     "referenceLoaded": "Reference: {file} ({n} names)",
     "rebased": "Item.bmd was replaced from outside since your last save (e.g. a new master copy). Merge bases were reset to its current names.",
-    "statusSet": "Marked {n} row as {status}. | Marked {n} rows as {status}."
+    "statusSet": "Marked {n} row as {status}. | Marked {n} rows as {status}.",
+    "glossaryLoaded": "Glossary: {file} ({n} terms)",
+    "glossarySaved": "Saved {n} terms to {file}."
   },
   "errors": {
     "bmd-size": "The file is {size} bytes; a MuMain Item.bmd must be exactly {expected} bytes.",
@@ -229,7 +234,9 @@
     "import": "Import translations (TSV)…",
     "reference": "Set reference file…",
     "clearReference": "Clear reference",
-    "markList": "Mark the {n} listed row as | Mark the {n} listed rows as"
+    "markList": "Mark the {n} listed row as | Mark the {n} listed rows as",
+    "glossary": "Glossary…",
+    "compare": "Compare with another Item.bmd…"
   },
   "exportDialog": {
     "title": "Export translations",
@@ -261,6 +268,40 @@
     "theirs": "In file",
     "base": "Base",
     "by": "by {name}",
-    "apply": "Apply {n} change | Apply {n} changes"
+    "apply": "Apply {n} change | Apply {n} changes",
+    "compareTitle": "Compare with {file}",
+    "compareNote": "Names that differ from the other Item.bmd are listed; tick the ones to take from it. Empty names in that file are ignored."
+  },
+  "glossary": {
+    "title": "Glossary",
+    "empty": "No glossary loaded. Open the team's glossary (a TSV, or the old MuMain_VI_Glossary.csv) or start a new one. The glossary is a separate file you can share on Google Drive.",
+    "open": "Open glossary file…",
+    "openOther": "Open another…",
+    "create": "New glossary",
+    "file": "File: {file}",
+    "legacy": "This is the old CSV format and is read-only here. Saving creates a new TSV file; the CSV is not changed.",
+    "search": "Filter terms",
+    "term": "Term",
+    "translation": "Translation",
+    "translationHint": "empty = keep as-is",
+    "note": "Note",
+    "category": "Category",
+    "keep": "(keep as-is)",
+    "add": "Add",
+    "remove": "Remove",
+    "save": "Save",
+    "saveAs": "Save as TSV…",
+    "count": "{n} term | {n} terms",
+    "unsaved": "Unsaved glossary changes",
+    "discardTitle": "Discard glossary changes?",
+    "discardBody": "The glossary has changes that are not saved to its file.",
+    "discard": "Discard"
+  },
+  "glossaryHint": {
+    "ok": "“{term}” → {translation}",
+    "okKeep": "“{term}” is kept as-is",
+    "missing": "“{term}” should be translated as “{translation}”",
+    "keep": "“{term}” should be kept as-is",
+    "untranslated": "“{term}” is still untranslated (→ {translation})"
   }
 }

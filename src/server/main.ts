@@ -11,15 +11,35 @@ import { createApp } from "./app";
 
 const DEFAULT_PORT = 4817;
 
+const HELP = `MuBMD-editor ${pkg.version} - translate item names in MuMain Item.bmd (Mu Online season 6)
+
+Usage: MuBMD-editor [path/to/Item.bmd] [--port N] [--no-open]
+
+  path/to/Item.bmd   file to open on start (optional; can be chosen in the browser)
+  --port N           port on 127.0.0.1 (default ${DEFAULT_PORT}; the next free one is used if busy)
+  --no-open          do not open the browser automatically
+  --version          print the version
+  --help             show this help
+`;
+
 function parseArgs(argv: string[]) {
   let file: string | undefined;
   let port = DEFAULT_PORT;
   let open = true;
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]!;
-    if (a === "--port") port = Number(argv[++i]);
+    if (a === "--help" || a === "-h") {
+      console.log(HELP);
+      process.exit(0);
+    } else if (a === "--version" || a === "-v") {
+      console.log(pkg.version);
+      process.exit(0);
+    } else if (a === "--port") port = Number(argv[++i]);
     else if (a === "--no-open") open = false;
-    else if (!a.startsWith("--")) file = a;
+    else if (a.startsWith("--")) {
+      console.error(`Unknown option: ${a}\n\n${HELP}`);
+      process.exit(2);
+    } else file = a;
   }
   if (!Number.isInteger(port) || port <= 0 || port > 65535) throw new Error(`Invalid port: ${port}`);
   return { file, port, open };

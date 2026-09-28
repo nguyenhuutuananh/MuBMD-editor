@@ -407,4 +407,28 @@ describe("TSV export / import", () => {
     expect(s.setReference(DATA)?.entries.length).toBe(488);
     expect(s.setReference(null)).toBeNull();
   });
+
+  test("compare with another Item.bmd: differing names are listed as changes", () => {
+    const s = opened();
+    const other = ItemBmd.parse(ORIGINAL);
+    other.setName(0, "Chùy Khác");
+    other.setName(9, "");
+    const otherFile = path.join(dir, "Other.bmd");
+    fs.writeFileSync(otherFile, other.toBytes());
+    const p = s.previewImport(otherFile);
+    expect(p.source).toBe("bmd");
+    expect(p.hasBase).toBe(false);
+    expect(p.items.map((i) => [i.slot, i.kind, i.theirs])).toEqual([[0, "apply", "Chùy Khác"]]);
+    s.applyImport(otherFile, p.token, [0], "An");
+    expect(s.item(0)[1]).toBe("Chùy Khác");
+    expect(s.item(9)[1]).toBe("Kiếm Rồng Lửa"); // an empty name over there never clears ours
+  });
+
+  test("a CSV reference with a source column (MuMain_VI_Item.csv style) shows the source", () => {
+    const s = opened();
+    const ref = path.join(dir, "ref.csv");
+    fs.writeFileSync(ref, "ItemType,ItemIndex,Nguon,TiengViet\n0,0,クリス,Chùy Thủy\n");
+    expect(s.setReference(ref)?.entries).toEqual([[0, "クリス"]]);
+  });
 });
+

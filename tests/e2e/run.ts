@@ -308,6 +308,53 @@ async function main() {
   await p.waitForFunction(() => document.querySelector("[data-testid=grid] [data-slot='4']")?.textContent?.includes("Đao Sát Thủ") && !document.querySelector("[data-testid=grid] [data-slot='4']")?.textContent?.includes("Mới"));
   check("the whole import is one undo step", (await nameOf(6)) === "Kiếm La Mã Của Mình");
 
+  // 15. Phase 5: glossary (legacy CSV -> TSV), glossary mismatch filter, compare with another Item.bmd
+  const legacyCsv = path.join(WORK, "glossary.csv");
+  fs.writeFileSync(legacyCsv, "Loại,Thuật ngữ / Mẫu,Ghi chú\nĐã chốt dịch,Defense -> Phòng Thủ,PT\nGiữ nguyên,\"Lorencia, Devias\",\n");
+  setPick(legacyCsv);
+  await action("glossary");
+  await p.waitForSelector("[data-testid=glossary-dialog]");
+  await p.click("[data-testid=glossary-open]");
+  await toastWith(p, "Thuật ngữ: glossary.csv (3 thuật ngữ)");
+  check("legacy glossary CSV loaded", (await p.locator("[data-testid=glossary-row]").count()) === 3);
+  await p.fill("[data-testid=glossary-term]", "Helm");
+  await p.fill("[data-testid=glossary-translation]", "Mũ");
+  await p.click("[data-testid=glossary-add]");
+  await shot(p, "12-glossary-vi");
+  const glossTsv = path.join(WORK, "glossary.tsv");
+  setPick(glossTsv);
+  await p.click("[data-testid=glossary-save]");
+  await toastWith(p, "Đã lưu 4 thuật ngữ vào glossary.tsv");
+  check("glossary saved as TSV", fs.existsSync(glossTsv) && fs.readFileSync(glossTsv, "utf-8").includes("Helm\tMũ"));
+  await p.keyboard.press("Escape");
+  await p.waitForSelector("[data-testid=glossary-dialog]", { state: "detached" });
+
+  await p.dblclick(rowSel(3));
+  await p.fill(EDITOR, "Kiếm Helm");
+  await p.keyboard.press("Enter");
+  await p.waitForTimeout(200);
+  await p.keyboard.press("Escape");
+  await choose("problem", "problem-glossary");
+  await p.waitForFunction(() => document.querySelector("[data-testid=result-count]")?.textContent?.trim() === "1 dòng");
+  await p.click(rowSel(0));
+  const hint = await text(p, "[data-testid=glossary-hints]");
+  check("glossary mismatch filter + hint", hint.includes("“Helm” vẫn chưa dịch (→ Mũ)"), hint);
+  await shot(p, "13-glossary-hint-vi");
+  await choose("problem", "problem-any");
+
+  const otherBmd = ItemBmd.parse(new Uint8Array(fs.readFileSync(FILE)));
+  otherBmd.setName(10, "Kiếm Ánh Sáng Khác");
+  const otherFile = path.join(WORK, "Other.bmd");
+  fs.writeFileSync(otherFile, otherBmd.toBytes());
+  setPick(otherFile);
+  await action("compare");
+  await p.waitForSelector("[data-testid=import-dialog]");
+  const title = await text(p, "[data-testid=import-dialog] h2");
+  const rowsListed = await p.locator("[data-testid=import-dialog] tbody tr").count();
+  check("compare dialog lists the differing names", title === "So sánh với Other.bmd" && rowsListed >= 1, `${title}, ${rowsListed} rows`);
+  await shot(p, "14-compare-vi");
+  await p.keyboard.press("Escape");
+
   // 13. Dark theme + narrow screen (new context = first launch -> English)
   const dark = await browser.newPage({ viewport: { width: 1440, height: 860 }, colorScheme: "dark" });
   await dark.goto(URL);

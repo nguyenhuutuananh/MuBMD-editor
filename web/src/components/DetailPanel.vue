@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
+import { checkGlossary } from "../../../src/core/glossary";
 import { MAX_NAME_BYTES, checkName } from "../../../src/core/nameCodec";
 import { STATUSES } from "../../../src/shared/api";
 import StatusDot from "@/components/StatusDot.vue";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { revert, setNote, setStatus, startEdit } from "@/composables/actions";
-import { fmtTime, issueText } from "@/i18n";
+import { fmtTime, glossaryHintText, issueText } from "@/i18n";
 import { byteLevel } from "@/lib/bytes";
 import { useDocStore } from "@/stores/doc";
 
@@ -42,6 +43,15 @@ const notes = computed(() => {
   const r = row.value;
   if (!r) return [];
   return [r.encoding === "unknown" ? t("detail.nonUtf8Note") : "", ...r.issues.map((c) => t(`issues.${c}`))].filter(Boolean);
+});
+
+// Glossary hints for the name (or the name being typed) against the reference name.
+const glossaryHints = computed(() => {
+  const r = row.value;
+  const entries = store.glossary?.entries ?? [];
+  if (!r || !entries.length || r.encoding === "unknown") return [];
+  const name = store.editor?.slot === r.slot ? store.editor.value : r.text;
+  return checkGlossary(entries, name, r.reference).map((h) => ({ text: glossaryHintText(h), ok: h.kind === "ok", note: h.note }));
 });
 
 // Note field: edited locally, saved on Enter / blur.
@@ -108,6 +118,19 @@ const live = computed(() => {
       <ul v-if="notes.length" class="text-warn mb-3 list-disc pl-5 text-[13px]">
         <li v-for="m in notes" :key="m">{{ m }}</li>
       </ul>
+      <div v-if="glossaryHints.length" class="mb-3" data-testid="glossary-hints">
+        <p class="text-muted-foreground mb-1 text-xs">{{ t("detail.glossary") }}</p>
+        <ul class="flex flex-col gap-1 text-[13px]">
+          <li
+            v-for="h in glossaryHints"
+            :key="h.text"
+            :class="h.ok ? 'text-ok' : 'bg-bad-soft text-destructive rounded px-2 py-1'"
+            :title="h.note"
+          >
+            {{ h.text }}
+          </li>
+        </ul>
+      </div>
       <div v-if="live" class="mb-3" data-testid="live-issues">
         <p class="mb-1.5 text-[13px] font-semibold" :class="live.level === 'over' ? 'text-destructive' : live.level === 'near' ? 'text-warn' : ''">
           {{ live.title }}

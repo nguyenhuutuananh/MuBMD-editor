@@ -23,4 +23,5 @@ export const KEYS = {
   filter: "mubmd.filter",
   translator: "mubmd.translator",
   references: "mubmd.references", // { [Item.bmd path]: reference file path }
+  glossary: "mubmd.glossary", // path of the team glossary file (one for all Item.bmd files)
 } as const;

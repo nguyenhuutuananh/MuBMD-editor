@@ -6,7 +6,7 @@ import BytesMeter from "@/components/BytesMeter.vue";
 import InlineEditor from "@/components/InlineEditor.vue";
 import StatusDot from "@/components/StatusDot.vue";
 import { registerScroller, select, setStatus, startEdit } from "@/composables/actions";
-import type { Row } from "@/lib/search";
+import { type Row, glossaryProblems } from "@/lib/search";
 import { cn } from "@/lib/utils";
 import { useDocStore } from "@/stores/doc";
 
@@ -52,6 +52,7 @@ function flags(r: Row): string[] {
     r.dirty ? t("grid.edited") : "",
     r.encoding === "unknown" ? t("grid.nonUtf8") : "",
     ...r.issues.map((c) => t(`issues.${c}`)),
+    glossaryProblems(r, store.glossary?.entries ?? []).length ? t("grid.glossary") : "",
     r.record.note ? `“${r.record.note}”` : "",
   ].filter(Boolean);
 }

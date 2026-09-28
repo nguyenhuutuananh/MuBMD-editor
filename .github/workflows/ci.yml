@@ -1,0 +1,39 @@
+# CI: typecheck + unit tests + e2e (real Chrome) on every push and pull request.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Same Bun as local development (bun.lockb was created with it).
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.1.32
+
+      # Vite 8 needs Node >= 20.19.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - run: bun install --frozen-lockfile
+      - run: bun run typecheck
+      - run: bun test
+
+      # ubuntu-latest ships Google Chrome, which playwright-core uses via channel "chrome".
+      - name: e2e
+        run: bun run test:e2e e2e-shots
+
+      - name: Upload e2e screenshots
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-shots
+          path: e2e-shots/
+          if-no-files-found: ignore

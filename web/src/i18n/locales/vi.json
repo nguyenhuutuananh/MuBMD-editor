@@ -79,7 +79,8 @@
       "edited": "Đã sửa (chưa lưu)",
       "issues": "Có cảnh báo / lỗi",
       "nearLimit": "Gần giới hạn byte (≥ 40)",
-      "unknownEncoding": "Không phải UTF-8"
+      "unknownEncoding": "Không phải UTF-8",
+      "glossary": "Lệch thuật ngữ"
     },
     "rows": "{n} dòng",
     "statusLabel": "Lọc trạng thái",
@@ -100,7 +101,8 @@
     "originalTitle": "Tên gốc: {name}",
     "bytesTitle": "{bytes}/{max} byte",
     "status": "Trạng thái",
-    "reference": "Tham chiếu"
+    "reference": "Tham chiếu",
+    "glossary": "Thuật ngữ"
   },
   "encoding": {
     "empty": "Trống",
@@ -142,7 +144,8 @@
     "status": "Trạng thái",
     "note": "Ghi chú",
     "notePlaceholder": "Ghi chú cho nhóm (Enter để lưu)",
-    "reference": "Tham chiếu"
+    "reference": "Tham chiếu",
+    "glossary": "Thuật ngữ"
   },
   "editor": {
     "aria": "Tên mới cho {type}:{index}",
@@ -186,7 +189,9 @@
     "imported": "Đã nhập {n} thay đổi. Hãy xem lại rồi lưu.",
     "referenceLoaded": "Tham chiếu: {file} ({n} tên)",
     "rebased": "Item.bmd đã bị thay bằng file khác kể từ lần lưu trước (ví dụ nhận bản chính mới). Tên gốc để gộp đã được đặt lại theo tên hiện tại.",
-    "statusSet": "Đã đánh dấu {n} dòng là {status}."
+    "statusSet": "Đã đánh dấu {n} dòng là {status}.",
+    "glossaryLoaded": "Thuật ngữ: {file} ({n} thuật ngữ)",
+    "glossarySaved": "Đã lưu {n} thuật ngữ vào {file}."
   },
   "errors": {
     "bmd-size": "File có {size} byte; Item.bmd của MuMain phải đúng {expected} byte.",
@@ -229,7 +234,9 @@
     "import": "Nhập bản dịch (TSV)…",
     "reference": "Chọn file tham chiếu…",
     "clearReference": "Bỏ file tham chiếu",
-    "markList": "Đánh dấu {n} dòng đang hiện là"
+    "markList": "Đánh dấu {n} dòng đang hiện là",
+    "glossary": "Bảng thuật ngữ…",
+    "compare": "So sánh với Item.bmd khác…"
   },
   "exportDialog": {
     "title": "Xuất bản dịch",
@@ -261,6 +268,40 @@
     "theirs": "Trong file",
     "base": "Gốc",
     "by": "bởi {name}",
-    "apply": "Áp dụng {n} thay đổi"
+    "apply": "Áp dụng {n} thay đổi",
+    "compareTitle": "So sánh với {file}",
+    "compareNote": "Liệt kê các tên khác với Item.bmd kia; tick các tên muốn lấy từ file đó. Tên trống trong file kia được bỏ qua."
+  },
+  "glossary": {
+    "title": "Bảng thuật ngữ",
+    "empty": "Chưa mở bảng thuật ngữ. Hãy mở bảng thuật ngữ của nhóm (TSV, hoặc file MuMain_VI_Glossary.csv cũ) hoặc tạo mới. Bảng thuật ngữ là một file riêng, có thể chia sẻ qua Google Drive.",
+    "open": "Mở file thuật ngữ…",
+    "openOther": "Mở file khác…",
+    "create": "Tạo mới",
+    "file": "File: {file}",
+    "legacy": "Đây là định dạng CSV cũ nên chỉ xem được. Khi lưu sẽ tạo file TSV mới; file CSV giữ nguyên.",
+    "search": "Lọc thuật ngữ",
+    "term": "Thuật ngữ",
+    "translation": "Bản dịch",
+    "translationHint": "để trống = giữ nguyên",
+    "note": "Ghi chú",
+    "category": "Nhóm",
+    "keep": "(giữ nguyên)",
+    "add": "Thêm",
+    "remove": "Xoá",
+    "save": "Lưu",
+    "saveAs": "Lưu thành TSV…",
+    "count": "{n} thuật ngữ",
+    "unsaved": "Bảng thuật ngữ có thay đổi chưa lưu",
+    "discardTitle": "Bỏ thay đổi bảng thuật ngữ?",
+    "discardBody": "Bảng thuật ngữ có thay đổi chưa lưu vào file.",
+    "discard": "Bỏ thay đổi"
+  },
+  "glossaryHint": {
+    "ok": "“{term}” → {translation}",
+    "okKeep": "“{term}” được giữ nguyên",
+    "missing": "“{term}” nên dịch là “{translation}”",
+    "keep": "“{term}” nên giữ nguyên",
+    "untranslated": "“{term}” vẫn chưa dịch (→ {translation})"
   }
 }

@@ -1,0 +1,77 @@
+MuBMD-editor {{VERSION}} - User guide
+=====================================
+
+Translate item names in the MuMain client's Item.bmd (Mu Online season 6).
+Runs on your machine; the UI opens in your browser (http://localhost:4817).
+The UI is in English (default) and Vietnamese - switch with the language button (top right).
+
+
+1. RUNNING
+----------
+Windows:
+  - Unzip and double-click MuBMD-editor.exe. A console window opens and the browser opens.
+  - If Windows SmartScreen blocks it: "More info" -> "Run anyway" (the program is not code-signed).
+  - Keep the console window open while translating. Closing it quits the program.
+
+macOS:
+  - Unzip. The first time, open Terminal in the unzipped folder and run:
+        xattr -d com.apple.quarantine MuBMD-editor
+        ./MuBMD-editor
+    (Intel Macs use the macos-x64 build, Apple silicon M1/M2/M3... the macos-arm64 build)
+  - Later: double-click MuBMD-editor, or run ./MuBMD-editor in Terminal.
+
+Command line: MuBMD-editor [path/to/Item.bmd] [--port 4817] [--no-open] [--help]
+
+
+2. TRANSLATING
+--------------
+  - "Choose file…" -> pick Data/Local/Item.bmd (work on a COPY, not the file of a running game).
+  - Select a row and press Enter (or double-click) to edit. You are asked for a translator name once.
+  - Byte counter: at most 49 bytes (Vietnamese accented letters take 2-3 bytes). Over the limit cannot be saved.
+  - Enter / Tab: save and go to the next row. Shift+Enter: previous row. Esc: cancel.
+  - Ctrl+S: save the file. Ctrl+Z / Ctrl+Y: undo / redo. Ctrl+F: search.
+  - Search ignores accents ("rong do" finds "Rồng Đỏ"), or by position: 7:1, #3585.
+  - Status: Untranslated / Translated / Reviewed. Alt+1 / Alt+2 / Alt+3, or in the right panel.
+    In bulk: Actions -> "Mark the N listed rows as…".
+
+
+3. WORKING AS A TEAM
+--------------------
+  1. A coordinator keeps the master Item.bmd and shares it on Google Drive.
+  2. Each translator copies Item.bmd to their own machine, translates their part, saves.
+  3. Translator: Actions -> "Export translations (TSV)…" -> "Slots I changed" -> send the TSV.
+  4. Coordinator: Actions -> "Import translations (TSV)…". The preview shows:
+       Change   = only they changed it (selected by default)
+       Conflict = both changed it (keeps yours by default)
+     Apply, review with the "Edited" filter, then Ctrl+S.
+  5. The coordinator shares the new Item.bmd; translators replace their copy with it.
+
+  TSV files open in Excel / Google Sheets. Old items.tsv files import too.
+  "Compare with another Item.bmd…" lists names that differ and lets you take names from that file.
+
+
+4. GLOSSARY AND REFERENCE
+-------------------------
+  - Actions -> "Glossary…": open the team glossary (TSV, or the old MuMain_VI_Glossary.csv),
+    add / remove terms, save as TSV to share. The "Glossary mismatch" filter finds names that do
+    not follow it (e.g. "Đồng Helm" when Helm -> Mũ was agreed).
+  - Actions -> "Set reference file…": shows an extra column with original names (another Item.bmd,
+    a TSV, or MuMain_VI_Item.csv - its Nguon column). Search also looks in that column.
+
+
+5. WHERE DATA IS STORED
+-----------------------
+Next to Item.bmd there is an "Item.bmd.mubmd" folder:
+  backups/       the previous version before each save (newest 20 kept)
+  changes.tsv    log: who renamed which slot, from what to what
+  project.json   per-slot status / note
+  draft.json     unsaved edits (restored after a crash)
+
+
+6. TROUBLESHOOTING
+------------------
+  - "The file was changed outside this tool": Google Drive or someone else just wrote the file.
+    Choose "Save to another file…" to lose nothing, or "Overwrite" (the disk version is backed up first).
+  - "another program is holding it": close the game client and save again.
+  - Port 4817 busy: the next free port is used (see the address printed in the console window).
+  - Closed without saving: reopen the file and restore the draft when asked.

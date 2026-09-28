@@ -25,7 +25,7 @@ describe("parseTranslationTsv", () => {
   });
 
   test("BOM, CRLF, columns in any order, Name(…) header, unknown status ignored", () => {
-    const r = parseTranslationTsv("﻿Status\tItemIndex\tItemType\tName(Japanese)\r\ntranslated\t1\t0\tダガー\r\nblanked(no VN found)\t2\t0\tx\r\n");
+    const r = parseTranslationTsv("\uFEFFStatus\tItemIndex\tItemType\tName(Japanese)\r\ntranslated\t1\t0\tダガー\r\nblanked(no VN found)\t2\t0\tx\r\n");
     expect(r.rows[0]).toMatchObject({ slot: 1, name: "ダガー", status: "translated" });
     expect(r.rows[1]!.status).toBeUndefined();
   });
@@ -35,7 +35,7 @@ describe("parseTranslationTsv", () => {
       { itemType: 0, itemIndex: 5, name: "Khoái Đao", status: "reviewed", translator: "An", updatedAt: "2026-09-28T04:00:00.000Z", base: "Khoái Đao Cũ", reference: "Falchion", note: "tab\there" },
     ];
     const text = serializeTranslationTsv(rows);
-    expect(text.startsWith("﻿ItemType\tItemIndex\tName\tStatus")).toBe(true);
+    expect(text.startsWith("\uFEFFItemType\tItemIndex\tName\tStatus")).toBe(true);
     const back = parseTranslationTsv(text).rows[0]!;
     expect(back).toMatchObject({ slot: 5, name: "Khoái Đao", status: "reviewed", translator: "An", base: "Khoái Đao Cũ", reference: "Falchion", note: "tab here" });
   });

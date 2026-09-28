@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronDown, Download, FileText, Upload, X } from "@lucide/vue";
+import { BookOpen, ChevronDown, Download, FileText, GitCompare, Upload, X } from "@lucide/vue";
 import { useDebounceFn } from "@vueuse/core";
 import { ref } from "vue";
 import { useI18n } from "vue-i18n";
@@ -16,7 +16,16 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { chooseReference, clearReference, exportOpen, select, setStatus, startImport } from "@/composables/actions";
+import {
+  chooseReference,
+  clearReference,
+  compareWith,
+  exportOpen,
+  glossaryOpen,
+  select,
+  setStatus,
+  startImport,
+} from "@/composables/actions";
 import type { Problem, SlotScope, StatusFilter } from "@/lib/search";
 import { useDocStore } from "@/stores/doc";
 
@@ -43,6 +52,7 @@ function toResults(e: KeyboardEvent) {
 const scopes: SlotScope[] = ["named", "all", "empty"];
 const statusFilters: StatusFilter[] = ["any", ...STATUSES];
 const openExport = () => (exportOpen.value = true);
+const openGlossary = () => (glossaryOpen.value = true);
 const markList = (status: (typeof STATUSES)[number]) => setStatus(store.visible.map((r) => r.slot), status);
 const problems: { value: Problem; key: string }[] = [
   { value: "any", key: "any" },
@@ -50,6 +60,7 @@ const problems: { value: Problem; key: string }[] = [
   { value: "issues", key: "issues" },
   { value: "near-limit", key: "nearLimit" },
   { value: "unknown-encoding", key: "unknownEncoding" },
+  { value: "glossary", key: "glossary" },
 ];
 
 defineExpose({
@@ -110,7 +121,9 @@ defineExpose({
       <DropdownMenuContent align="end" class="min-w-64">
         <DropdownMenuItem data-testid="action-export" @select="openExport"><Download />{{ t("actions.export") }}</DropdownMenuItem>
         <DropdownMenuItem data-testid="action-import" @select="startImport"><Upload />{{ t("actions.import") }}</DropdownMenuItem>
+        <DropdownMenuItem data-testid="action-compare" @select="compareWith"><GitCompare />{{ t("actions.compare") }}</DropdownMenuItem>
         <DropdownMenuSeparator />
+        <DropdownMenuItem data-testid="action-glossary" @select="openGlossary"><BookOpen />{{ t("actions.glossary") }}</DropdownMenuItem>
         <DropdownMenuItem data-testid="action-reference" @select="chooseReference"><FileText />{{ t("actions.reference") }}</DropdownMenuItem>
         <DropdownMenuItem v-if="store.reference" @select="clearReference"><X />{{ t("actions.clearReference") }}</DropdownMenuItem>
         <DropdownMenuSeparator />

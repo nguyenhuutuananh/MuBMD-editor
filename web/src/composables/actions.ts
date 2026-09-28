@@ -3,7 +3,7 @@
 import { ref, shallowRef } from "vue";
 import { toast } from "vue-sonner";
 import { checkName } from "../../../src/core/nameCodec";
-import type { DraftInfo, ImportPreview, SaveRequest, Status } from "../../../src/shared/api";
+import type { DraftInfo, GlossaryEntry, ImportPreview, SaveRequest, Status } from "../../../src/shared/api";
 import { currentLang, errorText, fmtTime, issueText, tr } from "@/i18n";
 import { ApiError, api } from "@/lib/api";
 import { ask, isDialogOpen } from "@/lib/dialogs";
@@ -12,8 +12,10 @@ import { useDocStore } from "@/stores/doc";
 export const welcomeError = ref<string | null>(null);
 export const exportOpen = ref(false);
 export const importPreview = shallowRef<ImportPreview | null>(null);
+export const glossaryOpen = ref(false);
 
-export const anyDialogOpen = () => isDialogOpen.value || exportOpen.value || importPreview.value !== null;
+export const anyDialogOpen = () =>
+  isDialogOpen.value || exportOpen.value || importPreview.value !== null || glossaryOpen.value;
 
 // ItemGrid registers a function that scrolls to a row (by index in the filtered list).
 let scroller: ((index: number) => void) | null = null;
@@ -105,6 +107,9 @@ export async function reload() {
 
 // On startup: if the server already has a file open (path on the command line), go straight to it.
 export async function start() {
+  // The team glossary is remembered per browser (one file for every Item.bmd).
+  const g = store().rememberedGlossary();
+  if (g) store().loadGlossary(g).catch((e) => toast.error(errorText(e)));
   try {
     const state = await api.state();
     if (state.file) await afterOpen(await store().loadItems(false));
@@ -331,6 +336,53 @@ export async function applyImport(take: number[]) {
   } catch (e) {
     toast.error(errorText(e));
     if (e instanceof ApiError && e.code === "import-changed") importPreview.value = null;
+  }
+}
+
+// ---- glossary ----
+
+export async function openGlossaryFile(): Promise<boolean> {
+  try {
+    const { path } = await api.pick(currentLang(), "glossary");
+    if (!path) return false;
+    const g = await store().loadGlossary(path);
+    toast.success(tr("toast.glossaryLoaded", { file: g.fileName, n: g.entries.length }));
+    return true;
+  } catch (e) {
+    toast.error(errorText(e));
+    return false;
+  }
+}
+
+// Save to the loaded TSV, or ask for a path (new glossary / converting the legacy CSV).
+export async function saveGlossary(entries: GlossaryEntry[], forceAsk = false): Promise<boolean> {
+  const g = store().glossary;
+  try {
+    let path = g && g.format === "tsv" && !forceAsk ? g.path : null;
+    if (!path) {
+      const name = g ? g.fileName.replace(/\.[^.]+$/, "") : "Glossary";
+      path = (await api.pickSave(currentLang(), "glossary", `${name}.tsv`)).path;
+      if (!path) return false;
+    }
+    const saved = await store().saveGlossary(path, entries);
+    toast.success(tr("toast.glossarySaved", { n: saved.entries.length, file: saved.fileName }));
+    return true;
+  } catch (e) {
+    toast.error(errorText(e));
+    return false;
+  }
+}
+
+// ---- compare with another Item.bmd (reuses the import preview) ----
+
+export async function compareWith() {
+  if (!(await commitEditor())) return;
+  try {
+    const { path } = await api.pick(currentLang(), "compare");
+    if (!path) return;
+    importPreview.value = await api.importPreview(path);
+  } catch (e) {
+    toast.error(errorText(e));
   }
 }
 

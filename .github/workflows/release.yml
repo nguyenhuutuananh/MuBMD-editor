@@ -1,0 +1,49 @@
+# Release: pushing a tag like v1.0.0 builds the Windows + macOS zips and publishes a GitHub Release.
+#   git tag v1.0.0 && git push origin v1.0.0
+# The tag must match "version" in package.json.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write # create the release and upload assets
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.1.32
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Tag must match package.json version
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match package.json version $version"
+            exit 1
+          fi
+
+      - run: bun install --frozen-lockfile
+      - run: bun run typecheck
+      - run: bun test
+
+      # Bun cross-compiles every target from Linux; zip is preinstalled on ubuntu-latest.
+      - run: bun run release
+
+      - uses: softprops/action-gh-release@v3
+        with:
+          files: |
+            releases/*.zip
+            releases/SHA256SUMS.txt
+          generate_release_notes: true
+          # Tags like v1.1.0-beta.1 are published as pre-releases.
+          prerelease: ${{ contains(github.ref_name, '-') }}

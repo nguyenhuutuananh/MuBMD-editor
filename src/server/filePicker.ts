@@ -21,7 +21,10 @@ const TEXT = {
     save: "Save Item.bmd as",
     openTsv: "Choose a translation file (TSV)",
     saveTsv: "Export translations as",
-    openRef: "Choose a reference file (Item.bmd or TSV)",
+    openRef: "Choose a reference file (Item.bmd, TSV or CSV)",
+    openGlossary: "Choose a glossary file (TSV or CSV)",
+    saveGlossary: "Save the glossary as",
+    openCompare: "Choose another Item.bmd to compare with",
     all: "All files",
   },
   vi: {
@@ -29,27 +32,35 @@ const TEXT = {
     save: "Lưu Item.bmd thành",
     openTsv: "Chọn file bản dịch (TSV)",
     saveTsv: "Xuất bản dịch thành",
-    openRef: "Chọn file tham chiếu (Item.bmd hoặc TSV)",
+    openRef: "Chọn file tham chiếu (Item.bmd, TSV hoặc CSV)",
+    openGlossary: "Chọn file thuật ngữ (TSV hoặc CSV)",
+    saveGlossary: "Lưu bảng thuật ngữ thành",
+    openCompare: "Chọn Item.bmd khác để so sánh",
     all: "Tất cả",
   },
 } satisfies Record<Lang, Record<string, string>>;
 
 // macOS uniform type identifiers / file extensions, and the Windows filter per file kind.
+const TEXT_TYPES = '"tsv", "csv", "txt", "public.plain-text", "public.tab-separated-values-text", "public.comma-separated-values-text"';
 const MAC_TYPES: Record<PickKind, string> = {
   bmd: '{"bmd", "public.data"}',
-  tsv: '{"tsv", "txt", "public.plain-text", "public.tab-separated-values-text"}',
-  reference: '{"bmd", "tsv", "txt", "public.data", "public.plain-text"}',
+  compare: '{"bmd", "public.data"}',
+  tsv: `{${TEXT_TYPES}}`,
+  glossary: `{${TEXT_TYPES}}`,
+  reference: `{"bmd", "public.data", ${TEXT_TYPES}}`,
 };
 const WIN_FILTER = (kind: PickKind, all: string) =>
   ({
     bmd: "BMD (*.bmd)|*.bmd",
-    tsv: "TSV (*.tsv;*.txt)|*.tsv;*.txt",
-    reference: "BMD / TSV (*.bmd;*.tsv;*.txt)|*.bmd;*.tsv;*.txt",
+    compare: "BMD (*.bmd)|*.bmd",
+    tsv: "TSV / CSV (*.tsv;*.csv;*.txt)|*.tsv;*.csv;*.txt",
+    glossary: "TSV / CSV (*.tsv;*.csv;*.txt)|*.tsv;*.csv;*.txt",
+    reference: "BMD / TSV / CSV (*.bmd;*.tsv;*.csv;*.txt)|*.bmd;*.tsv;*.csv;*.txt",
   })[kind] + `|${all} (*.*)|*.*`;
 
 function pickerCommand(lang: Lang, kind: PickKind, dir?: string): string[] {
   const t = TEXT[lang];
-  const prompt = kind === "tsv" ? t.openTsv : kind === "reference" ? t.openRef : t.open;
+  const prompt = { bmd: t.open, tsv: t.openTsv, reference: t.openRef, glossary: t.openGlossary, compare: t.openCompare }[kind];
   switch (process.platform) {
     case "darwin":
       return [
@@ -80,9 +91,9 @@ function pickerCommand(lang: Lang, kind: PickKind, dir?: string): string[] {
   }
 }
 
-function savePickerCommand(defaultPath: string, lang: Lang, kind: "bmd" | "tsv"): string[] {
+function savePickerCommand(defaultPath: string, lang: Lang, kind: "bmd" | "tsv" | "glossary"): string[] {
   const t = TEXT[lang];
-  const prompt = kind === "tsv" ? t.saveTsv : t.save;
+  const prompt = { bmd: t.save, tsv: t.saveTsv, glossary: t.saveGlossary }[kind];
   const dir = path.dirname(defaultPath);
   const name = path.basename(defaultPath);
   switch (process.platform) {
@@ -103,7 +114,7 @@ function savePickerCommand(defaultPath: string, lang: Lang, kind: "bmd" | "tsv")
           "Add-Type -AssemblyName System.Windows.Forms;",
           "$d = New-Object System.Windows.Forms.SaveFileDialog;",
           `$d.Title = ${psString(prompt)};`,
-          `$d.Filter = ${psString(WIN_FILTER(kind, t.all))};`,
+          `$d.Filter = ${psString(WIN_FILTER(kind === "glossary" ? "tsv" : kind, t.all))};`,
           `$d.InitialDirectory = ${psString(dir)};`,
           `$d.FileName = ${psString(name)};`,
           "if ($d.ShowDialog() -eq 'OK') { $d.FileName }",
@@ -143,5 +154,5 @@ export const pickFile = (lang: Lang = "en", kind: PickKind = "bmd", dir?: string
   runPicker(pickerCommand(lang, kind, dir));
 
 // "Save as" dialog (the OS itself asks before overwriting an existing file).
-export const pickSaveFile = (defaultPath: string, lang: Lang = "en", kind: "bmd" | "tsv" = "bmd"): Promise<string | null> =>
+export const pickSaveFile = (defaultPath: string, lang: Lang = "en", kind: "bmd" | "tsv" | "glossary" = "bmd"): Promise<string | null> =>
   runPicker(savePickerCommand(defaultPath, lang, kind));

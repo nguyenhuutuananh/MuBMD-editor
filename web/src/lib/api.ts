@@ -5,6 +5,8 @@ import type {
   ErrorParams,
   ErrorResponse,
   ExportResponse,
+  GlossaryEntry,
+  GlossaryInfo,
   ImportPreview,
   ItemsResponse,
   Lang,
@@ -60,7 +62,7 @@ export const api = {
   items: () => request<ItemsResponse>("/api/items"),
   open: (path: string, discard = false) => request<StateResponse>("/api/open", { path, discard }),
   pick: (lang: Lang, kind: PickKind = "bmd") => request<PickResponse>("/api/pick", { lang, kind }),
-  pickSave: (lang: Lang, kind: "bmd" | "tsv" = "bmd", defaultName?: string) =>
+  pickSave: (lang: Lang, kind: "bmd" | "tsv" | "glossary" = "bmd", defaultName?: string) =>
     request<PickResponse>("/api/pick-save", { lang, kind, defaultName }),
   edit: (slot: number, name: string, translator: string) =>
     request<MutationResponse>("/api/edit", { slot, name, translator }),
@@ -73,6 +75,8 @@ export const api = {
   importPreview: (path: string) => request<ImportPreview>("/api/import/preview", { path }),
   importApply: (path: string, token: string, take: number[], translator: string) =>
     request<MutationResponse>("/api/import/apply", { path, token, take, translator }),
+  glossaryLoad: (path: string) => request<GlossaryInfo>("/api/glossary/load", { path }),
+  glossarySave: (path: string, entries: GlossaryEntry[]) => request<GlossaryInfo>("/api/glossary/save", { path, entries }),
   undo: () => request<MutationResponse>("/api/undo", {}),
   redo: () => request<MutationResponse>("/api/redo", {}),
   restoreDraft: () => request<MutationResponse & { skipped: number }>("/api/draft/restore", {}),

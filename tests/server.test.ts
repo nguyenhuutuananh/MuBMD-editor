@@ -195,3 +195,27 @@ describe("edit + save API", () => {
     expect(await res.json()).toMatchObject({ code: "no-file" });
   });
 });
+
+describe("glossary API", () => {
+  test("load the legacy CSV, save as TSV, load again", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mubmd-gloss-"));
+    const csv = path.join(dir, "g.csv");
+    fs.writeFileSync(csv, "Loại,Thuật ngữ / Mẫu,Ghi chú\nĐã chốt dịch,Defense -> Phòng Thủ,PT\n");
+    const app = setup();
+    const loaded = (await (await app.handle(post("/api/glossary/load", { path: csv }))).json()) as Record<string, any>;
+    expect(loaded).toMatchObject({ format: "legacy-csv", entries: [{ term: "Defense", translation: "Phòng Thủ", note: "PT" }] });
+
+    const tsv = path.join(dir, "g.tsv");
+    const entries = [...loaded.entries, { term: "Helm", translation: "Mũ", note: "", category: "Item" }, { term: " ", translation: "x" }];
+    const saved = (await (await app.handle(post("/api/glossary/save", { path: tsv, entries }))).json()) as Record<string, any>;
+    expect(saved.entries).toHaveLength(2);
+    const again = (await (await app.handle(post("/api/glossary/load", { path: tsv }))).json()) as Record<string, any>;
+    expect(again.format).toBe("tsv");
+    expect(again.entries.map((e: { term: string }) => e.term)).toEqual(["Defense", "Helm"]);
+  });
+
+  test("missing file -> file-not-found", async () => {
+    const res = await setup().handle(post("/api/glossary/load", { path: "/khong/co.tsv" }));
+    expect(await res.json()).toMatchObject({ code: "file-not-found" });
+  });
+});

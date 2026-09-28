@@ -48,7 +48,9 @@ const close = (open: boolean) => {
   <Dialog :open="importPreview !== null" @update:open="close">
     <DialogContent v-if="importPreview" class="flex max-h-[90vh] flex-col sm:max-w-4xl" data-testid="import-dialog">
       <DialogHeader>
-        <DialogTitle>{{ t("importDialog.title") }}</DialogTitle>
+        <DialogTitle>
+          {{ importPreview.source === "bmd" ? t("importDialog.compareTitle", { file: importPreview.fileName }) : t("importDialog.title") }}
+        </DialogTitle>
         <DialogDescription as="div" class="flex flex-col gap-1.5 text-left">
           <p class="font-mono text-xs break-all">{{ t("importDialog.file", { file: importPreview.fileName }) }}</p>
           <p class="text-foreground font-medium" data-testid="import-summary">{{ t("importDialog.summary", { ...importPreview.counts }) }}</p>
@@ -56,7 +58,8 @@ const close = (open: boolean) => {
           <p v-if="importPreview.problems.length" class="text-warn">
             {{ t("importDialog.problems", { n: importPreview.problems.length }, importPreview.problems.length) }}
           </p>
-          <p v-if="!importPreview.hasBase" class="bg-bad-soft text-destructive rounded px-2 py-1">{{ t("importDialog.noBase") }}</p>
+          <p v-if="importPreview.source === 'bmd'">{{ t("importDialog.compareNote") }}</p>
+          <p v-else-if="!importPreview.hasBase" class="bg-bad-soft text-destructive rounded px-2 py-1">{{ t("importDialog.noBase") }}</p>
         </DialogDescription>
       </DialogHeader>
 

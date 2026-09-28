@@ -1,6 +1,6 @@
 {
   "name": "mubmd-editor",
-  "version": "0.3.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -8,6 +8,7 @@
     "build:web": "bun scripts/build-web.ts",
     "start": "bun scripts/build-web.ts && bun src/server/main.ts",
     "build": "bun scripts/build-bin.ts",
+    "release": "bun scripts/build-bin.ts --out releases",
     "test": "bun test",
     "test:e2e": "bun scripts/build-web.ts && bun tests/e2e/run.ts",
     "typecheck": "bun scripts/build-web.ts --stub && tsc --noEmit && vue-tsc --noEmit -p web/tsconfig.json"
