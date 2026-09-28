@@ -146,8 +146,8 @@ before saving.
 ## Download
 
 Ready-to-run builds for Windows and macOS are on the repository's **Releases** page - no clone or
-Bun needed. Download the zip for your platform, unzip, and read `USER-GUIDE.txt`
-(`HUONG-DAN-SU-DUNG.txt` in Vietnamese).
+Bun needed. Download the zip for your platform, unzip, and read `USER-GUIDE_en.txt`
+(`USER-GUIDE_vi.txt` in Vietnamese).
 
 ## Release
 
@@ -167,7 +167,7 @@ Bun needed. Download the zip for your platform, unzip, and read `USER-GUIDE.txt`
 runner) on every push to `main` and every pull request.
 
 `bun run release` (or `bun run build`) creates one zip per platform containing the executable
-+ `HUONG-DAN-SU-DUNG.txt` + `USER-GUIDE.txt` (sources in `docs/`, `{{VERSION}}` is replaced at
++ `USER-GUIDE_en.txt` + `USER-GUIDE_vi.txt` + `LICENSE.txt` (sources in `docs/`, `{{VERSION}}` is replaced at
 build time). The executables are not code-signed: Windows SmartScreen needs "Run anyway", macOS
 needs `xattr -d com.apple.quarantine` the first time (see the guides).
 
@@ -250,3 +250,8 @@ compared with the old tool (must be byte-identical, checksum included).
 
 Comments and logs in code are written in **English**. User-facing text lives in
 `web/src/i18n/locales/*.json` (and the native dialog captions in `filePicker.ts`).
+
+## License
+
+[MIT](LICENSE) © 2026 Tuan Anh Nguyen. The license covers this tool's source code only, not
+game data such as `data/Item.bmd`.

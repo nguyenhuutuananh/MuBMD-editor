@@ -34,7 +34,7 @@ const run = async (cmd: string[], cwd = root) => {
   if (code !== 0) process.exit(code);
 };
 
-const guides = ["HUONG-DAN-SU-DUNG.txt", "USER-GUIDE.txt"].map((f) => ({
+const guides = ["USER-GUIDE_en.txt", "USER-GUIDE_vi.txt"].map((f) => ({
   name: f,
   text: fs.readFileSync(path.join(root, "docs", f), "utf-8").replaceAll("{{VERSION}}", pkg.version),
 }));
@@ -53,6 +53,8 @@ for (const t of TARGETS) {
   fs.chmodSync(path.join(dir, t.exe), 0o755);
   // Notepad on older Windows needs CRLF line endings.
   for (const g of guides) fs.writeFileSync(path.join(dir, g.name), t.crlf ? g.text.replace(/\r?\n/g, "\r\n") : g.text);
+  // MIT requires the license notice in every copy, binaries included.
+  fs.copyFileSync(path.join(root, "LICENSE"), path.join(dir, "LICENSE.txt"));
 
   const zip = `${name}.zip`;
   fs.rmSync(path.join(outDir, zip), { force: true });
