@@ -1,7 +1,8 @@
 // browsers.ts - Find Playwright's own browser builds (any installed revision, newest first).
 // Install with `bunx playwright-core install chromium firefox webkit`.
-// Chrome for Testing is preferred over the installed Google Chrome: Chrome 153 stable crashes when an
-// OPFS folder handle stored in IndexedDB is read back after a reload, which the web e2e relies on.
+// Chrome for Testing is preferred over the installed Google Chrome so local runs match CI.
+// (Chromium 153 crashes when an OPFS folder handle is read back from IndexedDB after a reload;
+// web/src/lib/handleDb.ts therefore stores OPFS handles by path.)
 
 import * as fs from "node:fs";
 import * as path from "node:path";

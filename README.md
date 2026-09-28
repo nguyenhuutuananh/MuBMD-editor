@@ -173,9 +173,10 @@ uploaded anywhere.
 - Build: `bun run build:web-static` -> `build/web-static/` (relative paths: works under any sub-path
   or domain). `bun run preview:web` serves it locally (http://localhost:4173/).
 - Development: `bun run dev:web`. Tests: `bun run test:e2e:web` answers the file dialogs with
-  handles from OPFS (`window.__MUBMD_TEST_PICK__`). It prefers Playwright's Chrome for Testing
-  (`bunx playwright-core install chromium`): Google Chrome 153 stable crashes when an OPFS folder
-  handle stored in IndexedDB is read back after a reload, which the test relies on.
+  handles from OPFS (`window.__MUBMD_TEST_PICK__`), preferably on Playwright's Chrome for Testing
+  (`bunx playwright-core install chromium`, same as CI). Chromium 153 crashes the browser when an
+  OPFS folder handle is read back from IndexedDB after a reload, so `handleDb.ts` stores OPFS
+  handles by path (the user's own folders/files are stored as handles as usual).
   `bun run test:e2e:pwa` builds the static site, serves it under `/MuBMD-editor/` and checks the
   manifest / installability, offline use and the update flow.
   `bun run test:e2e:fallback` runs the fallback mode on Chrome (`?fallback`) and on Playwright's

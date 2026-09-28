@@ -51,8 +51,10 @@ self.addEventListener("fetch", (e) => {
     (async () => {
       const cache = await caches.open(CACHE);
       // Navigations (with or without "?fallback") get the app shell.
-      if (req.mode === "navigate") return (await cache.match(scoped("./index.html"))) ?? fetch(req);
-      return (await cache.match(req, { ignoreSearch: true })) ?? fetch(req);
+      // ignoreVary: servers may send "Vary: Origin", and module scripts are requested with an Origin
+      // header while the precached copies were fetched without one.
+      if (req.mode === "navigate") return (await cache.match(scoped("./index.html"), { ignoreVary: true })) ?? fetch(req);
+      return (await cache.match(req, { ignoreSearch: true, ignoreVary: true })) ?? fetch(req);
     })(),
   );
 });
