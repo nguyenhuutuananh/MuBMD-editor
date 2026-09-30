@@ -123,6 +123,13 @@ Item names:
     (give a reason, so the assistant can learn). Actions -> "Accept … without problems" takes every
     clean proposal of the list. Accepting is an ordinary edit (Ctrl+Z undoes it, status Translated);
     Save writes the files. The web version needs Chrome / Edge (the upload mode sees no proposals).
+  - Connecting an AI assistant (Claude Code...): register the MCP server once, e.g.
+      claude mcp add mumain -- MuMain-translator mcp /path/to/MuMain --locale vi
+        --glossary glossary.tsv --style STYLE_vi.md
+    It reads the translations, the glossary and the style guide and only writes proposals; you
+    review them in the tool. Commands in Claude Code: /mcp__mumain__translate (translate a batch),
+    /mcp__mumain__fix_glossary (correct rows that break confirmed terms), /mcp__mumain__learn_from_feedback
+    (lessons from your review decisions).
 
 
 6. TROUBLESHOOTING

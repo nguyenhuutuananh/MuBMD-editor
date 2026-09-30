@@ -138,7 +138,7 @@ splits paths with spaces). See the comment at the top of the script.
 
 ## AI proposals
 
-Translations proposed by an AI assistant (through the MCP server, coming next) or a script are files in
+Translations proposed by an AI assistant (through the MCP server below) or a script are files in
 `.mumain-translator/proposals/`, one per batch, never changed by their writer:
 
 ```json
@@ -157,6 +157,36 @@ Nothing is written into the translated files until **Save**. Decisions go to
 `proposals/decisions/<same name>` right away (history the assistant can learn from). Only the newest
 undecided proposal of a key is shown; deciding it sets the older ones aside. Needs the desktop build or
 Chrome / Edge on the web (the fallback mode uploads no side data).
+
+## AI assistant (MCP server)
+
+`MuMain-translator mcp <folder>` is an [MCP](https://modelcontextprotocol.io) server (stdio) for AI
+assistants such as Claude Code. It reads the workspace, the glossary and the style guide, and writes
+**only** proposal files (see above) - every other write is refused, so translated files, the project
+file and drafts stay the person's. Each call reads the files again, so it sees what was saved in the
+meantime. Register it once (with the release binary, or `bun <repo>/src/server/main.ts` from a checkout):
+
+```
+claude mcp add mumain -- MuMain-translator mcp /path/to/MuMain --locale vi \
+  --glossary /path/to/glossary.tsv --style /path/to/STYLE_vi.md
+```
+
+Workflows, offered by Claude Code as commands (MCP prompts):
+
+| Command | What the assistant does |
+|---|---|
+| `/mcp__mumain__translate [group] [batch] [batches]` | reads the style guide and earlier review decisions, translates untranslated rows batch by batch (glossary terms, consistent set names), checks and proposes them, then summarizes doubts and new glossary candidates |
+| `/mcp__mumain__fix_glossary [term] [group]` | proposes corrections for translated rows that break a confirmed glossary term, changing only the term |
+| `/mcp__mumain__learn_from_feedback [limit]` | turns the person's edits and skip reasons into suggested glossary entries and style rules; writes nothing |
+
+Tools: `workspace_info`, `list_groups`, `get_rows` (untranslated rows without a proposal by default;
+`glossary_problems` for rows that break a confirmed term),
+`get_glossary` (the terms of a text), `get_style_guide`, `find_examples` (how the team translated a
+phrase), `check_translation`, `propose_translations`, `list_proposals` (with the person's edits and
+reasons for skipping), `withdraw_proposals`. Proposals are checked like the UI checks: errors, reviewed
+rows and texts the file cannot hold are refused; warnings and deviations from confirmed glossary terms
+need a note. Then review them in MuMain-translator (desktop, or the web version in Chrome / Edge on the
+same folder).
 
 ## Checks
 

@@ -311,10 +311,17 @@ export function resxEntries(doc: ResxDocument): ResxEntry[] {
 }
 
 // The strings ResxGen sees: metadata entries skipped, the last duplicate wins. Map order is the
-// order of first appearance.
-export function resxValues(doc: ResxDocument): Map<string, ResxEntry> {
-  const map = new Map<string, ResxEntry>();
-  for (const e of resxEntries(doc)) if (e.kind !== "metadata") map.set(e.key, e);
+// order of first appearance. Documents never change (edits make new ones), so the map is built once
+// per document: looking keys up one by one in a 3000-entry file would otherwise be quadratic. Do not
+// modify the returned map.
+const valuesCache = new WeakMap<ResxDocument, ReadonlyMap<string, ResxEntry>>();
+export function resxValues(doc: ResxDocument): ReadonlyMap<string, ResxEntry> {
+  let map = valuesCache.get(doc);
+  if (!map) {
+    const m = new Map<string, ResxEntry>();
+    for (const e of resxEntries(doc)) if (e.kind !== "metadata") m.set(e.key, e);
+    valuesCache.set(doc, (map = m));
+  }
   return map;
 }
 

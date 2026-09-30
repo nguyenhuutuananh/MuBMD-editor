@@ -120,6 +120,12 @@ Tên vật phẩm:
     kinh nghiệm). Thao tác -> "Chấp nhận … đề xuất không có lỗi" nhận hết các đề xuất sạch trong danh
     sách. Chấp nhận = một thay đổi bình thường (Ctrl+Z được, trạng thái "Đã dịch"); bấm Lưu mới ghi
     file. Bản web cần Chrome / Edge (chế độ tải lên không thấy đề xuất).
+  - Kết nối trợ lý AI (Claude Code...): đăng ký MCP server một lần, vd.
+      claude mcp add mumain -- MuMain-translator mcp /đường/dẫn/MuMain --locale vi
+        --glossary glossary.tsv --style STYLE_vi.md
+    AI đọc bản dịch, bảng thuật ngữ, quy tắc văn phong và chỉ ghi file đề xuất; bạn duyệt trong tool.
+    Lệnh trong Claude Code: /mcp__mumain__translate (dịch một đợt), /mcp__mumain__fix_glossary (sửa
+    câu lệch thuật ngữ đã chốt), /mcp__mumain__learn_from_feedback (rút kinh nghiệm từ các lần duyệt).
 
 
 6. XỬ LÝ SỰ CỐ

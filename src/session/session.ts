@@ -147,6 +147,16 @@ const sameRecord = (a: KeyRecord | null, b: KeyRecord | null) =>
 const sameKeyState = (a: KeyState, b: KeyState) => sameState(a.entry, b.entry) && sameRecord(a.record, b.record);
 const oneLine = (s: unknown) => (typeof s === "string" ? s.replace(/[\t\r\n]+/g, " ").trim() : "");
 
+// What a proposed text would be checked as (for writers of proposals: the MCP server), with the
+// English text and the translation it is made from.
+export interface ProposalInfo {
+  state: ProposalState;
+  issues: RowIssue[];
+  english: string | null; // null: not a key of the English source
+  base: string; // the translation now ("" = none)
+  status: Status | null;
+}
+
 // The newest undecided proposal of a key, and the older undecided ones of the same key.
 interface PendingProposal {
   p: LoadedProposal;
@@ -847,6 +857,20 @@ export class Session {
     // A proposal without the English text it was made from is only checked against the translation.
     if ((it.english && it.english !== en) || it.base.normalize("NFC") !== now) return { state: "stale", issues };
     return { state: "ok", issues };
+  }
+
+  proposalInfo(items: { group: string; key: string; value: string }[]): Promise<ProposalInfo[]> {
+    return this.exclusive(() => {
+      this.folderInfo();
+      return items.map((it) => {
+        const g = this.groups.find((x) => x.name === it.group);
+        const english = g ? g.en(it.key) : null;
+        const cur = g && english !== null ? this.keyState(g, it.key) : null;
+        const base = cur?.entry?.value ?? "";
+        const r = this.proposalState({ group: it.group, key: it.key, english: english ?? "", base, value: it.value, note: "" });
+        return { ...r, english, base, status: g && cur ? this.statusOf(g, it.key, cur) : null };
+      });
+    });
   }
 
   private proposalList(scan: ProposalScan): ProposalsResponse {

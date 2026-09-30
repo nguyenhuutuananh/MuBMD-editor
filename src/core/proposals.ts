@@ -33,8 +33,8 @@ export interface ProposalFile {
 }
 
 // accepted: taken as proposed; edited: taken after changing it; rejected: skipped (with a reason);
-// superseded: a newer proposal for the same key was decided.
-export type DecisionAction = "accepted" | "edited" | "rejected" | "superseded";
+// superseded: a newer proposal for the same key was decided; withdrawn: taken back by its writer.
+export type DecisionAction = "accepted" | "edited" | "rejected" | "superseded" | "withdrawn";
 
 export interface Decision {
   index: number; // of the item in the proposal file

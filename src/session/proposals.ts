@@ -12,8 +12,9 @@ import {
   parseDecisionFile,
   parseProposalFile,
   serializeDecisionFile,
+  serializeProposalFile,
 } from "../core";
-import { workDir } from "./sidecar";
+import { stamp, workDir } from "./sidecar";
 import { type Storage, readText, tryReadText, writeText } from "./storage";
 
 export const proposalsDir = (st: Storage, folder: string) => st.join(workDir(st, folder), "proposals");
@@ -50,6 +51,27 @@ export async function loadProposals(st: Storage, folder: string, locale: string)
   }
   files.sort((a, b) => (a.file.createdAt === b.file.createdAt ? (a.name < b.name ? -1 : 1) : a.file.createdAt < b.file.createdAt ? -1 : 1));
   return { files, broken };
+}
+
+// Writes a new proposal file (never overwrites one); returns its name.
+export async function writeProposalFile(st: Storage, folder: string, file: ProposalFile, now: Date): Promise<string> {
+  const dir = proposalsDir(st, folder);
+  let name = "";
+  do name = `${file.locale}-${stamp(now)}-${Math.random().toString(36).slice(2, 6).padEnd(4, "0")}.json`;
+  while (await st.exists(st.join(dir, name)));
+  await writeText(st, st.join(dir, name), serializeProposalFile(file));
+  return name;
+}
+
+// Every decision file of `locale` (newest decisions last).
+export async function loadDecisions(st: Storage, folder: string, locale: string): Promise<DecisionFile[]> {
+  const dir = decisionsDir(st, folder);
+  const out: DecisionFile[] = [];
+  for (const name of (await st.list(dir)).filter((n) => n.toLowerCase().endsWith(".json")).sort()) {
+    const d = parseDecisionFile(await tryReadText(st, st.join(dir, name)));
+    if (d && d.locale === locale) out.push(d);
+  }
+  return out;
 }
 
 // Adds `decisions` to the decision file of `p`; removes the proposal file when nothing in it is left
