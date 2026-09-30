@@ -18,7 +18,9 @@
 import {
   AppError,
   DEFAULT_LOCALE,
+  type Decision,
   type Issue,
+  type ProposalItem,
   type Status,
   analyzeImport,
   checkEmitter,
@@ -29,6 +31,7 @@ import {
   sha1,
 } from "../core";
 import {
+  type DecideResponse,
   type DocStatus,
   type DraftInfo,
   type ExportResponse,
@@ -38,11 +41,16 @@ import {
   type KeyRef,
   type MutationResponse,
   type OpenInfo,
+  type ProposalDecision,
+  type ProposalRow,
+  type ProposalState,
+  type ProposalsResponse,
   type RebaseResponse,
   type RegistrationFile,
   type RegistrationInfo,
   ROW_DIRTY,
   ROW_KEEP,
+  type RowIssue,
   type RowTuple,
   type RowsResponse,
   type WorkspaceListing,
@@ -50,7 +58,9 @@ import {
 import { localeName } from "../shared/locales";
 import type { Platform } from "./itemsFolder";
 import { migrateLegacy } from "./migrate";
+import { type LoadedProposal, type ProposalScan, loadProposals, recordDecisions } from "./proposals";
 import {
+  SIDECAR_DIR,
   type Draft,
   type EntryState,
   type Project,
@@ -135,6 +145,14 @@ const sameRecord = (a: KeyRecord | null, b: KeyRecord | null) =>
     a.updatedAt === b.updatedAt &&
     (a.origin ?? null) === (b.origin ?? null));
 const sameKeyState = (a: KeyState, b: KeyState) => sameState(a.entry, b.entry) && sameRecord(a.record, b.record);
+const oneLine = (s: unknown) => (typeof s === "string" ? s.replace(/[\t\r\n]+/g, " ").trim() : "");
+
+// The newest undecided proposal of a key, and the older undecided ones of the same key.
+interface PendingProposal {
+  p: LoadedProposal;
+  index: number;
+  older: { p: LoadedProposal; index: number }[];
+}
 
 export class Session {
   private info: OpenInfo | null = null;
@@ -781,6 +799,146 @@ export class Session {
     } catch (e) {
       console.warn(`Could not write draft: ${(e as Error).message}`);
     }
+  }
+
+  // ---- proposals ----
+
+  // The newest undecided proposal of each key, checked against the rows as they are now (unsaved
+  // edits included).
+  proposals(): Promise<ProposalsResponse> {
+    return this.exclusive(async () => this.proposalList(await this.scanProposals()));
+  }
+
+  private scanProposals(): Promise<ProposalScan> {
+    const { folder, locale } = this.folderInfo();
+    return loadProposals(this.storage, folder.path, locale);
+  }
+
+  private pendingProposals(scan: ProposalScan): Map<string, PendingProposal> {
+    const out = new Map<string, PendingProposal>();
+    for (const p of scan.files) {
+      p.file.items.forEach((it, index) => {
+        if (p.decided.has(index)) return;
+        const k = id(it.group, it.key);
+        const prev = out.get(k); // files are oldest first: a later one is newer
+        out.set(k, { p, index, older: prev ? [...prev.older, { p: prev.p, index: prev.index }] : [] });
+      });
+    }
+    return out;
+  }
+
+  private proposalState(it: ProposalItem): { state: ProposalState; issues: RowIssue[] } {
+    const { locale } = this.folderInfo();
+    const g = this.groups.find((x) => x.name === it.group);
+    const en = g ? g.en(it.key) : null;
+    if (!g || en === null) return { state: "unknown", issues: [] };
+    const text = it.value.normalize("NFC");
+    const issues = g.check(en, text).map((i): RowIssue => (Object.keys(i.params).length ? [i.code, locale, i.params] : [i.code, locale]));
+    try {
+      if (text === "") throw new Error("empty");
+      g.validateText(it.key, text);
+    } catch {
+      return { state: "invalid", issues };
+    }
+    const cur = this.keyState(g, it.key);
+    const now = cur.entry?.value ?? "";
+    if (cur.entry && now === text) return { state: "same", issues };
+    if (this.statusOf(g, it.key, cur) === "reviewed") return { state: "reviewed", issues };
+    // A proposal without the English text it was made from is only checked against the translation.
+    if ((it.english && it.english !== en) || it.base.normalize("NFC") !== now) return { state: "stale", issues };
+    return { state: "ok", issues };
+  }
+
+  private proposalList(scan: ProposalScan): ProposalsResponse {
+    const items: ProposalRow[] = [];
+    for (const { p, index, older } of this.pendingProposals(scan).values()) {
+      const it = p.file.items[index]!;
+      items.push({
+        file: p.name,
+        index,
+        group: it.group,
+        key: it.key,
+        english: it.english,
+        base: it.base,
+        value: it.value,
+        note: it.note,
+        by: p.file.by,
+        createdAt: p.file.createdAt,
+        batchNote: p.file.note,
+        ...this.proposalState(it),
+        older: older.length,
+      });
+    }
+    return { dir: `${SIDECAR_DIR}/proposals`, items, broken: scan.broken };
+  }
+
+  // Accepting is one undoable edit (status translated; the proposal's note becomes the row's note
+  // when it has none, marked "AI"); every decision is written to the decision files right away, and
+  // older undecided proposals of the same keys are marked superseded. Only the newest undecided
+  // proposal of a key can be decided; anything else (gone from disk, decided meanwhile, a text the
+  // file cannot hold) is skipped.
+  decideProposals(decisions: ProposalDecision[], translator: string): Promise<DecideResponse> {
+    return this.exclusive(async () => {
+      const { folder } = this.folderInfo();
+      const scan = await this.scanProposals();
+      const pending = this.pendingProposals(scan);
+      const byName = new Map(scan.files.map((p) => [p.name, p]));
+      const at = this.now().toISOString();
+      const written = new Map<LoadedProposal, Decision[]>();
+      const record = (p: LoadedProposal, index: number, d: Pick<Decision, "action" | "value" | "reason">) => {
+        const it = p.file.items[index]!;
+        const list = written.get(p) ?? [];
+        list.push({ index, group: it.group, key: it.key, english: it.english, proposed: it.value, by: translator, at, ...d });
+        written.set(p, list);
+      };
+      const takes = new Map<string, { it: ProposalItem; text: string }>();
+      let decided = 0;
+      let skipped = 0;
+      for (const d of Array.isArray(decisions) ? decisions : []) {
+        const p = byName.get(d?.file);
+        const it = p?.file.items[d?.index];
+        const k = it ? id(it.group, it.key) : "";
+        const cur = pending.get(k);
+        if (!p || !it || !cur || cur.p !== p || cur.index !== d.index) {
+          skipped++;
+          continue;
+        }
+        if (d.action === "accept") {
+          const text = (typeof d.value === "string" ? d.value : it.value).normalize("NFC");
+          const { state } = this.proposalState({ ...it, value: text });
+          if (state === "unknown" || state === "invalid") {
+            skipped++;
+            continue;
+          }
+          takes.set(k, { it, text });
+          record(p, d.index, { action: text === it.value.normalize("NFC") ? "accepted" : "edited", value: text, reason: "" });
+        } else if (d.action === "reject") {
+          record(p, d.index, { action: "rejected", value: null, reason: oneLine(d.reason) });
+        } else {
+          skipped++;
+          continue;
+        }
+        decided++;
+        pending.delete(k); // decided once
+        for (const o of cur.older) record(o.p, o.index, { action: "superseded", value: null, reason: "" });
+      }
+
+      const res = await this.change(
+        [...takes.keys()].map((k) => {
+          const [group, key] = splitId(k);
+          return { group, key };
+        }),
+        (cur, g, key) => {
+          const { it, text } = takes.get(id(g.name, key))!;
+          const entry = g.entryFor(key, cur.entry, text);
+          if (sameState(entry, cur.entry)) return cur;
+          const note = cur.record?.note || oneLine(it.note ? `AI: ${it.note}` : "AI");
+          return this.settle(g, key, entry, this.stamped(g, key, cur, translator, { status: "translated", note }));
+        },
+      );
+      for (const [p, list] of written) await recordDecisions(this.storage, folder.path, p, list);
+      return { ...res, decided, skipped, proposals: this.proposalList(await this.scanProposals()) };
+    });
   }
 
   // ---- save ----

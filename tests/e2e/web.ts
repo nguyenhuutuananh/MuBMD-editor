@@ -203,6 +203,68 @@ try {
   check("web: side data at the folder root", (await opfsList(page, "MU/.mumain-translator")).includes("project-vi.json"));
   await page.screenshot({ path: path.join(shots, "web-checkout.png") });
 
+  // AI proposals written by the MCP server into .mumain-translator/proposals/, decided in the UI
+  const item = (group: string, key: string, english: string, value: string, note = "") => ({ group, key, english, base: "", value, note });
+  await opfsWrite(
+    page,
+    "MU/.mumain-translator/proposals/vi-e2e.json",
+    JSON.stringify({
+      version: 1,
+      locale: "vi",
+      createdAt: "2026-10-01T10:00:00Z",
+      by: "AI (e2e)",
+      note: "",
+      items: [
+        item("Game", "Chaos Castle", "Chaos Castle", "Lâu Đài Hỗn Loạn", "tên sự kiện"),
+        item("Game", "Connecting to the server", "Connecting to the server", "Đang kết nối tới máy chủ"),
+        item("Items.Helm", "3", "Helm 3", "Mũ Ba"),
+        item("Items.Helm", "5", "Helm 5", "Mũ Năm"),
+      ],
+    }),
+  );
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await tid("proposal-count").waitFor();
+  check("proposals read on window focus", (await text("proposal-count")) === "4 AI proposals", await text("proposal-count"));
+  await tid("proposal-count").click();
+  await tid("search").fill("");
+  await page.keyboard.press("Enter");
+  check("filter: rows with a proposal", (await text("result-count")) === "4 rows", await text("result-count"));
+  check("grid marks the rows", (await tid("row-proposal").count()) === 4);
+  const rowWith = (s: string) => page.locator("[data-row]").filter({ hasText: s }).first();
+  await rowWith("Chaos Castle").click();
+  await page.screenshot({ path: path.join(shots, "web-proposal-panel.png") });
+  check("detail panel shows the proposal", (await text("proposal-value")) === "Lâu Đài Hỗn Loạn" && (await text("proposal-note")).includes("tên sự kiện"));
+  await tid("proposal-reject").click();
+  await page.locator("#dialog-input").fill("sai tên");
+  await tid("dialog-reject").click();
+  await page.waitForFunction(() => document.querySelectorAll('[data-testid="row-proposal"]').length === 3);
+  check("skipped: the translation stays", !(await rowWith("Chaos Castle").textContent())?.includes("Lâu Đài"));
+  await rowWith("Helm 5").click();
+  await tid("proposal-edit").click();
+  await tid("inline-editor").locator("input").fill("Mũ Năm Sửa");
+  await tid("inline-editor").locator("input").press("Enter");
+  await page.keyboard.press("Escape");
+  await page.waitForFunction(() => document.querySelectorAll('[data-testid="row-proposal"]').length === 2);
+  check("edited, then accepted", (await rowWith("Helm 5").textContent())?.includes("Mũ Năm Sửa") === true);
+  await tid("actions").click();
+  check("accept-all counts the clean ones", (await text("action-proposals-accept-clean")).includes("Accept 2"), await text("action-proposals-accept-clean"));
+  await tid("action-proposals-accept-clean").click();
+  await tid("dialog-accept").click();
+  await tid("proposal-count").waitFor({ state: "detached" });
+  await page.screenshot({ path: path.join(shots, "web-proposals.png") });
+  await page.keyboard.press("Control+s");
+  await saved();
+  check("accepted proposals saved", ((await opfsRead(page, "MU/src/Localization/Game.vi.resx")) ?? "").includes("<value>Đang kết nối tới máy chủ</value>"));
+  const helm2 = ItemData.parse([{ name: "Group07_Helm.json", text: (await opfsRead(page, "MU/src/bin/Data/Items/Group07_Helm.json")) ?? "" }]);
+  check("accepted item names saved", helm2.getName(7 * 512 + 3) === "Mũ Ba" && helm2.getName(7 * 512 + 5) === "Mũ Năm Sửa");
+  const decisions = JSON.parse((await opfsRead(page, "MU/.mumain-translator/proposals/decisions/vi-e2e.json")) ?? "{}");
+  check(
+    "decisions kept, proposal file removed",
+    (await opfsList(page, "MU/.mumain-translator/proposals")).join() === "decisions" &&
+      decisions.decisions?.map((d: { action: string }) => d.action).join() === "rejected,accepted,accepted,edited",
+    JSON.stringify(decisions).slice(0, 200),
+  );
+
   // a browser without the File System Access API (Firefox, Safari): the fallback mode
   // (tests/e2e/web-fallback.ts runs it in Firefox and WebKit)
   const other = await context.newPage();

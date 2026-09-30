@@ -76,6 +76,7 @@ would overwrite a change made there).
 | `.mumain-translator/changes.tsv` | who changed which key of which file, from what to what |
 | `.mumain-translator/project-<locale>.json` | status / note / last editor / merge base per key, per group |
 | `.mumain-translator/draft-<locale>.json` | unsaved edits (offered for restore when the folder is opened again) |
+| `.mumain-translator/proposals/decisions/<file>` | what was decided about each AI proposal (the proposal file itself is removed once every item in it is decided) |
 
 `.mumain-translator/` is at the workspace root. ResxGen only reads the top-level `*.resx` of
 Localization and the game only the top-level `*.json` of Data/Items, so it never reaches either.
@@ -134,6 +135,28 @@ TSV to import, and suggested terms - item names used in the UI texts, and words 
 co-occurrence (`Helm → Mũ`, `Legendary → Ma Thuật`, `Red Wing → Hỏa Thiên`) - plus a report. Run it
 directly (`bun scripts/glossary-build.ts --mumain … --source "Label=file.tsv" … --out …`; `bun run … --`
 splits paths with spaces). See the comment at the top of the script.
+
+## AI proposals
+
+Translations proposed by an AI assistant (through the MCP server, coming next) or a script are files in
+`.mumain-translator/proposals/`, one per batch, never changed by their writer:
+
+```json
+{"version":1,"locale":"vi","createdAt":"2026-10-01T10:30:00Z","by":"AI (Claude Code)","note":"about the batch",
+ "items":[{"group":"Items.Helm","key":"1","english":"Dragon Helm","base":"","value":"Mũ Rồng","note":"why / doubts"}]}
+```
+
+`english` / `base` are the English text and the translation (`""` = none) the proposal was made from:
+when either changed since, the proposal is shown as outdated. The tool reads the folder when the
+window gets focus (and *Actions → Reload AI proposals*); rows with one get a ✨ marker and the filter
+*Has an AI proposal*. The detail panel shows the proposed text with its checks: **Accept** (an ordinary
+undoable edit, status *Translated*; the proposal's note becomes the row's note when it has none, marked
+"AI"), **Edit, then accept**, or **Skip** with a reason. *Actions → Accept … without problems* takes every
+proposal of the list made from the current translation with no error, warning or glossary problem.
+Nothing is written into the translated files until **Save**. Decisions go to
+`proposals/decisions/<same name>` right away (history the assistant can learn from). Only the newest
+undecided proposal of a key is shown; deciding it sets the older ones aside. Needs the desktop build or
+Chrome / Edge on the web (the fallback mode uploads no side data).
 
 ## Checks
 

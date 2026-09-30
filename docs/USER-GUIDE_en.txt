@@ -117,6 +117,12 @@ Item names:
     MuBMD-editor's TSV files (ItemType, ItemIndex, Name) import too.
   - Glossary: Actions -> Glossary… -> the team's glossary file (TSV, or the old MuMain_VI_Glossary.csv).
     Checked against the English text / name; hints in the detail panel, filter "Glossary problems".
+  - AI proposals: an AI assistant (through MCP) writes proposals into .mumain-translator/proposals/.
+    They are read again when the window gets focus (or Actions -> Reload AI proposals). Rows with one
+    are marked ✨, filter "Has an AI proposal". In the detail panel: Accept / Edit, then accept / Skip
+    (give a reason, so the assistant can learn). Actions -> "Accept … without problems" takes every
+    clean proposal of the list. Accepting is an ordinary edit (Ctrl+Z undoes it, status Translated);
+    Save writes the files. The web version needs Chrome / Edge (the upload mode sees no proposals).
 
 
 6. TROUBLESHOOTING

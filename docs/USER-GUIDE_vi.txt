@@ -114,6 +114,12 @@ Tên vật phẩm:
     nhập lại. File TSV của MuBMD-editor (ItemType, ItemIndex, Name) cũng nhập được.
   - Thuật ngữ: Thao tác -> Bảng thuật ngữ… -> file thuật ngữ của nhóm (TSV, hoặc MuMain_VI_Glossary.csv
     cũ). Được so với câu / tên tiếng Anh; gợi ý hiện ở panel chi tiết, bộ lọc "Lỗi thuật ngữ".
+  - Đề xuất AI: trợ lý AI (qua MCP) ghi đề xuất vào .mumain-translator/proposals/. Tool đọc lại khi
+    cửa sổ được chọn lại (hoặc Thao tác -> Đọc lại đề xuất AI). Dòng có đề xuất có dấu ✨, lọc
+    "Có đề xuất AI". Ở panel chi tiết: Chấp nhận / Sửa rồi chấp nhận / Bỏ qua (ghi lý do để AI rút
+    kinh nghiệm). Thao tác -> "Chấp nhận … đề xuất không có lỗi" nhận hết các đề xuất sạch trong danh
+    sách. Chấp nhận = một thay đổi bình thường (Ctrl+Z được, trạng thái "Đã dịch"); bấm Lưu mới ghi
+    file. Bản web cần Chrome / Edge (chế độ tải lên không thấy đề xuất).
 
 
 6. XỬ LÝ SỰ CỐ

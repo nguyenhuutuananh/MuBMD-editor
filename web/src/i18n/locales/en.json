@@ -87,7 +87,8 @@
       "same": "Identical to English",
       "extra": "Not in English",
       "kept": "Kept in English",
-      "dirty": "Unsaved changes"
+      "dirty": "Unsaved changes",
+      "proposal": "Has an AI proposal"
     },
     "severityLabel": "Problems",
     "severity": {
@@ -115,7 +116,8 @@
     "noMatch": "No row matches the filters.",
     "savedTitle": "On disk: {text}",
     "glossary": "glossary",
-    "glossaryHint": "Glossary: “{term}”"
+    "glossaryHint": "Glossary: “{term}”",
+    "proposal": "Has an AI proposal"
   },
   "state": {
     "missing": "Not translated: the game shows the English text",
@@ -239,6 +241,7 @@
     "fs-unsupported": "This browser cannot edit files in place: use Chrome or Edge, or the desktop version.",
     "item-json": "{file} is not a valid item file: {detail}",
     "item-name-invalid": "This item name cannot be used: it contains \"{'||'}\" or a control character.",
+    "proposal-invalid": "Not a valid proposal file: {detail}",
     "nothing-to-translate": "Nothing to translate in this folder. Choose a MuMain checkout (src/Localization, src/bin/Data/Items), a game folder (Data/Items, or Main.app on macOS), or one of those folders itself.",
     "items-not-found": "No item data (Data/Items) was found in “{folder}”."
   },
@@ -298,7 +301,12 @@
     "otherTab": "This folder is also open in another tab. Saving in both would overwrite one with the other: keep only one open.",
     "downloaded": "Downloaded: copy it back into the folder.",
     "downloadedZip": "Downloaded as a zip ({n} files): unpack it over the folder.",
-    "migrated": "Carried over from the earlier tools ({from}): {n} status / note record, {draft} unsaved edit. The old folders are left as they were. | Carried over from the earlier tools ({from}): {n} status / note records, {draft} unsaved edits. The old folders are left as they were."
+    "migrated": "Carried over from the earlier tools ({from}): {n} status / note record, {draft} unsaved edit. The old folders are left as they were. | Carried over from the earlier tools ({from}): {n} status / note records, {draft} unsaved edits. The old folders are left as they were.",
+    "proposalsNew": "{n} new AI proposal. | {n} new AI proposals.",
+    "proposalsCount": "{n} AI proposal to decide. | {n} AI proposals to decide.",
+    "proposalsBroken": "Could not read these proposal files: {files}",
+    "proposalsSkipped": "{n} proposal was skipped: it changed on disk or was decided already. | {n} proposals were skipped: they changed on disk or were decided already.",
+    "proposalsAccepted": "{n} AI proposal accepted. Press Save to write it. | {n} AI proposals accepted. Press Save to write them."
   },
   "glossary": {
     "title": "Glossary",
@@ -428,5 +436,39 @@
     "13": "Pets / Rings / Pendants",
     "14": "Potions / Jewels / Misc 3",
     "15": "Skill scrolls"
+  },
+  "proposals": {
+    "title": "AI proposal",
+    "count": "{n} AI proposal | {n} AI proposals",
+    "countTitle": "Show only the rows with an AI proposal (click again: every row)",
+    "reload": "Reload AI proposals",
+    "acceptClean": "Accept {n} AI proposal without problems (in the list) | Accept {n} AI proposals without problems (in the list)",
+    "accept": "Accept",
+    "editAccept": "Edit, then accept",
+    "reject": "Skip",
+    "editHint": "Editing the AI proposal: Enter accepts it with this text, Esc leaves it undecided.",
+    "noIssues": "No problems found in the proposed text.",
+    "madeFrom": "Made from:",
+    "older": "{n} older proposal of this row is set aside when you decide. | {n} older proposals of this row are set aside when you decide.",
+    "batchNote": "About the batch: {note}",
+    "state": {
+      "stale": "The translation changed after the AI read it: compare before accepting.",
+      "staleEnglish": "The English text changed after the AI read it: compare before accepting.",
+      "reviewed": "This row is already reviewed: the AI should not change it.",
+      "same": "Same as the translation now: accepting only closes the proposal.",
+      "invalid": "The file cannot hold this text (empty, “{'||'}” or a control character): edit it, or skip.",
+      "unknown": "This key is no longer in the English source: skip it."
+    },
+    "rejectDialog": {
+      "title": "Skip this AI proposal?",
+      "body": "The translation stays as it is. The reason is kept for the AI assistant, so it can do better next time.",
+      "label": "Reason (optional)",
+      "placeholder": "e.g. Mu VN calls this set “Hỏa Thiên”"
+    },
+    "acceptAllDialog": {
+      "title": "Accept AI proposals?",
+      "body": "{n} proposal in the list was made from the translation as it is now and has no error, warning or glossary problem. It becomes an unsaved change (status Translated), undone with Ctrl+Z; press Save to write it. | {n} proposals in the list were made from the translations as they are now and have no error, warning or glossary problem. They become unsaved changes (status Translated), undone together with Ctrl+Z; press Save to write them.",
+      "confirm": "Accept {n} | Accept {n}"
+    }
   }
 }

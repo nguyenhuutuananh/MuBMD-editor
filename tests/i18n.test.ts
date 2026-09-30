@@ -42,7 +42,7 @@ describe("locale files", () => {
   test("every error code and issue code is translated", () => {
     // Listed by hand: adding a code to core/errors.ts without translating it fails this test (and tsc).
     const errorCodes: Record<ErrorCode | ClientErrorCode, true> = {
-      "item-json": true, "item-name-invalid": true, "nothing-to-translate": true, "items-not-found": true, "resx-encoding": true, "resx-xml": true, "resx-root": true, "resx-invalid-char": true, "resx-not-editable": true,
+      "item-json": true, "item-name-invalid": true, "proposal-invalid": true, "nothing-to-translate": true, "items-not-found": true, "resx-encoding": true, "resx-xml": true, "resx-root": true, "resx-invalid-char": true, "resx-not-editable": true,
       "resx-file-name": true, "locale-code": true, "no-folder": true, "no-resx": true, "no-default": true,
       "locale-not-found": true, "file-not-found": true, "not-a-folder": true, "file-locked": true,
       "permission-denied": true, "is-directory": true, "disk-full": true, "picker-unsupported": true,

@@ -1,6 +1,7 @@
 // httpBackend.ts - Desktop build: calls the local Bun server (src/server/app.ts) over HTTP.
 
 import type {
+  DecideResponse,
   ErrorResponse,
   ExportResponse,
   WorkspaceListing,
@@ -8,6 +9,7 @@ import type {
   ImportPreview,
   MutationResponse,
   PickResponse,
+  ProposalsResponse,
   RebaseResponse,
   RegistrationInfo,
   RowsResponse,
@@ -63,4 +65,6 @@ export const backend: Backend = {
   rebase: () => request<RebaseResponse>("/api/rebase", {}),
   restoreDraft: () => request<MutationResponse & { skipped: number }>("/api/draft/restore", {}),
   discardDraft: () => request<{ ok: true }>("/api/draft/discard", {}),
+  proposals: () => request<ProposalsResponse>("/api/proposals"),
+  decideProposals: (decisions, translator) => request<DecideResponse>("/api/proposals/decide", { decisions, translator }),
 };

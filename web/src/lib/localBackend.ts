@@ -193,6 +193,8 @@ export const backend: Backend = {
       if (!hasFsAccess && isDownload(r.path)) await download(r.path);
       return r;
     }),
+  proposals: () => call(() => session.proposals()),
+  decideProposals: (decisions, translator) => call(() => session.decideProposals(decisions, translator)),
   importPreview: (path) => call(() => session.previewImport(path)),
   importApply: (path, token, take, translator) => call(() => session.applyImport(path, token, take, translator)),
   glossaryLoad: (path) => call(() => loadGlossaryFile(storage, path)),

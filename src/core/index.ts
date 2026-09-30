@@ -14,3 +14,4 @@ export * from "./jsonText";
 export * from "./itemData";
 export * from "./itemName";
 export * from "./termAlign";
+export * from "./proposals";

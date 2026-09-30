@@ -10,6 +10,7 @@ import {
   type Lang,
   type PickKind,
   type PickResponse,
+  type ProposalDecision,
   type SaveResponse,
   type StateResponse,
 } from "../shared/api";
@@ -173,6 +174,8 @@ export function createApp(opts: AppOptions) {
     "/api/import/apply": (b) => session.applyImport(pathOf(b), str(b.token), keysOf(b.take), str(b.translator)),
     // The glossary is a standalone file shared by the team (and with MuBMD-editor).
     "/api/glossary/load": (b): Promise<GlossaryInfo> => loadGlossaryFile(session.storage, pathOf(b)),
+    // Proposals of an AI assistant / a script (.mumain-translator/proposals/).
+    "/api/proposals/decide": (b) => session.decideProposals(Array.isArray(b.decisions) ? (b.decisions as ProposalDecision[]) : [], str(b.translator)),
     "/api/glossary/save": (b): Promise<GlossaryInfo> => saveGlossaryFile(session.storage, pathOf(b), Array.isArray(b.entries) ? b.entries : []),
   };
 
@@ -193,6 +196,13 @@ export function createApp(opts: AppOptions) {
       if (pathname === "/api/registration") {
         try {
           return json(await session.registration());
+        } catch (e) {
+          return errorResponse(e);
+        }
+      }
+      if (pathname === "/api/proposals") {
+        try {
+          return json(await session.proposals());
         } catch (e) {
           return errorResponse(e);
         }

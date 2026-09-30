@@ -8,7 +8,9 @@ import type {
   WorkspaceListing,
   GlossaryInfo,
   ImportPreview,
+  DecideResponse,
   MutationResponse,
+  ProposalsResponse,
   RebaseResponse,
   RowsResponse,
   SaveResponse,
@@ -181,5 +183,23 @@ describe("team API", () => {
     expect(loaded[0]).toMatchObject({ term: "Helm", translation: "Mũ" });
     expect(loaded[0]!.status ?? "confirmed").toBe("confirmed");
     expect(loaded[1]).toMatchObject({ term: "Dragon", source: "Mu VN", status: "suggested" });
+  });
+});
+
+describe("proposals API", () => {
+  test("list and decide", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mumain-translator-proposals-"));
+    writeSampleLocalization(dir);
+    fs.mkdirSync(path.join(dir, ".mumain-translator", "proposals"), { recursive: true });
+    const items = [{ group: "Game", key: "Chaos Castle", english: "Chaos Castle", base: "", value: "Hỗn Nguyên Lâu", note: "" }];
+    fs.writeFileSync(path.join(dir, ".mumain-translator", "proposals", "vi-1.json"), JSON.stringify({ version: 1, locale: "vi", createdAt: "", by: "AI", note: "", items }));
+    const app = setup();
+    await app.handle(post("/api/open", { path: dir, locale: "vi" }));
+    const list = await body<ProposalsResponse>(await app.handle(get("/api/proposals")));
+    expect(list.items.map((i) => [i.key, i.state])).toEqual([["Chaos Castle", "ok"]]);
+    const res = await body<DecideResponse>(await app.handle(post("/api/proposals/decide", { decisions: [{ file: "vi-1.json", index: 0, action: "accept" }], translator: "An" })));
+    expect([res.decided, res.changed[0]?.[3], res.proposals.items.length]).toEqual([1, "Hỗn Nguyên Lâu", 0]);
+    expect(fs.existsSync(path.join(dir, ".mumain-translator", "proposals", "decisions", "vi-1.json"))).toBe(true);
+    fs.rmSync(dir, { recursive: true, force: true });
   });
 });

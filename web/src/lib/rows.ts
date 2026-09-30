@@ -116,7 +116,7 @@ export function liveIssues(row: Row, value: string, locale: string): { list: Row
   return { list, worst: worstOf(list) };
 }
 
-export type StateFilter = "any" | RowState | "dirty";
+export type StateFilter = "any" | RowState | "dirty" | "proposal";
 export type SeverityFilter = "any" | "error" | "problems" | "issues" | "clean" | "glossary";
 export type StatusFilter = "any" | Status;
 
@@ -164,7 +164,8 @@ export function parseItemQuery(q: string): { itemType: number; key: string } | n
   return m ? { itemType: Number(m[1]), key: String(Number(m[2])) } : null;
 }
 
-export function applyFilter(rows: Row[], f: Filter, glossary: readonly GlossaryEntry[] = []): Row[] {
+// `hasProposal`: the row has an undecided AI proposal (state filter "proposal").
+export function applyFilter(rows: Row[], f: Filter, glossary: readonly GlossaryEntry[] = [], hasProposal: (r: Row) => boolean = () => false): Row[] {
   const legacy = parseLegacyQuery(f.query);
   if (legacy !== null) return rows.filter((r) => r.legacyIds.includes(legacy));
   const item = parseItemQuery(f.query);
@@ -173,7 +174,7 @@ export function applyFilter(rows: Row[], f: Filter, glossary: readonly GlossaryE
   return rows.filter(
     (r) =>
       (f.group === null ? f.source === null || r.source === f.source : r.group === f.group) &&
-      (f.state === "any" || (f.state === "dirty" ? r.dirty : r.state === f.state)) &&
+      (f.state === "any" || (f.state === "dirty" ? r.dirty : f.state === "proposal" ? hasProposal(r) : r.state === f.state)) &&
       (f.status === "any" || r.status === f.status) &&
       matchesSeverity(r, f.severity, glossary) &&
       terms.every((t) => r.folded.includes(t)),

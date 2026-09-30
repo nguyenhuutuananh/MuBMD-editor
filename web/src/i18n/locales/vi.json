@@ -87,7 +87,8 @@
       "same": "Giống hệt tiếng Anh",
       "extra": "Không có trong tiếng Anh",
       "kept": "Giữ nguyên tiếng Anh",
-      "dirty": "Chưa lưu"
+      "dirty": "Chưa lưu",
+      "proposal": "Có đề xuất AI"
     },
     "severityLabel": "Vấn đề",
     "severity": {
@@ -115,7 +116,8 @@
     "noMatch": "Không có dòng nào khớp bộ lọc.",
     "savedTitle": "Trên đĩa: {text}",
     "glossary": "thuật ngữ",
-    "glossaryHint": "Thuật ngữ: “{term}”"
+    "glossaryHint": "Thuật ngữ: “{term}”",
+    "proposal": "Có đề xuất AI"
   },
   "state": {
     "missing": "Chưa dịch: game hiện chữ tiếng Anh",
@@ -239,6 +241,7 @@
     "fs-unsupported": "Trình duyệt này không sửa trực tiếp được file: hãy dùng Chrome hoặc Edge, hoặc bản desktop.",
     "item-json": "{file} không phải file vật phẩm hợp lệ: {detail}",
     "item-name-invalid": "Không dùng được tên vật phẩm này: có \"{'||'}\" hoặc ký tự điều khiển.",
+    "proposal-invalid": "Không phải file đề xuất hợp lệ: {detail}",
     "nothing-to-translate": "Thư mục này không có gì để dịch. Hãy chọn repo MuMain (src/Localization, src/bin/Data/Items), thư mục game (Data/Items, hoặc Main.app trên macOS), hoặc chính một trong các thư mục đó.",
     "items-not-found": "Không tìm thấy dữ liệu vật phẩm (Data/Items) trong “{folder}”."
   },
@@ -298,7 +301,12 @@
     "otherTab": "Thư mục này cũng đang mở ở tab khác. Lưu ở cả hai sẽ ghi đè lẫn nhau: chỉ nên mở một tab.",
     "downloaded": "Đã tải về: hãy chép lại vào thư mục.",
     "downloadedZip": "Đã tải về dạng zip ({n} file): hãy giải nén đè lên thư mục.",
-    "migrated": "Đã chuyển dữ liệu từ các tool cũ ({from}): {n} bản ghi trạng thái / ghi chú, {draft} thay đổi chưa lưu. Thư mục cũ được giữ nguyên."
+    "migrated": "Đã chuyển dữ liệu từ các tool cũ ({from}): {n} bản ghi trạng thái / ghi chú, {draft} thay đổi chưa lưu. Thư mục cũ được giữ nguyên.",
+    "proposalsNew": "Có {n} đề xuất AI mới.",
+    "proposalsCount": "Còn {n} đề xuất AI chờ quyết định.",
+    "proposalsBroken": "Không đọc được các file đề xuất: {files}",
+    "proposalsSkipped": "Bỏ qua {n} đề xuất: đã thay đổi trên đĩa hoặc đã được quyết định.",
+    "proposalsAccepted": "Đã chấp nhận {n} đề xuất AI. Bấm Lưu để ghi."
   },
   "glossary": {
     "title": "Bảng thuật ngữ",
@@ -428,5 +436,39 @@
     "13": "Pet / Nhẫn / Dây chuyền",
     "14": "Bình máu / Ngọc / Khác 3",
     "15": "Sách kỹ năng (Scroll)"
+  },
+  "proposals": {
+    "title": "Đề xuất AI",
+    "count": "{n} đề xuất AI",
+    "countTitle": "Chỉ hiện các dòng có đề xuất AI (bấm lần nữa: mọi dòng)",
+    "reload": "Đọc lại đề xuất AI",
+    "acceptClean": "Chấp nhận {n} đề xuất AI không có lỗi (trong danh sách)",
+    "accept": "Chấp nhận",
+    "editAccept": "Sửa rồi chấp nhận",
+    "reject": "Bỏ qua",
+    "editHint": "Đang sửa đề xuất AI: Enter để chấp nhận với nội dung này, Esc để để lại chưa quyết định.",
+    "noIssues": "Không thấy vấn đề gì trong bản đề xuất.",
+    "madeFrom": "AI đã đọc:",
+    "older": "Còn {n} đề xuất cũ hơn cho dòng này, sẽ được gác lại khi bạn quyết định.",
+    "batchNote": "Về đợt đề xuất: {note}",
+    "state": {
+      "stale": "Bản dịch đã thay đổi sau khi AI đọc: hãy so sánh trước khi chấp nhận.",
+      "staleEnglish": "Bản tiếng Anh đã thay đổi sau khi AI đọc: hãy so sánh trước khi chấp nhận.",
+      "reviewed": "Dòng này đã duyệt: AI không nên sửa.",
+      "same": "Giống bản dịch hiện tại: chấp nhận chỉ để đóng đề xuất.",
+      "invalid": "File không chứa được nội dung này (rỗng, “{'||'}” hoặc ký tự điều khiển): hãy sửa, hoặc bỏ qua.",
+      "unknown": "Key này không còn trong bản tiếng Anh: hãy bỏ qua."
+    },
+    "rejectDialog": {
+      "title": "Bỏ qua đề xuất AI này?",
+      "body": "Bản dịch giữ nguyên. Lý do được lưu lại cho trợ lý AI để lần sau đề xuất tốt hơn.",
+      "label": "Lý do (không bắt buộc)",
+      "placeholder": "VD: Mu Việt gọi bộ này là “Hỏa Thiên”"
+    },
+    "acceptAllDialog": {
+      "title": "Chấp nhận các đề xuất AI?",
+      "body": "{n} đề xuất trong danh sách được làm từ bản dịch hiện tại và không có lỗi, cảnh báo hay lỗi thuật ngữ. Chúng trở thành thay đổi chưa lưu (trạng thái Đã dịch), hoàn tác cùng lúc bằng Ctrl+Z; bấm Lưu để ghi.",
+      "confirm": "Chấp nhận {n}"
+    }
   }
 }

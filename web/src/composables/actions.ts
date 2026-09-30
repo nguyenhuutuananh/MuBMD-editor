@@ -1,15 +1,16 @@
 // actions.ts - User flows: choose a folder, pick the locale, open, reload; edit / keep / revert,
-// status / note, undo, save (with conflicts), the draft; TSV export / import, the glossary;
-// selection and keyboard shortcuts.
+// status / note, undo, save (with conflicts), the draft; TSV export / import, the glossary; AI
+// proposals; selection and keyboard shortcuts.
 
 import { ref, shallowRef } from "vue";
 import { toast } from "vue-sonner";
-import type { DraftInfo, GlossaryEntry, ImportPreview, KeyRef, SaveRequest, Status } from "../../../src/shared/api";
+import { SEVERITY } from "../../../src/core/validate";
+import type { DraftInfo, GlossaryEntry, ImportPreview, KeyRef, ProposalDecision, ProposalRow, SaveRequest, Status } from "../../../src/shared/api";
 import { currentLang, errorText, fmtTime, tr } from "@/i18n";
 import { ApiError, api, isFallback, isWeb } from "@/lib/api";
 import { announceOpen } from "@/lib/tabs";
 import { ask, isDialogOpen } from "@/lib/dialogs";
-import type { Row } from "@/lib/rows";
+import { type Row, glossaryProblems } from "@/lib/rows";
 import { type RecentEntry, useDocStore } from "@/stores/doc";
 
 export const welcomeError = ref<string | null>(null);
@@ -214,14 +215,15 @@ export const canEdit = (r: Row) => r.en !== null;
 // "Keep English" exists for the UI strings (resx), not for item names.
 export const canKeep = (r: Row) => canEdit(r) && store().groups[r.group]?.canKeep === true;
 
-export async function startEdit(id: number) {
+// `proposal`: start from an AI proposal's text; saving accepts the proposal with the edited text.
+export async function startEdit(id: number, proposal?: ProposalRow) {
   const s = store();
   const row = s.rows[id];
   if (!row || !canEdit(row) || visibleIndex(id) < 0) return;
   if (!(await ensureTranslator())) return;
   select(id, true);
   const initial = row.value ?? "";
-  s.editor = { id, value: initial, initial };
+  s.editor = proposal ? { id, value: proposal.value, initial, proposal: { file: proposal.file, index: proposal.index } } : { id, value: initial, initial };
 }
 
 export function cancelEdit() {
@@ -235,12 +237,14 @@ export async function commitEditor(): Promise<boolean> {
   const ed = s.editor;
   if (!ed) return true;
   const row = s.rows[ed.id];
-  if (!row || ed.value === ed.initial) {
+  // An emptied proposal is not accepted (it stays undecided).
+  if (!row || (ed.proposal ? ed.value === "" : ed.value === ed.initial)) {
     if (s.editor === ed) s.editor = null;
     return true;
   }
   try {
-    await s.edit(row, ed.value === "" ? null : ed.value);
+    if (ed.proposal) await decide([{ ...ed.proposal, action: "accept", value: ed.value }]);
+    else await s.edit(row, ed.value === "" ? null : ed.value);
     if (s.editor === ed) s.editor = null;
     return true;
   } catch (e) {
@@ -451,6 +455,116 @@ export async function saveGlossary(entries: GlossaryEntry[], forceAsk = false): 
   } catch (e) {
     toast.error(errorText(e));
     return false;
+  }
+}
+
+// ---- AI proposals ----
+
+// Read the proposal files again. `quiet`: only say something when new ones came in (window focus).
+export async function reloadProposals(quiet = false) {
+  const s = store();
+  if (s.view !== "workspace" || isFallback) return;
+  try {
+    const fresh = await s.loadProposals();
+    const broken = s.proposals?.broken ?? [];
+    if (fresh) toast.info(tr("toast.proposalsNew", { n: fresh }));
+    else if (!quiet) toast(tr("toast.proposalsCount", { n: s.proposals?.items.length ?? 0 }));
+    if (broken.length && !quiet) toast.warning(tr("toast.proposalsBroken", { files: broken.map((b) => b.name).join(", ") }), { duration: 10000 });
+  } catch (e) {
+    if (!quiet) toast.error(errorText(e));
+  }
+}
+
+async function decide(decisions: ProposalDecision[]) {
+  const res = await store().decideProposals(decisions);
+  if (res.skipped) toast.warning(tr("toast.proposalsSkipped", { n: res.skipped }));
+  return res;
+}
+
+// After deciding the proposal of a row: on to the next row of the list that has one.
+function nextProposal(fromId: number) {
+  const s = store();
+  const list = s.visible;
+  const from = visibleIndex(fromId);
+  for (let i = from + 1; i < list.length; i++) if (s.proposalOf(list[i]!)) return select(list[i]!.id, true);
+}
+
+export async function acceptProposal(id: number) {
+  const s = store();
+  const row = s.rows[id];
+  const p = row && s.proposalOf(row);
+  if (!p || !(await ensureTranslator()) || !(await commitEditor())) return;
+  try {
+    await decide([{ file: p.file, index: p.index, action: "accept" }]);
+    nextProposal(id);
+  } catch (e) {
+    toast.error(errorText(e));
+  }
+}
+
+export function editProposal(id: number) {
+  const s = store();
+  const row = s.rows[id];
+  const p = row && s.proposalOf(row);
+  if (p) return startEdit(id, p);
+}
+
+export async function rejectProposal(id: number) {
+  const s = store();
+  const row = s.rows[id];
+  const p = row && s.proposalOf(row);
+  if (!p || !(await ensureTranslator()) || !(await commitEditor())) return;
+  const r = await ask({
+    title: tr("proposals.rejectDialog.title"),
+    body: [tr("proposals.rejectDialog.body")],
+    input: { label: tr("proposals.rejectDialog.label"), value: "", placeholder: tr("proposals.rejectDialog.placeholder") },
+    actions: [
+      { id: "cancel", label: tr("common.cancel") },
+      { id: "reject", label: tr("proposals.reject"), kind: "primary" },
+    ],
+  });
+  if (r.action !== "reject") return;
+  try {
+    await decide([{ file: p.file, index: p.index, action: "reject", reason: r.value }]);
+    nextProposal(id);
+  } catch (e) {
+    toast.error(errorText(e));
+  }
+}
+
+// A proposal that can be taken without looking: made from the translation as it is now, and no
+// error / warning / glossary problem in the proposed text.
+export function isCleanProposal(row: Row, p: ProposalRow): boolean {
+  if (p.state !== "ok" && p.state !== "same") return false;
+  if (p.issues.some(([code]) => SEVERITY[code] !== "info")) return false;
+  return glossaryProblems({ ...row, value: p.value }, store().glossary?.entries ?? []).length === 0;
+}
+
+export const cleanProposals = () => {
+  const s = store();
+  return s.visible.flatMap((r) => {
+    const p = s.proposalOf(r);
+    return p && isCleanProposal(r, p) ? [p] : [];
+  });
+};
+
+export async function acceptCleanProposals() {
+  const list = cleanProposals();
+  if (!list.length || !(await ensureTranslator()) || !(await commitEditor())) return;
+  const r = await ask({
+    title: tr("proposals.acceptAllDialog.title"),
+    body: [tr("proposals.acceptAllDialog.body", { n: list.length })],
+    actions: [
+      { id: "cancel", label: tr("common.cancel") },
+      { id: "accept", label: tr("proposals.acceptAllDialog.confirm", { n: list.length }), kind: "primary" },
+    ],
+  });
+  if (r.action !== "accept") return;
+  try {
+    const res = await decide(list.map((p) => ({ file: p.file, index: p.index, action: "accept" as const })));
+    toast.success(tr("toast.proposalsAccepted", { n: res.decided }), { duration: 8000 });
+  } catch (e) {
+    toast.error(errorText(e));
   }
 }
 

@@ -296,3 +296,54 @@ export interface ErrorResponse {
   code: ErrorCode;
   params: ErrorParams;
 }
+
+// ---- proposals (translations proposed by an AI assistant / a script, see src/core/proposals.ts) ----
+
+// ok: can be taken; stale: the English text or the translation changed since it was made; reviewed:
+// the row is already reviewed; same: identical to the translation now; invalid: the file cannot hold
+// the text; unknown: not a key of the English source.
+export type ProposalState = "ok" | "stale" | "reviewed" | "same" | "invalid" | "unknown";
+
+// The newest undecided proposal of a key.
+export interface ProposalRow {
+  file: string; // proposal file name
+  index: number; // of the item in it
+  group: string;
+  key: string;
+  english: string; // as it was when proposed
+  base: string; // the translation it was made from ("" = none)
+  value: string;
+  note: string;
+  by: string;
+  createdAt: string;
+  batchNote: string;
+  state: ProposalState;
+  issues: RowIssue[]; // checks of the proposed text against the English text now
+  older: number; // older undecided proposals of the same key (decided along with this one)
+}
+
+export interface ProposalsResponse {
+  dir: string; // relative to the workspace root
+  items: ProposalRow[];
+  broken: { name: string; detail: string }[]; // files that could not be read
+}
+
+// accept: take `value` (default: the proposed text; another text = "edited"); reject: skip, with a reason.
+export interface ProposalDecision {
+  file: string;
+  index: number;
+  action: "accept" | "reject";
+  value?: string;
+  reason?: string;
+}
+
+export interface DecideRequest {
+  decisions: ProposalDecision[];
+  translator: string;
+}
+
+export interface DecideResponse extends MutationResponse {
+  decided: number;
+  skipped: number; // gone from disk / already decided / not takeable
+  proposals: ProposalsResponse;
+}

@@ -14,6 +14,7 @@ export type ErrorCode =
   | "import-changed" // the imported file changed since its preview
   | "item-json" // an item file (Data/Items/*.json) MuMain could not load either (params: file, detail)
   | "item-name-invalid" // an item name the game cannot take ("||", control characters) (params: code)
+  | "proposal-invalid" // not a proposal file (params: detail)
   // session
   | "no-folder" // nothing is open yet
   | "nothing-to-translate" // the folder has neither Localization .resx files nor item data (params: path)

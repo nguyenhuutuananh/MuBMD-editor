@@ -5,6 +5,7 @@
 // Errors are always ApiError with a code + params for the UI to translate.
 
 import type {
+  DecideResponse,
   ErrorCode,
   ErrorParams,
   ExportResponse,
@@ -19,6 +20,8 @@ import type {
   Status,
   MutationResponse,
   PickResponse,
+  ProposalDecision,
+  ProposalsResponse,
   RebaseResponse,
   RowsResponse,
   SaveRequest,
@@ -68,4 +71,6 @@ export interface Backend {
   rebase(): Promise<RebaseResponse>;
   restoreDraft(): Promise<MutationResponse & { skipped: number }>;
   discardDraft(): Promise<{ ok: true }>;
+  proposals(): Promise<ProposalsResponse>;
+  decideProposals(decisions: ProposalDecision[], translator: string): Promise<DecideResponse>;
 }

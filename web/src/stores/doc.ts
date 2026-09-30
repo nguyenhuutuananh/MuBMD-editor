@@ -18,11 +18,14 @@ import type {
   KeyRef,
   MutationResponse,
   OpenInfo,
+  ProposalDecision,
+  ProposalRow,
+  ProposalsResponse,
   RegistrationInfo,
   SaveRequest,
   Status,
 } from "../../../src/shared/api";
-import { api } from "@/lib/api";
+import { api, isFallback } from "@/lib/api";
 import { type Filter, type Row, applyFilter, toRow, toRows } from "@/lib/rows";
 import { KEYS, load, save } from "@/lib/storage";
 
@@ -36,6 +39,7 @@ export interface EditorState {
   id: number;
   value: string;
   initial: string; // "" for a missing translation
+  proposal?: { file: string; index: number }; // editing an AI proposal: saving accepts it with this text
 }
 
 // Changes are sent to the server one at a time, in the order the user made them.
@@ -66,6 +70,20 @@ export const useDocStore = defineStore("doc", () => {
   const registration = shallowRef<RegistrationInfo | null>(null);
   const glossaryEntries = () => glossary.value?.entries ?? [];
   let index = new Map<string, number>(); // group + key -> row id
+  // Proposals of an AI assistant (.mumain-translator/proposals/); null: not read (fallback mode: the
+  // uploaded copy has no side data).
+  const proposals = shallowRef<ProposalsResponse | null>(null);
+  const proposalByRow = computed(() => {
+    void rows.value; // row ids change when the rows are read again
+    const m = new Map<number, ProposalRow>();
+    const gi = new Map(groups.value.map((g, i) => [g.name, i]));
+    for (const p of proposals.value?.items ?? []) {
+      const id = index.get(rowKey(gi.get(p.group) ?? -1, p.key));
+      if (id !== undefined) m.set(id, p);
+    }
+    return m;
+  });
+  const proposalOf = (r: Row) => proposalByRow.value.get(r.id) ?? null;
 
   const saved = load<Partial<Filter>>(KEYS.filter, {});
   const filter = reactive<Filter>({
@@ -90,7 +108,7 @@ export const useDocStore = defineStore("doc", () => {
 
   function refilter() {
     editor.value = null;
-    visible.value = applyFilter(rows.value, filter, glossaryEntries());
+    visible.value = applyFilter(rows.value, filter, glossaryEntries(), (r) => proposalByRow.value.has(r.id));
   }
   watch(
     () => [filter.source, filter.group, filter.state, filter.status, filter.severity] as const,
@@ -115,6 +133,29 @@ export const useDocStore = defineStore("doc", () => {
     glossary.value = await api.glossarySave(path, entries);
     save(KEYS.glossary, glossary.value.path);
     return glossary.value;
+  }
+
+  // Reads the proposals again (after opening, on window focus, on request). Returns how many are new
+  // since the last read. The "has a proposal" list is filtered again only when the set changed.
+  async function loadProposals(): Promise<number> {
+    if (!open.value || isFallback) {
+      proposals.value = null;
+      return 0;
+    }
+    const sig = (p: ProposalsResponse | null) => (p?.items ?? []).map((i) => `${i.file}:${i.index}`);
+    const before = new Set(sig(proposals.value));
+    const res = await api.proposals();
+    const after = sig(res);
+    const changed = after.length !== before.size || after.some((k) => !before.has(k));
+    proposals.value = res;
+    if (changed && filter.state === "proposal") refilter();
+    return after.filter((k) => !before.has(k)).length;
+  }
+
+  async function decideProposals(decisions: ProposalDecision[]) {
+    const res = await mutate(() => api.decideProposals(decisions, translator.value));
+    proposals.value = res.proposals;
+    return res;
   }
 
   const rememberedGlossary = () => load<string | null>(KEYS.glossary, null);
@@ -144,6 +185,7 @@ export const useDocStore = defineStore("doc", () => {
     view.value = "workspace";
     refilter();
     rev.value++;
+    loadProposals().catch(() => (proposals.value = null));
     // Not essential: a failure only hides the "not selectable in the game" notice.
     api.registration().then(
       (r) => (registration.value = r),
@@ -220,6 +262,10 @@ export const useDocStore = defineStore("doc", () => {
     sources,
     glossary,
     registration,
+    proposals,
+    proposalOf,
+    loadProposals,
+    decideProposals,
     loadGlossary,
     saveGlossary,
     rememberedGlossary,

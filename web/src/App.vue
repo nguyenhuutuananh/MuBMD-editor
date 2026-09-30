@@ -15,7 +15,7 @@ import RowToolbar from "@/components/RowToolbar.vue";
 import WelcomeScreen from "@/components/WelcomeScreen.vue";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { onGlobalKeydown, start } from "@/composables/actions";
+import { onGlobalKeydown, reloadProposals, start } from "@/composables/actions";
 import { useDocStore } from "@/stores/doc";
 
 const store = useDocStore();
@@ -30,13 +30,17 @@ const onBeforeUnload = (e: BeforeUnloadEvent) => {
   e.preventDefault();
   e.returnValue = "";
 };
+// Back from the terminal where the AI assistant wrote proposals: read them again.
+const onFocus = () => reloadProposals(true);
 onMounted(() => {
   window.addEventListener("keydown", onGlobalKeydown);
+  window.addEventListener("focus", onFocus);
   window.addEventListener("beforeunload", onBeforeUnload);
   start();
 });
 onBeforeUnmount(() => {
   window.removeEventListener("keydown", onGlobalKeydown);
+  window.removeEventListener("focus", onFocus);
   window.removeEventListener("beforeunload", onBeforeUnload);
 });
 </script>

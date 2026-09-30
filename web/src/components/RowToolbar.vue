@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { BookOpen, ChevronDown, Download, Upload } from "@lucide/vue";
+import { BookOpen, CheckCheck, ChevronDown, Download, RefreshCw, Sparkles, Upload } from "@lucide/vue";
 import { useDebounceFn } from "@vueuse/core";
-import { onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { STATUSES } from "../../../src/shared/api";
 import StateDot from "@/components/StateDot.vue";
@@ -17,7 +17,18 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { exportOpen, glossaryOpen, registerSearch, select, setStatus, startImport } from "@/composables/actions";
+import {
+  acceptCleanProposals,
+  cleanProposals,
+  exportOpen,
+  glossaryOpen,
+  registerSearch,
+  reloadProposals,
+  select,
+  setStatus,
+  startImport,
+} from "@/composables/actions";
+import { isFallback } from "@/lib/api";
 import type { SeverityFilter, StateFilter, StatusFilter } from "@/lib/rows";
 import { useDocStore } from "@/stores/doc";
 
@@ -49,10 +60,18 @@ function toResults(e: KeyboardEvent) {
   document.getElementById("grid-body")?.focus();
 }
 
-const states: StateFilter[] = ["any", "missing", "translated", "same", "kept", "extra", "dirty"];
+// "Has an AI proposal" needs the side data folder, which the fallback mode does not upload.
+const states: StateFilter[] = ["any", "missing", "translated", "same", "kept", "extra", "dirty", ...(isFallback ? [] : (["proposal"] as const))];
 const severities: SeverityFilter[] = ["any", "error", "problems", "issues", "clean", "glossary"];
 const statusFilters: StatusFilter[] = ["any", ...STATUSES];
 const markList = (status: (typeof STATUSES)[number]) => setStatus(store.visible.filter((r) => r.en !== null), status);
+const proposalCount = computed(() => store.proposals?.items.length ?? 0);
+// Counted when the menu opens (the list changes with every edit).
+const cleanCount = ref(0);
+const onMenu = (open: boolean) => {
+  if (open) cleanCount.value = cleanProposals().length;
+};
+const toggleProposals = () => (store.filter.state = store.filter.state === "proposal" ? "any" : "proposal");
 
 onMounted(() =>
   registerSearch(() => {
@@ -84,7 +103,8 @@ onBeforeUnmount(() => registerSearch(null));
       <SelectTrigger class="w-auto" :aria-label="t('toolbar.stateLabel')" data-testid="state-filter"><SelectValue /></SelectTrigger>
       <SelectContent>
         <SelectItem v-for="s in states" :key="s" :value="s" :data-testid="`state-${s}`">
-          <StateDot v-if="s !== 'any' && s !== 'dirty'" :state="s" />{{ t(`toolbar.state.${s}`) }}
+          <Sparkles v-if="s === 'proposal'" class="text-brand" />
+          <StateDot v-else-if="s !== 'any' && s !== 'dirty'" :state="s" />{{ t(`toolbar.state.${s}`) }}
         </SelectItem>
       </SelectContent>
     </Select>
@@ -105,10 +125,21 @@ onBeforeUnmount(() => registerSearch(null));
         </SelectItem>
       </SelectContent>
     </Select>
+    <Button
+      v-if="proposalCount"
+      variant="outline"
+      size="sm"
+      :class="store.filter.state === 'proposal' && 'border-brand bg-brand-soft'"
+      :title="t('proposals.countTitle')"
+      data-testid="proposal-count"
+      @click="toggleProposals"
+    >
+      <Sparkles class="text-brand" />{{ t("proposals.count", { n: n(proposalCount) }, proposalCount) }}
+    </Button>
     <span class="text-muted-foreground ml-auto text-xs tabular-nums" aria-live="polite" data-testid="result-count">
       {{ t("toolbar.rows", { n: n(store.visible.length) }, store.visible.length) }}
     </span>
-    <DropdownMenu>
+    <DropdownMenu @update:open="onMenu">
       <DropdownMenuTrigger as-child>
         <Button variant="outline" data-testid="actions">{{ t("toolbar.actions") }}<ChevronDown /></Button>
       </DropdownMenuTrigger>
@@ -117,6 +148,13 @@ onBeforeUnmount(() => registerSearch(null));
         <DropdownMenuItem data-testid="action-import" @select="startImport"><Upload />{{ t("actions.import") }}</DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem data-testid="action-glossary" @select="glossaryOpen = true"><BookOpen />{{ t("actions.glossary") }}</DropdownMenuItem>
+        <template v-if="!isFallback">
+          <DropdownMenuSeparator />
+          <DropdownMenuItem data-testid="action-proposals-reload" @select="reloadProposals()"><RefreshCw />{{ t("proposals.reload") }}</DropdownMenuItem>
+          <DropdownMenuItem :disabled="!cleanCount" data-testid="action-proposals-accept-clean" @select="acceptCleanProposals">
+            <CheckCheck />{{ t("proposals.acceptClean", { n: n(cleanCount) }, cleanCount) }}
+          </DropdownMenuItem>
+        </template>
         <DropdownMenuSeparator />
         <DropdownMenuLabel class="text-muted-foreground text-xs font-normal">
           {{ t("actions.markList", { n: n(store.visible.length) }, store.visible.length) }}

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Lock } from "@lucide/vue";
+import { Lock, Sparkles } from "@lucide/vue";
 import { useVirtualizer } from "@tanstack/vue-virtual";
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
@@ -167,6 +167,7 @@ onBeforeUnmount(() => registerScroller(null));
           <span v-else class="text-muted-foreground truncate italic">{{ t("grid.extra") }}</span>
           <InlineEditor v-if="store.editor?.id === row.id" :row="row" />
           <span v-else-if="row.value !== null" class="flex min-w-0 items-center gap-1">
+            <Sparkles v-if="store.proposalOf(row)" class="text-brand size-3 shrink-0" :title="t('grid.proposal')" data-testid="row-proposal" />
             <Lock v-if="row.keep" class="text-muted-foreground size-3 shrink-0" :title="t('state.kept')" />
             <RichText
               :text="row.value"
@@ -175,7 +176,10 @@ onBeforeUnmount(() => registerScroller(null));
               :title="row.dirty ? t('grid.savedTitle', { text: row.saved ?? t('grid.missing') }) : undefined"
             />
           </span>
-          <span v-else class="text-muted-foreground truncate italic" :class="!canEdit(row) && 'line-through'">{{ t("grid.missing") }}</span>
+          <span v-else class="flex min-w-0 items-center gap-1">
+            <Sparkles v-if="store.proposalOf(row)" class="text-brand size-3 shrink-0" :title="t('grid.proposal')" data-testid="row-proposal" />
+            <span class="text-muted-foreground truncate italic" :class="!canEdit(row) && 'line-through'">{{ t("grid.missing") }}</span>
+          </span>
           <span v-if="refLocale" class="text-muted-foreground hidden min-w-0 md:flex">
             <RichText v-if="row.reference !== null" :text="row.reference" :hash-breaks="hashBreaks(row)" />
           </span>

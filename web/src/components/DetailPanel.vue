@@ -5,6 +5,7 @@ import { useI18n } from "vue-i18n";
 import { SEVERITY } from "../../../src/core/validate";
 import { toIdentifier } from "../../../src/core/resxgen";
 import { type RowIssue, STATUSES } from "../../../src/shared/api";
+import ProposalPanel from "@/components/ProposalPanel.vue";
 import RichText from "@/components/RichText.vue";
 import StateDot from "@/components/StateDot.vue";
 import StatusDot from "@/components/StatusDot.vue";
@@ -139,6 +140,7 @@ function onKeydown(e: KeyboardEvent) {
             data-testid="detail-editor"
             @keydown="onKeydown"
           />
+          <p v-if="editing.proposal" class="text-brand text-xs" data-testid="detail-proposal-hint">{{ t("proposals.editHint") }}</p>
           <p class="text-muted-foreground text-xs">{{ isItem ? t("detail.editHintItem") : t("detail.editHint") }}</p>
         </template>
         <p v-else-if="row.value !== null" class="rounded-md border px-2.5 py-2" data-testid="detail-value">
@@ -151,6 +153,8 @@ function onKeydown(e: KeyboardEvent) {
           <span v-else class="italic">{{ t("grid.missing") }}</span>
         </p>
       </section>
+
+      <ProposalPanel v-if="!editing" :row="row" />
 
       <div class="flex flex-wrap gap-2" data-testid="detail-actions">
         <Button v-if="canEdit(row) && !editing" size="sm" data-testid="action-edit" @click="startEdit(row.id)"><Pencil />{{ t("detail.edit") }}</Button>
