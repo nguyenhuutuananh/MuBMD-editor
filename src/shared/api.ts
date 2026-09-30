@@ -4,59 +4,128 @@
 import type { ErrorCode, ErrorParams } from "../core/errors";
 import type { GlossaryEntry } from "../core/glossary";
 import type { MergeCounts, MergeItem } from "../core/merge";
-import type { NameIssue, NameIssueCode } from "../core/nameCodec";
 import type { Status, TsvProblem } from "../core/tsv";
+import type { Issue, IssueCode, IssueParams, LocaleProgress, Severity } from "../core/validate";
 import type { ItemsLayout } from "../session/itemsFolder";
+import type { SourceKind } from "../session/sources/types";
 
-export type { ErrorCode, ErrorParams, GlossaryEntry, ItemsLayout, MergeCounts, MergeItem, NameIssue, NameIssueCode, Status, TsvProblem };
+export type {
+  ErrorCode,
+  ErrorParams,
+  GlossaryEntry,
+  Issue,
+  IssueCode,
+  IssueParams,
+  ItemsLayout,
+  LocaleProgress,
+  MergeCounts,
+  MergeItem,
+  Severity,
+  SourceKind,
+  Status,
+  TsvProblem,
+};
 export { STATUSES } from "../core/tsv";
 
+// Per-key translation state, persisted in .mumain-translator/project-<locale>.json (not in the
+// translated files).
+export interface KeyRecord {
+  status: Status;
+  note: string;
+  translator: string; // who last changed the text / status / note
+  updatedAt: string; // ISO, "" if never
+  // Merge base: the translation before this copy first changed it (exported as BaseText so the
+  // receiver can tell "only they changed it" from a real conflict). Reset when the file changed
+  // from outside (git pull, a new master copy).
+  origin?: string;
+}
+
+// A key of a group: [group name, key]. Item groups are "Items.Sword"... with the item number as key.
+export type KeyRef = [string, string];
+
+// Languages of the tool's own UI (not the game's locales).
 export const LANGS = ["en", "vi"] as const;
 export type Lang = (typeof LANGS)[number];
 export const isLang = (v: unknown): v is Lang => LANGS.includes(v as Lang);
 
-// The open item data folder (Data/Items of a game folder).
-export interface FileInfo {
-  path: string; // the item data folder (identity of the open document)
-  root: string; // the folder the user picked (game folder)
-  layout: ItemsLayout; // where in `root` the item folder was found
-  fileName: string; // short display name: the item folder relative to `root`, e.g. "Data/Items"
-  locale: string; // the language being translated, e.g. "vi"
-  fileCount: number; // item files (Group00_Sword.json ...)
-  itemCount: number;
-  translatedCount: number; // items with a name in `locale` (in the files on disk)
+// A workspace as found on disk (before choosing a locale): the Localization string tables and / or
+// the item data (see src/session/workspace.ts).
+export interface WorkspaceListing {
+  path: string; // the workspace root (where .mumain-translator/ is kept)
+  resx: {
+    dir: string;
+    rel: string; // relative to the root, e.g. "src/Localization" ("" = the root)
+    groups: { name: string; locales: string[]; hasDefault: boolean }[];
+    skipped: string[]; // files that are not <Group>.<locale>.resx (Game.vi.resx.bak...)
+  } | null;
+  items: {
+    dir: string;
+    rel: string; // e.g. "src/bin/Data/Items", "Main.app/Contents/MacOS/Data/Items"
+    layout: ItemsLayout;
+    files: { file: string; locales: string[] }[]; // locales that have a name in the file
+  } | null;
+  locales: { code: string; groups: number }[]; // en first; groups = how many groups / item files have it
+}
+
+export interface GroupInfo {
+  source: SourceKind;
+  name: string; // "Game", "Items.Sword"...
+  itemType: number | null; // items: the item group (0 = swords ... 15); resx: null
+  canKeep: boolean; // "keep English" is possible (resx)
+  enFile: string | null; // null: the group has no en file (the build fails); relative to the root
+  file: string | null; // target locale file; null = not created yet (every key untranslated)
+  referenceFile: string | null;
+  progress: LocaleProgress;
+  counts: Record<Severity, number>; // issues of the target locale + the en file of this group
+  dirty: number; // keys with unsaved changes
+}
+
+// Side data of MuResx-editor / MuBMD-editor carried over when the workspace was first opened.
+export interface MigrationInfo {
+  from: string[];
+  records: number;
+  draftEdits: number;
+}
+
+export interface OpenInfo {
+  folder: WorkspaceListing;
+  migrated?: MigrationInfo | null; // set by the open that carried the old side data over
+  locale: string; // the locale being translated
+  reference: string | null; // an extra locale shown next to en
   loadedAt: string; // ISO
 }
 
 export interface StateResponse {
-  file: FileInfo | null;
+  open: OpenInfo | null;
   version: string;
 }
 
-// One slot, sent as a tuple to keep 8192 rows compact:
-// [slot, name ("" = not translated), English name (null = no item in this slot), length, issueCodes]
-export type ItemTuple = [number, string, string | null, number, NameIssueCode[]];
+// An issue attached to a row: [code, locale of the file it is in (en or the target), params]
+// (params omitted when empty).
+export type RowIssue = [IssueCode, string, IssueParams?];
 
-// Per-slot translation state, persisted in <Data/Items>.mubmd/project.json.
-export interface SlotRecord {
-  status: Status;
-  note: string;
-  translator: string; // who last changed the name / status / note
-  updatedAt: string; // ISO, "" if never
-  // Merge base: the name before this copy first changed it (exported as BaseName so the
-  // receiver can tell "only they changed it" from a real conflict). Reset when the file is replaced.
-  origin?: string;
-}
+export const ROW_DIRTY = 1; // unsaved change
+export const ROW_KEEP = 2; // marked "keep" (stays English on purpose)
 
-export const DEFAULT_RECORD: SlotRecord = { status: "untranslated", note: "", translator: "", updatedAt: "" };
-
-// A slot whose NAME differs from the file on disk (unsaved).
-export interface EditInfo {
-  slot: number;
-  originalText: string; // "" = was not translated
-  translator: string;
-  at: string;
-}
+// One key of one group, sent as a tuple to keep ~3700 rows compact:
+// [group index, key, en text (null: extra key), translation (null: missing), reference text,
+//  issues, legacy ids, en line, translation line, flags (ROW_*), saved translation (when dirty),
+//  status (the record's, else derived from the text), record (null: none)]
+export type RowTuple = [
+  number,
+  string,
+  string | null,
+  string | null,
+  string | null,
+  RowIssue[],
+  number[],
+  number,
+  number,
+  number,
+  string | null,
+  Status,
+  KeyRecord | null,
+];
 
 export interface DocStatus {
   dirtyCount: number;
@@ -64,80 +133,128 @@ export interface DocStatus {
   canRedo: boolean;
 }
 
-// Auto-saved draft from a previous session that was never saved to the item files.
+// Unsaved edits of an earlier session (draft-<locale>.json), offered for restore after opening.
 export interface DraftInfo {
   count: number;
   savedAt: string;
   translators: string[];
-  baseMatches: boolean; // the names on disk are still the ones the draft was made from
 }
 
-export interface ItemsResponse {
-  file: FileInfo;
-  items: ItemTuple[]; // always all MAX_ITEM slots, in slot order
-  edits: EditInfo[];
-  records: [number, SlotRecord][]; // only slots with a non-default record
-  dirty: number[]; // slots with unsaved changes (name and/or record)
+export interface RowsResponse {
+  open: OpenInfo;
+  groups: GroupInfo[];
+  rows: RowTuple[]; // group by group, en order, then keys only the translation has
+  issues: Issue[]; // issues not tied to a row (missing en file, <data> without a name)
   status: DocStatus;
   draft: DraftInfo | null;
-  rebased: boolean; // the names were changed from outside since the last save; merge bases were reset
 }
 
-export interface SlotState {
-  item: ItemTuple;
-  edit: EditInfo | null; // null = name matches the file on disk
-  record: SlotRecord;
-  dirty: boolean;
-}
-
-// Result of edit / revert / status / note / import / undo / redo / draft restore.
+// Result of edit / keep / revert / status / note / import / undo / redo / draft restore.
 export interface MutationResponse {
-  changed: SlotState[];
+  changed: RowTuple[];
+  groups: GroupInfo[];
   status: DocStatus;
-}
-
-export interface OpenRequest {
-  path: string; // the game folder (or Data/Items itself)
-  discard?: boolean; // discard unsaved edits of the currently open file
 }
 
 export interface EditRequest {
-  slot: number;
-  name: string;
+  group: string;
+  key: string;
+  value: string | null; // null or "" = remove the translation (the game shows English)
+  translator: string;
+}
+
+export interface KeepRequest {
+  group: string;
+  key: string;
+  keep: boolean;
   translator: string;
 }
 
 export interface RevertRequest {
-  slot: number;
-  translator: string;
+  group: string;
+  key: string;
+}
+
+export interface SaveRequest {
+  force?: boolean; // overwrite files that changed on disk
+}
+
+export interface SaveResponse {
+  files: string[]; // file names written
+  created: string[]; // of those, new files (e.g. Dialog.vi.resx)
+  savedCount: number; // keys
+  backups: string[];
+  logPath: string;
+  status: DocStatus;
+}
+
+// Reload from disk keeping the unsaved edits on top of the new files.
+export interface RebaseResponse {
+  changedFiles: string[]; // files that were different on disk (merge bases of their keys were reset)
+  conflicts: { group: string; key: string }[]; // keys changed on disk too (our version kept)
+}
+
+export interface ScanRequest {
+  path: string;
+}
+
+export interface OpenRequest {
+  path: string;
+  locale: string;
+  reference?: string | null;
+  discard?: boolean; // discard unsaved edits of the folder open now
+  create?: boolean; // a locale the folder has no file for yet (files are created on the first save)
+}
+
+// Is the locale selectable in the game (see src/core/registration.ts)? null for a file that is not
+// next to the folder (not a MuMain checkout, or the web build, which only sees the folder itself).
+export interface RegistrationFile {
+  path: string; // relative to the Localization folder
+  registered: boolean;
+  line: string;
+  after: string | null;
+}
+
+export interface RegistrationInfo {
+  locale: string;
+  name: string;
+  optionWindow: RegistrationFile | null;
+  emitter: RegistrationFile | null;
+}
+
+export interface ReferenceRequest {
+  locale: string | null; // null = none
+}
+
+export type PickKind = "folder" | "tsv" | "glossary";
+
+export interface PickRequest {
+  lang?: Lang; // language of the native OS dialog captions
+  kind?: PickKind;
+}
+
+export interface PickSaveRequest {
+  lang?: Lang;
+  kind?: "tsv" | "glossary";
+  defaultName?: string; // file name suggestion (folder = next to the Localization folder)
 }
 
 export interface StatusRequest {
-  slots: number[];
+  keys: KeyRef[];
   status: Status;
   translator: string;
 }
 
 export interface NoteRequest {
-  slot: number;
+  group: string;
+  key: string;
   note: string;
   translator: string;
 }
 
-// Reference names from a TSV / CSV file, shown next to each slot (e.g. the Japanese originals).
-export interface ReferenceRequest {
-  path: string | null; // null = clear
-}
-
-export interface ReferenceInfo {
-  path: string;
-  fileName: string;
-  entries: [number, string][]; // [slot, name], only non-empty names
-}
-
 export interface ExportRequest {
   path: string;
-  slots: number[];
+  keys: KeyRef[];
 }
 
 export interface ExportResponse {
@@ -145,18 +262,9 @@ export interface ExportResponse {
   count: number;
 }
 
-// "tsv" = a translation file, "game" = another game folder to compare with (no merge base).
-export type ImportSource = "tsv" | "game";
-
-export interface ImportPreviewRequest {
-  path: string;
-  source?: ImportSource;
-}
-
 export interface ImportPreview {
   path: string;
   fileName: string;
-  source: ImportSource;
   token: string; // SHA-1 of the file; apply refuses if the file changed since the preview
   items: MergeItem[];
   counts: MergeCounts;
@@ -166,23 +274,9 @@ export interface ImportPreview {
 
 export interface ImportApplyRequest {
   path: string;
-  source?: ImportSource;
   token: string;
-  take: number[]; // slots to take from the file
+  take: KeyRef[];
   translator: string;
-}
-
-export interface SaveRequest {
-  force?: boolean; // overwrite even though a file on disk changed
-}
-
-export interface SaveResponse {
-  file: FileInfo;
-  savedCount: number;
-  written: string[]; // item files that were rewritten
-  backupDir: string | null; // where their previous versions were copied (null = nothing rewritten)
-  logPath: string;
-  status: DocStatus;
 }
 
 export interface GlossaryInfo {
@@ -190,24 +284,6 @@ export interface GlossaryInfo {
   fileName: string;
   format: "tsv" | "legacy-csv"; // legacy CSV is read-only: saving writes a TSV
   entries: GlossaryEntry[];
-}
-
-// "game" = the game folder to open, "compare" = another game folder (both folder dialogs); the rest
-// are file dialogs.
-export type PickKind = "game" | "tsv" | "reference" | "glossary" | "compare";
-export const FOLDER_KINDS: readonly PickKind[] = ["game", "compare"];
-
-export interface PickRequest {
-  lang?: Lang; // language of the native OS dialog captions
-  kind?: PickKind; // what to choose (default "game")
-}
-
-export type SaveKind = "tsv" | "glossary";
-
-export interface PickSaveRequest {
-  lang?: Lang;
-  kind?: SaveKind;
-  defaultName?: string; // file name suggestion (folder = the open game folder)
 }
 
 export interface PickResponse {
@@ -219,5 +295,4 @@ export interface ErrorResponse {
   error: string;
   code: ErrorCode;
   params: ErrorParams;
-  issues?: NameIssue[];
 }

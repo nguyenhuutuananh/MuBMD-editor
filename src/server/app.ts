@@ -1,29 +1,22 @@
 // app.ts - HTTP handling: JSON API + serving the UI. Kept separate from Bun.serve so it is testable.
 
 import { dirname as pathDirname, join as pathJoin } from "node:path";
-import { AppError, type ErrorCode, type ErrorParams, NameValidationError, isStatus } from "../core";
+import { AppError, type ErrorCode, type ErrorParams, isStatus } from "../core";
 import {
-  type EditRequest,
   type ErrorResponse,
-  FOLDER_KINDS,
   type GlossaryInfo,
   isLang,
-  type ItemsResponse,
+  type KeyRef,
   type Lang,
-  type OpenRequest,
   type PickKind,
   type PickResponse,
-  type RevertRequest,
-  type SaveKind,
-  type SaveRequest,
   type SaveResponse,
   type StateResponse,
 } from "../shared/api";
-import { pickFile, pickSaveFile } from "./filePicker";
 import { loadGlossaryFile, saveGlossaryFile } from "../session/glossaryFiles";
-import { itemsResponse as buildItemsResponse, saveResponse, stateResponse } from "../session/responses";
+import { NoFolderError, Session } from "../session/session";
+import { type SaveKind, pickFile, pickSaveFile } from "./filePicker";
 import { hostPlatform } from "../session/itemsFolder";
-import { NoFileError, Session } from "../session/session";
 import { NodeStorage } from "./nodeStorage";
 
 // Built UI (Vite), keyed by URL path ("/index.html", "/assets/index-abc.js").
@@ -48,8 +41,8 @@ const json = (body: unknown, status = 200) =>
     headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
   });
 
-const fail = (status: number, code: ErrorCode, error: string, params: ErrorParams = {}, extra: Partial<ErrorResponse> = {}) =>
-  json({ error, code, params, ...extra } satisfies ErrorResponse, status);
+const fail = (status: number, code: ErrorCode, error: string, params: ErrorParams = {}) =>
+  json({ error, code, params } satisfies ErrorResponse, status);
 
 // Only accept requests addressed to localhost (DNS-rebinding protection: a foreign site pointing
 // its domain at 127.0.0.1 to call the API and read local files).
@@ -65,15 +58,17 @@ function isJson(req: Request): boolean {
 }
 
 const STATUS: Partial<Record<ErrorCode, number>> = {
-  "invalid-name": 422,
-  "import-changed": 409,
+  "no-folder": 409,
   dirty: 409,
   conflict: 409,
-  "no-file": 409,
+  "not-editable": 422,
+  "resx-invalid-char": 422,
+  "file-locked": 423,
+  "import-changed": 409,
+  "save-verify-failed": 500,
+  "file-not-found": 404,
   "picker-unsupported": 501,
   "picker-failed": 500,
-  "save-verify-failed": 500,
-  "items-not-found": 404,
   internal: 500,
 };
 
@@ -82,14 +77,12 @@ const ERRNO: Record<string, ErrorCode> = {
   EACCES: "permission-denied",
   EPERM: "permission-denied",
   EISDIR: "is-directory",
+  ENOTDIR: "not-a-folder",
   ENOSPC: "disk-full",
 };
 
 // Turn an error into a coded response: user errors -> 4xx, everything else -> 500.
 function errorResponse(e: unknown): Response {
-  if (e instanceof NameValidationError) {
-    return fail(422, e.code, e.message, e.params, { issues: e.check.issues });
-  }
   if (e instanceof AppError) return fail(STATUS[e.code] ?? 400, e.code, e.message, e.params);
   const errno = (e as NodeJS.ErrnoException)?.code;
   if (errno && ERRNO[errno]) {
@@ -108,13 +101,12 @@ export function createApp(opts: AppOptions) {
   const pick = opts.pick ?? pickFile;
   const pickSave = opts.pickSave ?? pickSaveFile;
 
-  const state = () => stateResponse(session, opts.version);
-  const itemsResponse = () => buildItemsResponse(session);
+  const state = (): StateResponse => ({ open: session.open, version: opts.version });
 
-  // Used at startup when a path is given on the command line.
-  async function openPath(path: string): Promise<Response> {
+  // Used at startup when a folder (and locale) is given on the command line.
+  async function openPath(path: string, locale: string): Promise<Response> {
     try {
-      await session.open(path);
+      await session.openFolder(path, locale);
       return json(state());
     } catch (e) {
       return errorResponse(e);
@@ -124,65 +116,64 @@ export function createApp(opts: AppOptions) {
   type Handler = (body: Record<string, unknown>) => unknown;
 
   const langOf = (b: Record<string, unknown>): Lang => (isLang(b.lang) ? b.lang : "en");
-  const sourceOf = (b: Record<string, unknown>) => (b.source === "game" ? "game" : "tsv");
-  const slotsOf = (v: unknown): number[] => (Array.isArray(v) ? v.map(Number).filter(Number.isInteger) : []);
   const pathOf = (b: Record<string, unknown>) => {
     const p = str(b.path).trim();
-    if (!p) throw new AppError("missing-path", "Missing file path.");
+    if (!p) throw new AppError("missing-path", "Missing folder path.");
     return p;
   };
-  // Dialogs start next to the open game folder (folder dialogs) or inside it (file dialogs).
-  const startDir = (kind: PickKind) => (session.file ? (FOLDER_KINDS.includes(kind) ? pathDirname(session.file.root) : session.file.root) : undefined);
+  const keysOf = (v: unknown): KeyRef[] => (Array.isArray(v) ? (v as KeyRef[]) : []);
+  // Dialogs start next to the open folder (usually MuMain/src): TSV exchange files do not belong
+  // inside the Localization folder, where they would end up in git.
+  const startDir = () => (session.open ? pathDirname(session.open.folder.path) : undefined);
+  const PICK_KINDS: PickKind[] = ["folder", "tsv", "glossary"];
 
   const posts: Record<string, Handler> = {
+    "/api/scan": (b) => session.scan(pathOf(b)),
     "/api/open": async (b) => {
-      const path = str((b as Partial<OpenRequest>).path).trim();
-      if (!path) return fail(400, "missing-path", "Missing file path.");
-      await session.open(path, { discard: b.discard === true });
+      await session.openFolder(pathOf(b), str(b.locale).trim(), str(b.reference).trim() || null, { discard: b.discard === true, create: b.create === true });
       return state();
     },
-    "/api/pick": async (b) => {
-      const kinds: PickKind[] = ["tsv", "reference", "glossary", "compare"];
-      const kind: PickKind = kinds.includes(b.kind as PickKind) ? (b.kind as PickKind) : "game";
-      return { path: await pick(langOf(b), kind, startDir(kind)) } satisfies PickResponse;
-    },
-    "/api/pick-save": async (b) => {
-      if (!session.file) throw new NoFileError();
-      const kind: SaveKind = b.kind === "glossary" ? "glossary" : "tsv";
-      const name = str(b.defaultName).replace(/[\\/:*?"<>|]/g, "_").trim() || (kind === "tsv" ? "export.tsv" : "Glossary.tsv");
-      const def = pathJoin(session.file.root, name);
-      return { path: await pickSave(def, langOf(b), kind) } satisfies PickResponse;
-    },
     "/api/edit": (b) => {
-      const r = b as Partial<EditRequest>;
-      if (typeof r.name !== "string") return fail(400, "missing-name", "Missing name.");
-      return session.edit(Number(r.slot), r.name, str(r.translator));
+      if (b.value !== null && typeof b.value !== "string") return fail(400, "bad-json", "Invalid value.");
+      return session.edit(str(b.group), str(b.key), b.value, str(b.translator));
     },
-    "/api/revert": (b) => session.revert(Number((b as Partial<RevertRequest>).slot), str(b.translator)),
-    "/api/status": (b) => {
-      if (!isStatus(b.status)) return fail(400, "bad-json", "Invalid status.");
-      return session.setStatus(slotsOf(b.slots), b.status, str(b.translator));
-    },
-    "/api/note": (b) => session.setNote(Number(b.slot), str(b.note), str(b.translator)),
-    "/api/reference": async (b) => ({ reference: await session.setReference(b.path ? pathOf(b) : null) }),
-    // The glossary is a standalone file shared by the team (not tied to the open game folder).
-    "/api/glossary/load": (b): Promise<GlossaryInfo> => loadGlossaryFile(session.storage, pathOf(b)),
-    "/api/glossary/save": (b): Promise<GlossaryInfo> =>
-      saveGlossaryFile(session.storage, pathOf(b), Array.isArray(b.entries) ? b.entries : []),
-    "/api/export": (b) => session.exportTsv(pathOf(b), slotsOf(b.slots)),
-    "/api/import/preview": (b) => session.previewImport(pathOf(b), sourceOf(b)),
-    "/api/import/apply": (b) => session.applyImport(pathOf(b), str(b.token), slotsOf(b.take), str(b.translator), sourceOf(b)),
+    "/api/keep": (b) => session.setKeep(str(b.group), str(b.key), b.keep === true, str(b.translator)),
+    "/api/revert": (b) => session.revert(str(b.group), str(b.key)),
     "/api/undo": () => session.undo(),
     "/api/redo": () => session.redo(),
+    "/api/save": async (b): Promise<SaveResponse> => ({ ...(await session.save({ force: b.force === true })), status: session.status() }),
+    "/api/rebase": () => session.rebase(),
     "/api/draft/restore": () => session.restoreDraft(),
     "/api/draft/discard": async () => {
       await session.discardDraft();
       return { ok: true };
     },
-    "/api/save": async (b) => {
-      const r = b as Partial<SaveRequest>;
-      return saveResponse(session, await session.save({ force: r.force === true }));
+    "/api/reference": async (b) => {
+      if (!session.open) throw new NoFolderError();
+      await session.setReference(str(b.locale).trim() || null);
+      return state();
     },
+    "/api/pick": async (b) => {
+      const kind = PICK_KINDS.includes(b.kind as PickKind) ? (b.kind as PickKind) : "folder";
+      return { path: await pick(langOf(b), kind, startDir()) } satisfies PickResponse;
+    },
+    "/api/pick-save": async (b) => {
+      const kind: SaveKind = b.kind === "glossary" ? "glossary" : "tsv";
+      const name = str(b.defaultName).replace(/[\\/:*?"<>|]/g, "_").trim() || (kind === "tsv" ? "translations.tsv" : "Glossary.tsv");
+      const dir = startDir() ?? process.cwd();
+      return { path: await pickSave(pathJoin(dir, name), langOf(b), kind) } satisfies PickResponse;
+    },
+    "/api/status": (b) => {
+      if (!isStatus(b.status)) return fail(400, "bad-json", "Invalid status.");
+      return session.setStatus(keysOf(b.keys), b.status, str(b.translator));
+    },
+    "/api/note": (b) => session.setNote(str(b.group), str(b.key), str(b.note), str(b.translator)),
+    "/api/export": (b) => session.exportTsv(pathOf(b), keysOf(b.keys)),
+    "/api/import/preview": (b) => session.previewImport(pathOf(b)),
+    "/api/import/apply": (b) => session.applyImport(pathOf(b), str(b.token), keysOf(b.take), str(b.translator)),
+    // The glossary is a standalone file shared by the team (and with MuBMD-editor).
+    "/api/glossary/load": (b): Promise<GlossaryInfo> => loadGlossaryFile(session.storage, pathOf(b)),
+    "/api/glossary/save": (b): Promise<GlossaryInfo> => saveGlossaryFile(session.storage, pathOf(b), Array.isArray(b.entries) ? b.entries : []),
   };
 
   async function handle(req: Request): Promise<Response> {
@@ -199,9 +190,16 @@ export function createApp(opts: AppOptions) {
       }
       if (pathname === "/favicon.ico") return new Response(null, { status: 204 });
       if (pathname === "/api/state") return json(state());
-      if (pathname === "/api/items") {
+      if (pathname === "/api/registration") {
         try {
-          return json(itemsResponse());
+          return json(await session.registration());
+        } catch (e) {
+          return errorResponse(e);
+        }
+      }
+      if (pathname === "/api/rows") {
+        try {
+          return json(session.rows());
         } catch (e) {
           return errorResponse(e);
         }

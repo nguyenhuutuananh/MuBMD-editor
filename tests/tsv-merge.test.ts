@@ -1,124 +1,108 @@
 import { describe, expect, test } from "bun:test";
-import * as fs from "node:fs";
-import * as path from "node:path";
-import {
-  AppError,
-  type ExportRow,
-  type OursView,
-  type Status,
-  analyzeImport,
-  parseTranslationTsv,
-  serializeTranslationTsv,
-} from "../src/core";
+import { AppError, type OursView, analyzeImport, parseTranslationTsv, serializeTranslationTsv } from "../src/core";
 
-const PARENT = path.join(import.meta.dir, "../..");
-
-describe("parseTranslationTsv", () => {
-  test("minimal 3-column file (old items.tsv format)", () => {
-    const r = parseTranslationTsv("ItemType\tItemIndex\tName\n0\t0\tChùy Thủy\n7\t1\tMũ Rồng Đỏ\n");
-    expect(r.rows.map((x) => [x.slot, x.name])).toEqual([
-      [0, "Chùy Thủy"],
-      [3585, "Mũ Rồng Đỏ"],
-    ]);
-    expect(r.columns.base).toBe(false);
-    expect(r.rows[0]!.base).toBeUndefined();
-  });
-
-  test("BOM, CRLF, columns in any order, Name(…) header, unknown status ignored", () => {
-    const r = parseTranslationTsv("\uFEFFStatus\tItemIndex\tItemType\tName(Japanese)\r\ntranslated\t1\t0\tダガー\r\nblanked(no VN found)\t2\t0\tx\r\n");
-    expect(r.rows[0]).toMatchObject({ slot: 1, name: "ダガー", status: "translated" });
-    expect(r.rows[1]!.status).toBeUndefined();
-  });
-
-  test("full export columns round-trip", () => {
-    const rows: ExportRow[] = [
-      { itemType: 0, itemIndex: 5, name: "Khoái Đao", status: "reviewed", translator: "An", updatedAt: "2026-09-28T04:00:00.000Z", base: "Khoái Đao Cũ", reference: "Falchion", note: "tab\there" },
+describe("translation TSV", () => {
+  test("round trip, with texts that need quoting", () => {
+    const rows = [
+      { group: "Game", key: "Event", english: "Event", value: "Sự kiện", status: "translated" as const, translator: "An", updatedAt: "2026-09-29T10:00:00Z", base: "", note: "" },
+      { group: "Dialog", key: "Text_1", english: 'He said "hi"', value: 'Anh ấy nói "chào"\tvà\nđi', status: "reviewed" as const, translator: "", updatedAt: "", base: "cũ", note: "xem lại" },
+      { group: "Game", key: " spaced ", english: " x ", value: " y ", status: "untranslated" as const, translator: "", updatedAt: "", base: "", note: "" },
     ];
     const text = serializeTranslationTsv(rows);
-    expect(text.startsWith("\uFEFFItemType\tItemIndex\tName\tStatus")).toBe(true);
-    const back = parseTranslationTsv(text).rows[0]!;
-    expect(back).toMatchObject({ slot: 5, name: "Khoái Đao", status: "reviewed", translator: "An", base: "Khoái Đao Cũ", reference: "Falchion", note: "tab here" });
-  });
-
-  test("NFD input is normalized to NFC", () => {
-    const r = parseTranslationTsv(`ItemType\tItemIndex\tName\n0\t0\t${"Kiếm".normalize("NFD")}\n`);
-    expect(r.rows[0]!.name).toBe("Kiếm".normalize("NFC"));
-  });
-
-  test("bad slots and duplicates are reported; last duplicate wins", () => {
-    const r = parseTranslationTsv("ItemType\tItemIndex\tName\n16\t0\tA\nx\t1\tB\n0\t1\tC\n0\t1\tD\n");
-    expect(r.problems.map((p) => [p.line, p.code])).toEqual([
-      [2, "bad-slot"],
-      [3, "bad-slot"],
-      [5, "duplicate"],
+    expect(text.startsWith("﻿Group\tKey\tEnglish\tTranslation\tStatus\tTranslator\tUpdatedAt\tBaseText\tNote\n")).toBe(true);
+    const parsed = parseTranslationTsv(text);
+    expect(parsed.problems).toEqual([]);
+    expect(parsed.columns).toEqual({ base: true, status: true, translator: true, note: true });
+    expect(parsed.rows.map((r) => [r.group, r.key, r.value, r.status, r.base, r.note])).toEqual([
+      ["Game", "Event", "Sự kiện", "translated", "", ""],
+      ["Dialog", "Text_1", 'Anh ấy nói "chào"\tvà\nđi', "reviewed", "cũ", "xem lại"],
+      ["Game", " spaced ", " y ", "untranslated", "", ""],
     ]);
-    expect(r.rows.map((x) => x.name)).toEqual(["D"]);
   });
 
-  test("missing required columns -> tsv-header error", () => {
-    expect(() => parseTranslationTsv("Key\tEnglish\tVietnamese\n")).toThrow(AppError);
+  test("minimal sheet: columns by name, CSV, NFC, duplicates", () => {
+    const csv = "Translation,Key,Group\nCấp %d,Level %d,Game\n,Event,Game\nA,Event,Game\nB,Event,Game\n,,\n";
+    const parsed = parseTranslationTsv(csv);
+    expect(parsed.columns).toEqual({ base: false, status: false, translator: false, note: false });
+    expect(parsed.rows.map((r) => [r.key, r.value])).toEqual([
+      ["Level %d", "Cấp %d"],
+      ["Event", "B"],
+    ]);
+    expect(parsed.problems.map((p) => [p.code, p.line])).toEqual([
+      ["duplicate", 4],
+      ["duplicate", 5],
+    ]);
   });
 
-  test("the real TSV files in the parent folder parse", () => {
-    for (const file of ["items.tsv", "item_names_MuHuyenThoai_JAPANESE.tsv", "Item_vi_for_MuMain_report.tsv"]) {
-      const p = path.join(PARENT, file);
-      if (!fs.existsSync(p)) continue;
-      const text = fs.readFileSync(p, "utf-8");
-      const dataLines = text.split(/\r?\n/).slice(1).filter((l) => l.trim()).length;
-      const r = parseTranslationTsv(text);
-      expect(r.rows.length + r.problems.filter((x) => x.code === "bad-slot").length).toBe(dataLines);
-      expect(r.problems).toEqual([]);
+  test("a file without the needed columns", () => {
+    try {
+      parseTranslationTsv("Name\tText\nA\tB\n");
+      throw new Error("no error");
+    } catch (e) {
+      expect((e as AppError).code).toBe("tsv-header");
     }
+  });
+
+  test("MuBMD-editor's item TSV: rows of the item groups", () => {
+    const r = parseTranslationTsv("ItemType\tItemIndex\tName\tStatus\tBaseName\tReference\n0\t1\tKiếm\treviewed\tCũ\tSword\n16\t0\tX\t\t\t\n");
+    expect(r.rows.map((x) => [x.group, x.key, x.value, x.status, x.base, x.english])).toEqual([["Items.Sword", "1", "Kiếm", "reviewed", "Cũ", "Sword"]]);
+    expect(r.problems.map((p) => p.code)).toEqual(["missing-key"]); // ItemType 16 does not exist
   });
 });
 
-describe("analyzeImport", () => {
-  // Every slot below 100 has an item here.
-  const ours = (m: Record<number, [string, Status?]>) => (slot: number): OursView => {
-    const [name, status] = m[slot] ?? [""];
-    return { exists: slot < 100, name, status: status ?? "untranslated" };
-  };
-  const tsv = (lines: string[]) => parseTranslationTsv(`ItemType\tItemIndex\tName\tStatus\tBaseName\n${lines.join("\n")}\n`).rows;
+describe("3-way merge", () => {
+  const ours = new Map<string, OursView>([
+    ["Game/Event", { en: "Event", value: "Sự kiện", status: "translated" }],
+    ["Game/Level %d", { en: "Level %d", value: null, status: "untranslated" }],
+    ["Game/Gulim", { en: "Gulim", value: "Gulim", status: "untranslated" }],
+    ["Game/Warning", { en: "Warning (%s)", value: "Cảnh báo (%s)", status: "translated" }],
+  ]);
+  const view = (g: string, k: string) => ours.get(`${g}/${k}`) ?? null;
+  const tsv = (lines: string[]) => parseTranslationTsv(["Group\tKey\tTranslation\tStatus\tBaseText", ...lines].join("\n")).rows;
 
-  test("3-way: only they changed -> apply; only we changed -> skip; both -> conflict", () => {
-    const rows = tsv(["0\t0\tTheirs0\ttranslated\tBase0", "0\t1\tBase1\ttranslated\tBase1", "0\t2\tTheirs2\ttranslated\tBase2"]);
-    const r = analyzeImport(rows, ours({ 0: ["Base0"], 1: ["Ours1"], 2: ["Ours2"] }));
-    expect(r.items.map((i) => [i.slot, i.kind, i.take])).toEqual([
-      [0, "apply", true],
-      [2, "conflict", false],
+  test("apply / conflict / newer here / status / invalid / skipped", () => {
+    const { items, counts } = analyzeImport(
+      tsv([
+        "Game\tLevel %d\tCấp %d\ttranslated\t", // only they changed it (we had nothing)
+        "Game\tEvent\tBiến cố\ttranslated\tSự kiện cũ", // both changed
+        "Game\tGulim\tGulim\treviewed\tGulim", // same text, status further along
+        "Game\tWarning\tCảnh báo\ttranslated\tCảnh báo (%s)", // only they changed, but loses %s
+        "Game\tEvent\t\ttranslated\t", // (duplicate row: last wins -> empty)
+      ]),
+      view,
+    );
+    expect(counts).toMatchObject({ apply: 2, conflict: 0, status: 1, empty: 1 });
+    expect(items.map((i) => [i.key, i.kind, i.take, i.errors.map((e) => e.code)])).toEqual([
+      ["Level %d", "apply", true, []],
+      ["Gulim", "status", true, []],
+      ["Warning", "apply", false, ["printf-mismatch"]],
     ]);
-    // slot 1: theirs == base -> only we changed it, ours is newer -> counted, not listed
-    expect(r.counts).toMatchObject({ apply: 1, conflict: 1, newerHere: 1, same: 0 });
-  });
 
-  test("no BaseName column -> every difference is 'apply'", () => {
-    const rows = parseTranslationTsv("ItemType\tItemIndex\tName\n0\t0\tMới\n0\t1\tGiống\n").rows;
-    const r = analyzeImport(rows, ours({ 0: ["Cũ"], 1: ["Giống"] }));
-    expect(r.items.map((i) => [i.slot, i.kind, i.base])).toEqual([[0, "apply", null]]);
-    expect(r.counts.same).toBe(1);
-  });
-
-  test("same name, different status -> 'status', taken only if theirs is further along", () => {
-    const rows = tsv(["0\t0\tA\treviewed\tA", "0\t1\tB\tuntranslated\tB"]);
-    const r = analyzeImport(rows, ours({ 0: ["A", "translated"], 1: ["B", "translated"] }));
-    expect(r.items.map((i) => [i.slot, i.kind, i.take])).toEqual([
-      [0, "status", true],
-      [1, "status", false],
+    const second = analyzeImport(
+      tsv([
+        "Game\tEvent\tBiến cố\ttranslated\tSự kiện cũ",
+        "Game\tWarning\tCảnh báo (%s)\ttranslated\tCảnh báo (%s)",
+        "Game\tNope\tX\ttranslated\t",
+        "Game\tLevel %d\tbad\u0001\ttranslated\t",
+      ]),
+      view,
+    );
+    expect(second.counts).toMatchObject({ conflict: 1, same: 1, unknown: 1, invalid: 1 });
+    expect(second.items.map((i) => [i.key, i.kind, i.take])).toEqual([
+      ["Event", "conflict", false],
+      ["Level %d", "invalid", false],
     ]);
   });
 
-  test("empty names are ignored (never clear a name), invalid names are listed", () => {
-    const rows = tsv(["0\t0\t\t\t", `0\t1\t${"Đ".repeat(50)}\t\t`]);
-    const r = analyzeImport(rows, ours({ 0: ["A"], 1: ["B"] }));
-    expect(r.counts.emptyName).toBe(1);
-    expect(r.items[0]).toMatchObject({ slot: 1, kind: "invalid", take: false, issue: { code: "too-long" } });
+  test('a filled-in row still marked "untranslated" comes in as translated', () => {
+    const { items } = analyzeImport(tsv(["Game\tLevel %d\tCấp %d\tuntranslated\t"]), view);
+    expect(items.map((i) => [i.kind, i.theirsStatus])).toEqual([["apply", "translated"]]);
   });
 
-  test("an untranslated item takes the imported name; rows for slots without an item are skipped", () => {
-    const rows = parseTranslationTsv("ItemType\tItemIndex\tName\n0\t0\tKiếm\n1\t0\tKhông có\n").rows;
-    const r = analyzeImport(rows, ours({}));
-    expect(r.items).toHaveLength(1);
-    expect(r.items[0]).toMatchObject({ slot: 0, kind: "apply", ours: "" });
-    expect(r.counts.noItem).toBe(1);
+  test("only we changed it: skipped; no BaseText column: every difference applies", () => {
+    const newer = analyzeImport(tsv(["Game\tEvent\tSự kiện cũ\ttranslated\tSự kiện cũ"]), view);
+    expect(newer.counts.newerHere).toBe(1);
+    const noBase = analyzeImport(parseTranslationTsv("Group\tKey\tTranslation\nGame\tEvent\tBiến cố\n").rows, view);
+    expect(noBase.items.map((i) => [i.kind, i.base])).toEqual([["apply", null]]);
   });
 });

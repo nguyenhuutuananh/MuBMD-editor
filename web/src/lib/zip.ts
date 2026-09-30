@@ -1,5 +1,5 @@
 // zip.ts - A minimal ZIP writer (stored, no compression) so the fallback web build can hand over
-// several saved item files as one download.
+// several saved files as one download (paths inside it relative to the workspace root).
 
 const CRC_TABLE = (() => {
   const t = new Uint32Array(256);

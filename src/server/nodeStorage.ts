@@ -45,6 +45,14 @@ export class NodeStorage implements Storage {
     }
   }
 
+  async isDirectory(p: string): Promise<boolean> {
+    try {
+      return (await fs.stat(p)).isDirectory();
+    } catch {
+      return false;
+    }
+  }
+
   async remove(p: string): Promise<void> {
     await fs.rm(p, { force: true });
   }

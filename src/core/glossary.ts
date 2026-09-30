@@ -1,4 +1,5 @@
 // glossary.ts - Team glossary: agreed translations and terms to keep as-is. Pure logic (also used by the UI).
+// Copied from MuBMD-editor unchanged, so one glossary file serves both tools.
 //
 // Two input formats:
 //  - our TSV: Term, Translation, Note, Category (Translation empty or equal to Term = keep as-is)

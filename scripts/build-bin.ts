@@ -20,9 +20,9 @@ const outDir = path.resolve(root, opt("--out") ?? "dist");
 const only = opt("--only");
 
 const TARGETS = [
-  { id: "windows-x64", bun: "bun-windows-x64", exe: "MuBMD-editor.exe", crlf: true },
-  { id: "macos-arm64", bun: "bun-darwin-arm64", exe: "MuBMD-editor", crlf: false },
-  { id: "macos-x64", bun: "bun-darwin-x64", exe: "MuBMD-editor", crlf: false },
+  { id: "windows-x64", bun: "bun-windows-x64", exe: "MuMain-translator.exe", crlf: true },
+  { id: "macos-arm64", bun: "bun-darwin-arm64", exe: "MuMain-translator", crlf: false },
+  { id: "macos-x64", bun: "bun-darwin-x64", exe: "MuMain-translator", crlf: false },
 ].filter((t) => !only || t.id === only);
 if (!TARGETS.length) {
   console.error(`Unknown target: ${only}`);
@@ -44,7 +44,7 @@ fs.mkdirSync(outDir, { recursive: true });
 const sums: string[] = [];
 
 for (const t of TARGETS) {
-  const name = `MuBMD-editor-${pkg.version}-${t.id}`;
+  const name = `MuMain-translator-${pkg.version}-${t.id}`;
   const dir = path.join(outDir, name);
   fs.rmSync(dir, { recursive: true, force: true });
   fs.mkdirSync(dir, { recursive: true });

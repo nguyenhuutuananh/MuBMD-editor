@@ -1,7 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { ItemData, ItemJsonError, NameValidationError, NoItemError, jsonString, parseJsonText, slotOf } from "../src/core";
+import { ItemData, ItemJsonError, MAX_ITEM_INDEX, NoItemError, checkItemName, jsonString, parseJsonText } from "../src/core";
+
+const slotOf = (type: number, index: number) => type * MAX_ITEM_INDEX + index;
 import { groupJson, sampleFiles, sampleItems } from "./fixtures/sampleItems";
 
 const files = sampleFiles();
@@ -87,12 +89,15 @@ describe("editing + writing", () => {
     expect(d.getName(1)).toBe("Đoản Đao".normalize("NFC"));
   });
 
-  test("invalid names and slots without an item are rejected", () => {
+  test("slots without an item are rejected; names are checked by checkItemName", () => {
     const d = load();
-    expect(() => d.setName(1, "x".repeat(50))).toThrow(NameValidationError);
-    expect(() => d.setName(1, "a||b")).toThrow(NameValidationError);
     expect(() => d.setName(slotOf(15, 511), "A")).toThrow(NoItemError);
     expect(d.isDirty).toBe(false);
+    expect(checkItemName("Sword", "x".repeat(50)).map((i) => i.code)).toEqual(["name-too-long"]);
+    expect(checkItemName("Sword", "a||b").map((i) => i.code)).toEqual(["name-separator"]);
+    expect(checkItemName("Sword", "Sword").map((i) => i.code)).toEqual(["same-as-en"]);
+    expect(checkItemName("Sword", "a\u0001").map((i) => i.code)).toEqual(["name-invalid-char"]);
+    expect(checkItemName("Sword", "Kiếm").length).toBe(0);
   });
 
   test("a plain text name becomes an object; other bytes stay the same", () => {

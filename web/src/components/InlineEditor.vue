@@ -1,11 +1,13 @@
 <script setup lang="ts">
+// The translation cell while editing. One line: a line break is typed as \n, like in the en
+// files. The checks run while typing (same code as the server) and color the border.
 import { computed, onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { MAX_NAME_CHARS, checkName } from "../../../src/core/nameCodec";
 import { anyDialogOpen, cancelEdit, commitEditor, moveEdit } from "@/composables/actions";
 import { issueText } from "@/i18n";
-import { lengthLevel } from "@/lib/length";
-import type { Row } from "@/lib/search";
+import { MAX_NAME_CHARS, nameLength } from "../../../src/core/itemName";
+import { liveIssues } from "@/lib/rows";
+import type { Row } from "@/lib/rows";
 import { useDocStore } from "@/stores/doc";
 
 const props = defineProps<{ row: Row }>();
@@ -19,8 +21,10 @@ const value = computed({
     if (store.editor) store.editor.value = v;
   },
 });
-const check = computed(() => checkName(value.value));
-const level = computed(() => lengthLevel(check.value.length));
+const issues = computed(() => liveIssues(props.row, value.value, store.open?.locale ?? ""));
+const worst = computed(() => issues.value.worst);
+// Item names: the game shows at most 49 characters.
+const length = computed(() => (props.row.source === "items" ? nameLength(value.value) : null));
 
 function onKeydown(e: KeyboardEvent) {
   // Composing with a Vietnamese IME (Telex/VNI, Unikey...): Enter/Tab confirms the text, it must not save.
@@ -38,11 +42,13 @@ function onKeydown(e: KeyboardEvent) {
   }
 }
 
-// Clicking away: save if valid; if invalid, keep the editor open so the user can come back.
+// Clicking away saves (unless it went to the detail panel's text box, which edits the same value).
 function onBlur() {
   const ed = store.editor;
   setTimeout(() => {
-    if (store.editor === ed && document.activeElement !== input.value && !anyDialogOpen()) commitEditor({ quiet: true });
+    const active = document.activeElement;
+    if (store.editor !== ed || active === input.value || active?.id === "detail-editor" || anyDialogOpen()) return;
+    commitEditor();
   }, 0);
 }
 
@@ -54,8 +60,8 @@ onMounted(() => {
 
 <template>
   <div
-    class="bg-card col-span-2 -mx-1.5 flex h-8 items-center gap-1.5 rounded-md border-2 px-1.5 shadow-md"
-    :class="check.ok ? 'border-ring' : 'border-destructive'"
+    class="bg-card -mx-1.5 flex h-8 min-w-0 items-center rounded-md border-2 px-1.5 shadow-md"
+    :class="worst === 'error' ? 'border-destructive' : worst === 'warning' ? 'border-warn' : 'border-ring'"
     data-testid="inline-editor"
     @click.stop
     @dblclick.stop
@@ -64,22 +70,23 @@ onMounted(() => {
       ref="input"
       v-model="value"
       type="text"
-      class="min-w-0 flex-1 bg-transparent py-0.5 font-semibold outline-none"
+      class="min-w-0 flex-1 bg-transparent py-0.5 outline-none"
       spellcheck="false"
       autocomplete="off"
-      :aria-label="t('editor.aria', { type: props.row.itemType, index: props.row.itemIndex })"
-      :aria-invalid="!check.ok"
-      :placeholder="props.row.english ?? ''"
-      :title="check.issues.map(issueText).join('\n')"
+      :aria-label="t('editor.aria', { key: props.row.key })"
+      :aria-invalid="worst === 'error'"
+      :placeholder="props.row.source === 'items' ? (props.row.en ?? '') : t('editor.placeholder')"
+      :title="issues.list.map(issueText).join('\n')"
       @keydown="onKeydown"
       @blur="onBlur"
     />
     <span
-      class="text-xs whitespace-nowrap tabular-nums"
-      :class="level === 'over' ? 'text-destructive font-bold' : level === 'near' ? 'text-warn font-semibold' : 'text-muted-foreground'"
+      v-if="length !== null"
+      class="ml-1.5 text-xs whitespace-nowrap tabular-nums"
+      :class="length > MAX_NAME_CHARS ? 'text-destructive font-bold' : length >= 40 ? 'text-warn font-semibold' : 'text-muted-foreground'"
       data-testid="editor-counter"
     >
-      {{ check.length }}/{{ MAX_NAME_CHARS }}
+      {{ length }}/{{ MAX_NAME_CHARS }}
     </span>
   </div>
 </template>

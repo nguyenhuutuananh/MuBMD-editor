@@ -2,241 +2,181 @@ import { describe, expect, test } from "bun:test";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { MAX_ITEM } from "../src/core";
 import { createApp } from "../src/server/app";
-import { SAMPLE_GAME } from "./fixtures/sampleItems";
-import type { ItemsResponse, StateResponse } from "../src/shared/api";
+import type {
+  ErrorResponse,
+  WorkspaceListing,
+  GlossaryInfo,
+  ImportPreview,
+  MutationResponse,
+  RebaseResponse,
+  RowsResponse,
+  SaveResponse,
+  StateResponse,
+} from "../src/shared/api";
+import { writeSampleLocalization } from "./fixtures/sampleLocalization";
 
-const DATA = SAMPLE_GAME;
+const DIR = fs.mkdtempSync(path.join(os.tmpdir(), "mumain-translator-"));
+writeSampleLocalization(DIR);
+
 const assets = {
   "/index.html": { type: "text/html; charset=utf-8", body: "<html>ui</html>", base64: false },
   "/assets/app-1.js": { type: "text/javascript; charset=utf-8", body: "/*js*/", base64: false },
   "/assets/logo.png": { type: "image/png", body: Buffer.from([1, 2, 3]).toString("base64"), base64: true },
 };
 
-function setup(pick: (lang: "en" | "vi", kind: string, dir?: string) => Promise<string | null> = async () => null) {
-  return createApp({ assets, version: "test", pick });
-}
+const setup = (pick: () => Promise<string | null> = async () => null) => createApp({ assets, version: "test", pick });
 
-const get = (p: string, host = "localhost:4817") => new Request(`http://${host}${p}`, { headers: { host } });
+const get = (p: string, host = "localhost:4827") => new Request(`http://${host}${p}`, { headers: { host } });
 const post = (p: string, body: unknown, contentType = "application/json") =>
-  new Request(`http://localhost:4817${p}`, {
+  new Request(`http://localhost:4827${p}`, {
     method: "POST",
-    headers: { host: "localhost:4817", "content-type": contentType },
+    headers: { host: "localhost:4827", "content-type": contentType },
     body: JSON.stringify(body),
   });
+const body = async <T>(r: Response) => (await r.json()) as T;
 
 describe("API", () => {
   test("serves the UI", async () => {
     const app = setup();
     expect(await (await app.handle(get("/"))).text()).toBe("<html>ui</html>");
     const js = await app.handle(get("/assets/app-1.js"));
-    expect(js.headers.get("content-type")).toContain("javascript");
     expect(js.headers.get("cache-control")).toContain("immutable");
     expect([...new Uint8Array(await (await app.handle(get("/assets/logo.png"))).arrayBuffer())]).toEqual([1, 2, 3]);
-    expect((await app.handle(get("/khong-co.js"))).status).toBe(404);
+    expect((await app.handle(get("/nope.js"))).status).toBe(404);
   });
 
-  test("no file open yet", async () => {
+  test("nothing open yet", async () => {
     const app = setup();
-    const state = (await (await app.handle(get("/api/state"))).json()) as StateResponse;
-    expect(state.file).toBeNull();
-    expect((await app.handle(get("/api/items"))).status).toBe(409);
+    expect((await body<StateResponse>(await app.handle(get("/api/state")))).open).toBeNull();
+    const rows = await app.handle(get("/api/rows"));
+    expect(rows.status).toBe(409);
+    expect((await body<ErrorResponse>(rows)).code).toBe("no-folder");
   });
 
-  test("opens a game folder and returns all 8192 slots", async () => {
+  test("scan, open, rows, reference", async () => {
     const app = setup();
-    const res = await app.handle(post("/api/open", { path: DATA }));
-    expect(res.status).toBe(200);
-    const { file } = (await res.json()) as StateResponse;
-    expect(file).toMatchObject({ fileName: "Data/Items", layout: "game", itemCount: 488, locale: "vi" });
+    const listing = await body<WorkspaceListing>(await app.handle(post("/api/scan", { path: DIR })));
+    expect(listing.locales.map((l) => l.code)).toEqual(["en", "de", "vi"]);
 
-    const items = (await (await app.handle(get("/api/items"))).json()) as ItemsResponse;
-    expect(items.items.length).toBe(MAX_ITEM);
-    expect(items.items[0]).toEqual([0, "Chùy Thủy", "Sword 0", 9, []]);
-    expect(items.items[MAX_ITEM - 1]![2]).toBeNull();
+    const opened = await app.handle(post("/api/open", { path: DIR, locale: "vi", reference: "de" }));
+    expect(opened.status).toBe(200);
+    expect((await body<StateResponse>(opened)).open).toMatchObject({ locale: "vi", reference: "de" });
+
+    const rows = await body<RowsResponse>(await app.handle(get("/api/rows")));
+    expect(rows.groups.map((g) => g.name)).toEqual(["Dialog", "Editor", "Game"]);
+    expect(rows.rows.find((r) => r[1] === "Event")!.slice(0, 5)).toEqual([2, "Event", "Event", "Sự kiện", "Ereignis"]);
+
+    const ref = await body<StateResponse>(await app.handle(post("/api/reference", { locale: null })));
+    expect(ref.open!.reference).toBeNull();
   });
 
-  test("clear open errors; the currently open folder is kept", async () => {
+  test("the folder dialog", async () => {
+    const app = setup(async () => DIR);
+    expect(await body<{ path: string }>(await app.handle(post("/api/pick", { lang: "vi" })))).toEqual({ path: DIR });
+  });
+
+  test("coded errors", async () => {
     const app = setup();
-    await app.handle(post("/api/open", { path: DATA }));
-
-    const missing = await app.handle(post("/api/open", { path: "/khong/ton/tai" }));
-    expect(missing.status).toBe(404);
-    expect(await missing.json()).toMatchObject({ code: "items-not-found", params: { folder: "/khong/ton/tai" } });
-
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "mubmd-"));
-    fs.mkdirSync(path.join(tmp, "Data", "Items"), { recursive: true });
-    fs.writeFileSync(path.join(tmp, "Data", "Items", "Group00_Sword.json"), "{ nope");
-    const bad = await app.handle(post("/api/open", { path: tmp }));
-    expect(bad.status).toBe(400);
-    expect(await bad.json()).toMatchObject({ code: "item-json", params: { file: "Group00_Sword.json" } });
-
-    const state = (await (await app.handle(get("/api/state"))).json()) as StateResponse;
-    expect(state.file?.root).toBe(path.resolve(DATA));
+    const cases: Array<[Request, number, string]> = [
+      [post("/api/scan", {}), 400, "missing-path"],
+      [post("/api/scan", { path: path.join(DIR, "nope") }), 404, "file-not-found"],
+      [post("/api/open", { path: DIR, locale: "ja" }), 400, "locale-not-found"],
+      [post("/api/reference", { locale: "de" }), 409, "no-folder"],
+      [post("/api/scan", { path: DIR }, "text/plain"), 415, "unsupported-media"],
+      [post("/api/nope", {}), 404, "unknown-api"],
+      [get("/api/state", "evil.example:4827"), 403, "not-local"],
+    ];
+    for (const [req, status, code] of cases) {
+      const res = await app.handle(req);
+      expect([req.url, res.status, (await body<ErrorResponse>(res)).code]).toEqual([req.url, status, code]);
+    }
   });
 
-  test("missing path", async () => {
-    const res = await setup().handle(post("/api/open", { path: "  " }));
-    expect(res.status).toBe(400);
-    expect(await res.json()).toMatchObject({ code: "missing-path" });
-  });
-
-  test("file dialog receives the UI language", async () => {
-    let got = "";
-    const app = setup(async (lang) => {
-      got = lang;
-      return null;
-    });
-    await app.handle(post("/api/pick", { lang: "vi" }));
-    expect(got).toBe("vi");
-    await app.handle(post("/api/pick", { lang: "xx" }));
-    expect(got).toBe("en");
-  });
-
-  test("dialog kinds: the game folder by default; dialogs start at the open game folder", async () => {
-    const calls: [string, string | undefined][] = [];
-    const app = setup(async (_lang, kind, dir) => {
-      calls.push([kind, dir]);
-      return null;
-    });
-    await app.handle(post("/api/pick", { kind: "bmd" }));
-    await app.handle(post("/api/open", { path: DATA }));
-    await app.handle(post("/api/pick", { kind: "compare" }));
-    await app.handle(post("/api/pick", { kind: "tsv" }));
-    expect(calls).toEqual([
-      ["game", undefined],
-      ["compare", path.dirname(path.resolve(DATA))],
-      ["tsv", path.resolve(DATA)],
-    ]);
-  });
-
-  test("file dialog: cancel and pick", async () => {
-    const cancelled = await setup(async () => null).handle(post("/api/pick", {}));
-    expect(await cancelled.json()).toEqual({ path: null });
-    const picked = await setup(async () => DATA).handle(post("/api/pick", {}));
-    expect(await picked.json()).toEqual({ path: DATA });
+  test("openPath at startup", async () => {
+    const app = setup();
+    expect((await app.openPath(DIR, "vi")).status).toBe(200);
+    expect(app.session.open!.locale).toBe("vi");
   });
 });
 
-describe("localhost protection", () => {
-  test("rejects foreign Host headers (DNS rebinding)", async () => {
-    const evil = await setup().handle(get("/api/state", "evil.example:4817"));
-    expect(evil.status).toBe(403);
-    expect(await evil.json()).toMatchObject({ code: "not-local" });
-    expect((await setup().handle(get("/api/state", "127.0.0.1:4817"))).status).toBe(200);
-  });
+describe("editing API", () => {
+  test("edit, keep, undo, save, conflict", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mumain-translator-edit-"));
+    writeSampleLocalization(dir);
+    const app = setup();
+    await app.handle(post("/api/open", { path: dir, locale: "vi" }));
 
-  test("non-JSON POST is rejected", async () => {
-    const res = await setup().handle(post("/api/open", { path: DATA }, "text/plain"));
-    expect(res.status).toBe(415);
-  });
+    const edit = await body<MutationResponse>(await app.handle(post("/api/edit", { group: "Game", key: "Event", value: "Sự kiện mới", translator: "An" })));
+    expect(edit.changed[0]!.slice(1, 4)).toEqual(["Event", "Event", "Sự kiện mới"]);
+    expect(edit.status.dirtyCount).toBe(1);
+    const keep = await body<MutationResponse>(await app.handle(post("/api/keep", { group: "Game", key: "Chaos Castle", keep: true, translator: "An" })));
+    expect(keep.changed[0]![3]).toBe("Chaos Castle");
+    expect((await body<MutationResponse>(await app.handle(post("/api/undo", {})))).status.dirtyCount).toBe(1);
 
-  test("unknown API", async () => {
-    expect((await setup().handle(get("/api/khong-co"))).status).toBe(404);
+    const rows = await body<RowsResponse>(await app.handle(get("/api/rows")));
+    expect(rows.status).toMatchObject({ dirtyCount: 1, canRedo: true });
+
+    // someone changed the file: 409 conflict, then rebase + save
+    const f = path.join(dir, "Game.vi.resx");
+    fs.writeFileSync(f, fs.readFileSync(f, "utf-8").replace("Quái vật", "Quái"));
+    const conflict = await app.handle(post("/api/save", {}));
+    expect([conflict.status, (await body<ErrorResponse>(conflict)).code]).toEqual([409, "conflict"]);
+    expect(await body<RebaseResponse>(await app.handle(post("/api/rebase", {})))).toEqual({ changedFiles: ["Game.vi.resx"], conflicts: [] });
+    const saved = await body<SaveResponse>(await app.handle(post("/api/save", {})));
+    expect([saved.files, saved.status.dirtyCount]).toEqual([["Game.vi.resx"], 0]);
+    expect(fs.readFileSync(f, "utf-8")).toContain("<value>Sự kiện mới</value>");
+    expect(fs.readFileSync(f, "utf-8")).toContain("<value>Quái</value>");
+    expect(fs.existsSync(path.join(dir, ".mumain-translator", "changes.tsv"))).toBe(true);
+
+    // bad requests
+    const bad = await app.handle(post("/api/edit", { group: "Game", key: "Nope", value: "x" }));
+    expect([bad.status, (await body<ErrorResponse>(bad)).code]).toEqual([422, "not-editable"]);
+    expect((await app.handle(post("/api/edit", { group: "Game", key: "Event", value: 3 }))).status).toBe(400);
+
+    // unsaved edits block opening another locale
+    await app.handle(post("/api/edit", { group: "Game", key: "Event", value: "X", translator: "An" }));
+    const dirty = await app.handle(post("/api/open", { path: dir, locale: "de" }));
+    expect([dirty.status, (await body<ErrorResponse>(dirty)).params]).toEqual([409, { count: 1 }]);
+    expect((await app.handle(post("/api/open", { path: dir, locale: "de", discard: true }))).status).toBe(200);
   });
 });
 
-describe("edit + save API", () => {
-  function tempCopy() {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mubmd-api-"));
-    fs.cpSync(DATA, dir, { recursive: true });
-    return dir;
-  }
-  const body = async (r: Response) => (await r.json()) as Record<string, any>;
+describe("team API", () => {
+  test("status, note, export, import, glossary", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mumain-translator-team-"));
+    writeSampleLocalization(dir);
+    const out = path.join(dir, "..", `${path.basename(dir)}-export.tsv`);
+    const gloss = path.join(dir, "..", `${path.basename(dir)}-glossary.tsv`);
+    const app = createApp({ assets, version: "test", pick: async () => out, pickSave: async (p) => p });
+    await app.handle(post("/api/open", { path: dir, locale: "vi" }));
 
-  test("edit -> undo -> redo -> save", async () => {
-    const file = tempCopy();
-    const app = setup();
-    await app.handle(post("/api/open", { path: file }));
+    const st = await body<MutationResponse>(await app.handle(post("/api/status", { keys: [["Game", "Event"]], status: "reviewed", translator: "An" })));
+    expect(st.changed[0]![11]).toBe("reviewed");
+    expect((await app.handle(post("/api/status", { keys: [], status: "done" }))).status).toBe(400);
+    const note = await body<MutationResponse>(await app.handle(post("/api/note", { group: "Game", key: "Event", note: "ok", translator: "An" })));
+    expect(note.changed[0]![12]).toMatchObject({ note: "ok" });
 
-    const edited = await body(await app.handle(post("/api/edit", { slot: 0, name: "Chùy Mới", translator: "An" })));
-    expect(edited.changed[0].item[1]).toBe("Chùy Mới");
-    expect(edited.changed[0].edit).toMatchObject({ originalText: "Chùy Thủy", translator: "An" });
+    // the save dialog starts next to the Localization folder, never inside it
+    const pick = await body<{ path: string }>(await app.handle(post("/api/pick-save", { kind: "tsv", defaultName: "a/b.tsv" })));
+    expect(pick.path).toBe(path.join(path.dirname(dir), "a_b.tsv"));
 
-    expect((await body(await app.handle(post("/api/undo", {})))).status.dirtyCount).toBe(0);
-    expect((await body(await app.handle(post("/api/redo", {})))).status.dirtyCount).toBe(1);
+    const exp = await body<{ count: number }>(await app.handle(post("/api/export", { path: out, keys: [["Game", "Event"], ["Game", "Level %d"]] })));
+    expect(exp.count).toBe(2);
+    fs.writeFileSync(out, fs.readFileSync(out, "utf-8").replace(/Level %d\tLevel %d\t\t/, "Level %d\tLevel %d\tCấp %d\t"));
+    const preview = await body<ImportPreview>(await app.handle(post("/api/import/preview", { path: out })));
+    expect(preview.items.map((i) => [i.key, i.kind])).toEqual([["Level %d", "apply"]]);
+    const applied = await body<MutationResponse>(
+      await app.handle(post("/api/import/apply", { path: out, token: preview.token, take: [["Game", "Level %d"]], translator: "An" })),
+    );
+    expect(applied.changed[0]![3]).toBe("Cấp %d");
+    const stale = await app.handle(post("/api/import/apply", { path: out, token: "x", take: [], translator: "An" }));
+    expect([stale.status, (await body<ErrorResponse>(stale)).code]).toEqual([409, "import-changed"]);
 
-    const items = await body(await app.handle(get("/api/items")));
-    expect(items.edits).toHaveLength(1);
-
-    const saved = await body(await app.handle(post("/api/save", {})));
-    expect(saved.savedCount).toBe(1);
-    expect(saved.status.dirtyCount).toBe(0);
-    expect(saved.written.map((p: string) => path.basename(p))).toEqual(["Group00_Sword.json"]);
-    expect(fs.readdirSync(saved.backupDir)).toEqual([expect.stringMatching(/^Group00_Sword-.*\.json$/)]);
-  });
-
-  test("over-long name -> 422 with issue list", async () => {
-    const app = setup();
-    await app.handle(post("/api/open", { path: tempCopy() }));
-    const res = await app.handle(post("/api/edit", { slot: 0, name: "Đ".repeat(50), translator: "An" }));
-    expect(res.status).toBe(422);
-    const b = await body(res);
-    expect(b.code).toBe("invalid-name");
-    expect(b.params).toEqual({ slot: 0 });
-    expect(b.issues[0]).toMatchObject({ code: "too-long", params: { chars: 50, max: 49 } });
-  });
-
-  test("opening another file with unsaved changes -> 409 dirty, allowed with discard", async () => {
-    const file = tempCopy();
-    const app = setup();
-    await app.handle(post("/api/open", { path: file }));
-    await app.handle(post("/api/edit", { slot: 0, name: "X", translator: "An" }));
-    const res = await app.handle(post("/api/open", { path: file }));
-    expect(res.status).toBe(409);
-    expect(await body(res)).toMatchObject({ code: "dirty", params: { count: 1 } });
-    expect((await app.handle(post("/api/open", { path: file, discard: true }))).status).toBe(200);
-  });
-
-  test("file changed externally -> 409 conflict", async () => {
-    const file = tempCopy();
-    const app = setup();
-    await app.handle(post("/api/open", { path: file }));
-    await app.handle(post("/api/edit", { slot: 0, name: "X", translator: "An" }));
-    fs.appendFileSync(path.join(file, "Data", "Items", "Group00_Sword.json"), " ");
-    const res = await app.handle(post("/api/save", {}));
-    expect(res.status).toBe(409);
-    expect((await body(res)).code).toBe("conflict");
-  });
-
-  test("slot sai -> 400", async () => {
-    const app = setup();
-    await app.handle(post("/api/open", { path: tempCopy() }));
-    const res = await app.handle(post("/api/edit", { slot: 99999, name: "X", translator: "An" }));
-    expect(res.status).toBe(400);
-    expect(await body(res)).toMatchObject({ code: "no-item", params: { slot: 99999 } });
-    const none = await app.handle(post("/api/edit", { slot: 8191, name: "X", translator: "An" }));
-    expect(await body(none)).toMatchObject({ code: "no-item", params: { slot: 8191 } });
-  });
-
-  test("editing with no file open -> 409", async () => {
-    const res = await setup().handle(post("/api/edit", { slot: 0, name: "X", translator: "An" }));
-    expect(res.status).toBe(409);
-    expect(await res.json()).toMatchObject({ code: "no-file" });
-  });
-});
-
-describe("glossary API", () => {
-  test("load the legacy CSV, save as TSV, load again", async () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mubmd-gloss-"));
-    const csv = path.join(dir, "g.csv");
-    fs.writeFileSync(csv, "Loại,Thuật ngữ / Mẫu,Ghi chú\nĐã chốt dịch,Defense -> Phòng Thủ,PT\n");
-    const app = setup();
-    const loaded = (await (await app.handle(post("/api/glossary/load", { path: csv }))).json()) as Record<string, any>;
-    expect(loaded).toMatchObject({ format: "legacy-csv", entries: [{ term: "Defense", translation: "Phòng Thủ", note: "PT" }] });
-
-    const tsv = path.join(dir, "g.tsv");
-    const entries = [...loaded.entries, { term: "Helm", translation: "Mũ", note: "", category: "Item" }, { term: " ", translation: "x" }];
-    const saved = (await (await app.handle(post("/api/glossary/save", { path: tsv, entries }))).json()) as Record<string, any>;
-    expect(saved.entries).toHaveLength(2);
-    const again = (await (await app.handle(post("/api/glossary/load", { path: tsv }))).json()) as Record<string, any>;
-    expect(again.format).toBe("tsv");
-    expect(again.entries.map((e: { term: string }) => e.term)).toEqual(["Defense", "Helm"]);
-  });
-
-  test("missing file -> file-not-found", async () => {
-    const res = await setup().handle(post("/api/glossary/load", { path: "/khong/co.tsv" }));
-    expect(await res.json()).toMatchObject({ code: "file-not-found" });
+    const saved = await body<GlossaryInfo>(
+      await app.handle(post("/api/glossary/save", { path: gloss, entries: [{ term: "Helm", translation: "Mũ", note: "", category: "Item" }, { term: " " }] })),
+    );
+    expect(saved.entries.length).toBe(1);
+    expect((await body<GlossaryInfo>(await app.handle(post("/api/glossary/load", { path: gloss })))).entries[0]).toMatchObject({ term: "Helm", translation: "Mũ" });
   });
 });

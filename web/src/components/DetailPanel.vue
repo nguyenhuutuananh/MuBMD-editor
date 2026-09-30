@@ -1,169 +1,233 @@
 <script setup lang="ts">
+import { Lock, LockOpen, Pencil, RotateCcw, Trash2 } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { checkGlossary } from "../../../src/core/glossary";
-import { MAX_NAME_CHARS, checkName } from "../../../src/core/nameCodec";
-import { STATUSES } from "../../../src/shared/api";
+import { SEVERITY } from "../../../src/core/validate";
+import { toIdentifier } from "../../../src/core/resxgen";
+import { type RowIssue, STATUSES } from "../../../src/shared/api";
+import RichText from "@/components/RichText.vue";
+import StateDot from "@/components/StateDot.vue";
 import StatusDot from "@/components/StatusDot.vue";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { revert, setNote, setStatus, startEdit } from "@/composables/actions";
+import { MAX_NAME_CHARS, nameLength } from "../../../src/core/itemName";
+import { canEdit, canKeep, cancelEdit, commitEditor, removeTranslation, revert, setNote, setStatus, startEdit, toggleKeep } from "@/composables/actions";
 import { fmtTime, glossaryHintText, issueText } from "@/i18n";
-import { lengthLevel } from "@/lib/length";
-import { sourceOf } from "@/lib/search";
+import { groupLabel } from "@/lib/groups";
+import { glossaryHints, itemId, liveIssues } from "@/lib/rows";
 import { useDocStore } from "@/stores/doc";
 
 const { t } = useI18n();
 const store = useDocStore();
+const row = computed(() => store.selected);
+const group = computed(() => (row.value ? store.groups[row.value.group] : undefined));
+const locale = computed(() => store.open?.locale ?? "");
+const refLocale = computed(() => store.open?.reference ?? null);
+const hashBreaks = computed(() => (row.value?.en ?? "").includes("##"));
+const isItem = computed(() => row.value?.source === "items");
+const identifier = computed(() => (row.value && row.value.en !== null && !isItem.value ? toIdentifier(row.value.key) : ""));
+// "file, line N" (an item file has no line numbers).
+const where = (file: string, line: number) => (line ? t("detail.where", { file, line }) : file);
+// Item names: characters as the game counts them (of the text being typed while editing).
+const nameChars = computed(() => (isItem.value && row.value ? nameLength(editing.value?.value ?? row.value.value ?? "") : null));
+const fileOf = (l: string) => (l === "en" ? group.value?.enFile : group.value?.file) ?? `${group.value?.name}.${l}.resx`;
 
-const row = computed(() => {
-  void store.rev;
-  const s = store.selectedSlot;
-  const r = s === null ? undefined : store.rows[s];
-  return r ? { ...r } : null; // copy, so the computed changes when the row is patched in place
+// While the selected row is being edited, the panel shows the text being typed and its checks.
+const editing = computed(() => (row.value && store.editor?.id === row.value.id ? store.editor : null));
+const draft = computed({
+  get: () => editing.value?.value ?? "",
+  set: (v: string) => {
+    if (store.editor) store.editor.value = v;
+  },
 });
+const issues = computed(() => (row.value && editing.value ? liveIssues(row.value, editing.value.value, locale.value).list : (row.value?.issues ?? [])));
 
-const facts = computed(() => {
-  const r = row.value;
-  if (!r) return [];
-  const out: [string, string][] = [];
-  out.push([t("detail.english"), r.english || "—"]);
-  if (r.reference) out.push([t("detail.reference"), r.reference]);
-  if (r.edit) {
-    out.push([t("detail.original"), r.edit.originalText || t("grid.empty")]);
-    out.push([t("detail.editedBy"), `${r.edit.translator || "?"}${r.edit.at ? `, ${fmtTime(r.edit.at)}` : ""}`]);
-  }
-  out.push([t("detail.group"), `${r.itemType}. ${t(`itemTypes.${r.itemType}`)}`]);
-  out.push([t("detail.typeIndex"), `${r.itemType} / ${r.itemIndex}`]);
-  out.push([t("detail.slot"), `#${r.slot}`]);
-  out.push([t("detail.length"), t("detail.lengthValue", { chars: r.length, max: MAX_NAME_CHARS })]);
-  return out;
-});
+const COLOR = { error: "text-destructive", warning: "text-warn", info: "text-muted-foreground" } as const;
 
-const notes = computed(() => {
-  const r = row.value;
-  if (!r) return [];
-  return r.issues.map((c) => t(`issues.${c}`));
-});
-
-// Glossary hints for the name (or the name being typed) against the reference name.
-const glossaryHints = computed(() => {
-  const r = row.value;
-  const entries = store.glossary?.entries ?? [];
-  if (!r || !entries.length) return [];
-  const name = store.editor?.slot === r.slot ? store.editor.value : r.text;
-  if (!name) return [];
-  return checkGlossary(entries, name, sourceOf(r)).map((h) => ({ text: glossaryHintText(h), ok: h.kind === "ok", note: h.note }));
-});
-
-// Note field: edited locally, saved on Enter / blur.
+// The note is saved when the field loses focus or on Enter.
 const note = ref("");
-// Separate sources: each is compared by value, so an unrelated update of the row (e.g. a status
-// change landing while typing) does not wipe the note being typed.
 watch(
-  [() => row.value?.slot, () => row.value?.record.note],
-  ([, n]) => (note.value = n ?? ""),
+  () => [row.value?.id, row.value?.record?.note] as const,
+  () => (note.value = row.value?.record?.note ?? ""),
   { immediate: true },
 );
-function saveNote() {
+const saveNote = () => {
+  if (row.value && note.value.trim() !== (row.value.record?.note ?? "")) setNote(row.value.id, note.value);
+};
+// Glossary terms of the English text (while editing: of the text being typed).
+const hints = computed(() => {
   const r = row.value;
-  if (r && note.value.trim() !== r.record.note) setNote(r.slot, note.value);
-}
-
-// Live feedback for the name being typed.
-const live = computed(() => {
-  const ed = store.editor;
-  if (!ed || ed.slot !== store.selectedSlot) return null;
-  const c = checkName(ed.value);
-  const over = c.length - MAX_NAME_CHARS;
-  return {
-    level: lengthLevel(c.length),
-    title:
-      over > 0
-        ? t("detail.editingOver", { chars: c.length, max: MAX_NAME_CHARS, over })
-        : t("detail.editing", { chars: c.length, max: MAX_NAME_CHARS, left: -over }),
-    issues: c.issues.map((i) => ({ text: issueText(i), severity: i.severity })),
-  };
+  if (!r || !store.glossary) return [];
+  return glossaryHints(editing.value ? { ...r, value: editing.value.value } : r, store.glossary.entries);
 });
+const sevOf = (i: RowIssue) => SEVERITY[i[0]];
+
+// Enter saves (a line break is written as \n); Esc cancels. Composing with an IME: leave it alone.
+function onKeydown(e: KeyboardEvent) {
+  if (e.isComposing || e.keyCode === 229) return;
+  if (e.key === "Enter") {
+    e.preventDefault();
+    commitEditor();
+  } else if (e.key === "Escape") {
+    e.preventDefault();
+    cancelEdit();
+  }
+}
 </script>
 
 <template>
-  <aside class="bg-card overflow-auto border-l p-4" :aria-label="t('detail.label')" data-testid="detail">
-    <p v-if="!row" class="text-muted-foreground">{{ t("detail.none") }}</p>
-    <template v-else>
-      <h2 class="mb-3 text-lg font-bold break-words" :class="row.text ? '' : 'text-muted-foreground italic'">{{ row.text || t("grid.empty") }}</h2>
-      <div class="mb-3">
-        <p class="text-muted-foreground mb-1 text-xs">{{ t("detail.status") }}</p>
-        <div class="flex w-fit overflow-hidden rounded-md border" role="radiogroup" :aria-label="t('detail.status')">
-          <button
-            v-for="s in STATUSES"
-            :key="s"
-            type="button"
-            role="radio"
-            :aria-checked="row.record.status === s"
-            class="hover:bg-muted border-r px-2.5 py-1 last:border-r-0"
-            :class="row.record.status === s ? 'bg-brand-soft font-semibold' : ''"
-            :data-testid="`detail-status-${s}`"
-            @click="setStatus([row.slot], s)"
-          >
-            <StatusDot :status="s" with-label />
-          </button>
-        </div>
-        <p class="text-muted-foreground mt-1 text-[11px]">{{ t("status.shortcut") }}</p>
+  <aside class="bg-card overflow-auto border-l p-4 text-[13px]" data-testid="detail">
+    <p v-if="!row" class="text-muted-foreground">{{ t("detail.empty") }}</p>
+    <div v-else class="flex flex-col gap-4">
+      <div class="flex items-center gap-2">
+        <StateDot :state="row.state" />
+        <span class="font-semibold">{{ groupLabel(group) }}</span>
+        <span class="text-muted-foreground">{{ t(`state.${row.state}`) }}</span>
+        <span v-if="row.dirty" class="text-brand ml-auto text-xs font-semibold">● {{ t("detail.unsaved") }}</span>
       </div>
-      <dl class="mb-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-[13px]">
-        <template v-for="[k, v] in facts" :key="k">
-          <dt class="text-muted-foreground">{{ k }}</dt>
-          <dd>{{ v }}</dd>
+
+      <dl class="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1">
+        <template v-if="isItem">
+          <dt class="text-muted-foreground">{{ t("detail.item") }}</dt>
+          <dd class="font-mono text-xs" data-testid="detail-item">{{ itemId(row) }}</dd>
+          <dt class="text-muted-foreground">{{ t("detail.file") }}</dt>
+          <dd class="font-mono text-xs break-all">{{ group?.file }}</dd>
+        </template>
+        <template v-else-if="row.key !== row.en">
+          <dt class="text-muted-foreground">{{ t("detail.key") }}</dt>
+          <dd class="font-mono text-xs break-all" data-testid="detail-key">{{ row.key }}</dd>
+        </template>
+        <template v-if="row.en !== null && !isItem">
+          <dt class="text-muted-foreground">{{ t("detail.identifier") }}</dt>
+          <dd class="font-mono text-xs break-all">{{ identifier || t("detail.noIdentifier") }}</dd>
+        </template>
+        <template v-if="row.legacyIds.length">
+          <dt class="text-muted-foreground">{{ t("detail.legacyIds") }}</dt>
+          <dd class="font-mono text-xs">{{ row.legacyIds.join(", ") }}</dd>
         </template>
       </dl>
-      <ul v-if="notes.length" class="text-warn mb-3 list-disc pl-5 text-[13px]">
-        <li v-for="m in notes" :key="m">{{ m }}</li>
-      </ul>
-      <div v-if="glossaryHints.length" class="mb-3" data-testid="glossary-hints">
-        <p class="text-muted-foreground mb-1 text-xs">{{ t("detail.glossary") }}</p>
-        <ul class="flex flex-col gap-1 text-[13px]">
-          <li
-            v-for="h in glossaryHints"
-            :key="h.text"
-            :class="h.ok ? 'text-ok' : 'bg-bad-soft text-destructive rounded px-2 py-1'"
-            :title="h.note"
+
+      <section v-if="row.en !== null">
+        <h3 class="text-muted-foreground mb-1 flex justify-between text-xs font-semibold">
+          <span>{{ t("detail.en") }}</span>
+          <span v-if="!isItem" class="font-normal">{{ where(fileOf("en"), row.enLine) }}</span>
+        </h3>
+        <p class="bg-muted rounded-md px-2.5 py-2"><RichText :text="row.en" block :hash-breaks="hashBreaks" /></p>
+      </section>
+
+      <section>
+        <h3 class="text-muted-foreground mb-1 flex justify-between text-xs font-semibold">
+          <span>{{ t("detail.translation", { locale }) }}</span>
+          <span v-if="row.line && !row.dirty" class="font-normal">{{ where(fileOf(locale), row.line) }}</span>
+          <span
+            v-if="nameChars !== null"
+            class="font-normal tabular-nums"
+            :class="nameChars > MAX_NAME_CHARS ? 'text-destructive font-semibold' : ''"
+            data-testid="detail-length"
           >
-            {{ h.text }}
-          </li>
-        </ul>
-      </div>
-      <div v-if="live" class="mb-3" data-testid="live-issues">
-        <p class="mb-1.5 text-[13px] font-semibold" :class="live.level === 'over' ? 'text-destructive' : live.level === 'near' ? 'text-warn' : ''">
-          {{ live.title }}
+            {{ t("detail.length", { n: nameChars, max: MAX_NAME_CHARS }) }}
+          </span>
+        </h3>
+        <template v-if="editing">
+          <textarea
+            id="detail-editor"
+            v-model="draft"
+            rows="4"
+            class="focus-visible:ring-ring/50 w-full resize-y rounded-md border px-2.5 py-2 outline-none focus-visible:ring-2"
+            spellcheck="false"
+            :placeholder="t('editor.placeholder')"
+            data-testid="detail-editor"
+            @keydown="onKeydown"
+          />
+          <p class="text-muted-foreground text-xs">{{ isItem ? t("detail.editHintItem") : t("detail.editHint") }}</p>
+        </template>
+        <p v-else-if="row.value !== null" class="rounded-md border px-2.5 py-2" data-testid="detail-value">
+          <RichText :text="row.value" block :hash-breaks="hashBreaks" />
         </p>
-        <ul v-if="live.issues.length" class="list-disc pl-5 text-[13px]">
-          <li
-            v-for="i in live.issues"
-            :key="i.text"
-            :class="i.severity === 'error' ? 'bg-bad-soft text-destructive rounded px-2 py-1' : 'text-warn'"
+        <p v-else class="text-muted-foreground italic">{{ t("grid.missing") }}</p>
+        <p v-if="row.dirty && !editing" class="text-muted-foreground mt-1 text-xs">
+          {{ t("detail.savedWas") }}
+          <RichText v-if="row.saved !== null" :text="row.saved" block :hash-breaks="hashBreaks" />
+          <span v-else class="italic">{{ t("grid.missing") }}</span>
+        </p>
+      </section>
+
+      <div class="flex flex-wrap gap-2" data-testid="detail-actions">
+        <Button v-if="canEdit(row) && !editing" size="sm" data-testid="action-edit" @click="startEdit(row.id)"><Pencil />{{ t("detail.edit") }}</Button>
+        <Button v-if="canKeep(row)" variant="outline" size="sm" :title="t('detail.keepTitle')" data-testid="action-keep" @click="toggleKeep(row.id)">
+          <template v-if="row.keep"><LockOpen />{{ t("detail.unkeep") }}</template>
+          <template v-else><Lock />{{ t("detail.keep") }}</template>
+        </Button>
+        <Button v-if="row.value !== null" variant="outline" size="sm" :title="t('detail.removeTitle')" data-testid="action-remove" @click="removeTranslation(row.id)">
+          <Trash2 />{{ t("detail.remove") }}
+        </Button>
+        <Button v-if="row.dirty" variant="outline" size="sm" data-testid="action-revert" @click="revert(row.id)"><RotateCcw />{{ t("detail.revert") }}</Button>
+      </div>
+
+      <section v-if="row.en !== null" class="flex flex-col gap-2">
+        <h3 class="text-muted-foreground text-xs font-semibold">{{ t("detail.status") }}</h3>
+        <div class="flex flex-wrap gap-1.5" role="radiogroup" :aria-label="t('detail.status')">
+          <Button
+            v-for="(s, i) in STATUSES"
+            :key="s"
+            size="sm"
+            variant="outline"
+            :class="row.status === s && 'border-brand bg-brand-soft ring-brand/40 ring-2'"
+            role="radio"
+            :aria-checked="row.status === s"
+            :title="`Alt+${i + 1}`"
+            :data-testid="`detail-status-${s}`"
+            @click="setStatus([row], s)"
           >
-            {{ i.text }}
+            <StatusDot :status="s" with-label />
+          </Button>
+        </div>
+        <Input
+          v-model="note"
+          :placeholder="t('detail.notePlaceholder')"
+          :aria-label="t('detail.note')"
+          data-testid="detail-note"
+          @blur="saveNote"
+          @keydown.enter.prevent="saveNote"
+        />
+        <p v-if="row.record?.translator || row.record?.updatedAt" class="text-muted-foreground text-xs">
+          {{ t("detail.lastBy", { name: row.record.translator || "?", time: fmtTime(row.record.updatedAt) }) }}
+        </p>
+      </section>
+
+      <section v-if="hints.length">
+        <h3 class="text-muted-foreground mb-1 text-xs font-semibold">{{ t("detail.glossary") }}</h3>
+        <ul class="flex flex-col gap-1" data-testid="detail-glossary">
+          <li v-for="(h, i) in hints" :key="i" :class="h.kind === 'ok' ? 'text-ok' : 'text-warn'">
+            {{ glossaryHintText(h) }}<span v-if="h.note" class="text-muted-foreground"> — {{ h.note }}</span>
           </li>
         </ul>
-      </div>
-      <div class="mb-3 flex flex-col gap-1">
-        <label for="detail-note" class="text-muted-foreground text-xs">{{ t("detail.note") }}</label>
-        <Input
-          id="detail-note"
-          v-model="note"
-          class="h-8 text-[13px]"
-          :placeholder="t('detail.notePlaceholder')"
-          data-testid="detail-note"
-          @keydown.enter="(e: KeyboardEvent) => !e.isComposing && saveNote()"
-          @blur="saveNote"
-        />
-      </div>
-      <div class="mb-3 flex flex-wrap gap-2">
-        <Button variant="outline" size="sm" @click="startEdit(row.slot)">{{ t("detail.edit") }}</Button>
-        <Button v-if="row.dirty" variant="outline" size="sm" data-testid="revert" @click="revert(row.slot)">{{ t("detail.revert") }}</Button>
-      </div>
-      <p class="text-muted-foreground text-xs">{{ t("detail.help") }}</p>
-    </template>
+      </section>
+
+      <section v-if="refLocale && row.reference !== null">
+        <h3 class="text-muted-foreground mb-1 text-xs font-semibold">{{ t("detail.reference", { locale: refLocale }) }}</h3>
+        <p class="rounded-md border border-dashed px-2.5 py-2"><RichText :text="row.reference" block :hash-breaks="hashBreaks" /></p>
+      </section>
+
+      <section>
+        <h3 class="text-muted-foreground mb-1 text-xs font-semibold">{{ t("detail.issues") }}</h3>
+        <p v-if="!issues.length" class="text-muted-foreground">{{ t("detail.noIssues") }}</p>
+        <ul v-else class="flex flex-col gap-2" data-testid="detail-issues">
+          <li v-for="(issue, i) in issues" :key="i" class="flex flex-col">
+            <span :class="['text-xs font-semibold', COLOR[sevOf(issue)]]">
+              {{ t(`severity.${sevOf(issue)}`) }}
+              <span class="text-muted-foreground font-normal">· {{ t("detail.inFile", { file: fileOf(issue[1]) }) }}</span>
+            </span>
+            <span>{{ issueText(issue) }}</span>
+          </li>
+        </ul>
+      </section>
+
+      <p v-if="isItem" class="text-muted-foreground text-xs">{{ t("detail.itemHelp") }}</p>
+      <template v-else>
+        <p class="text-muted-foreground text-xs">{{ t("detail.tokens") }}</p>
+        <p class="text-muted-foreground text-xs">{{ t("detail.keys") }}</p>
+      </template>
+    </div>
   </aside>
 </template>

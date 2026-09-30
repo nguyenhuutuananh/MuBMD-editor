@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { BookOpen, ChevronDown, Download, FileText, GitCompare, Upload, X } from "@lucide/vue";
+import { BookOpen, ChevronDown, Download, Upload } from "@lucide/vue";
 import { useDebounceFn } from "@vueuse/core";
-import { ref } from "vue";
+import { onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { STATUSES } from "../../../src/shared/api";
+import StateDot from "@/components/StateDot.vue";
 import StatusDot from "@/components/StatusDot.vue";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,17 +17,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import {
-  chooseReference,
-  clearReference,
-  compareWith,
-  exportOpen,
-  glossaryOpen,
-  select,
-  setStatus,
-  startImport,
-} from "@/composables/actions";
-import { type Problem, SCOPES, type StatusFilter } from "@/lib/search";
+import { exportOpen, glossaryOpen, registerSearch, select, setStatus, startImport } from "@/composables/actions";
+import type { SeverityFilter, StateFilter, StatusFilter } from "@/lib/rows";
 import { useDocStore } from "@/stores/doc";
 
 const { t, n } = useI18n();
@@ -38,37 +30,38 @@ const apply = () => {
   if (store.filter.query !== query.value) store.filter.query = query.value;
 };
 const applyDebounced = useDebounceFn(apply, 80);
+// The query can also be changed from outside (e.g. cleared after an import).
+watch(
+  () => store.filter.query,
+  (q) => {
+    if (q !== query.value) query.value = q;
+  },
+);
 
 // Enter / ↓ in the search box: jump to the first result row.
 function toResults(e: KeyboardEvent) {
   if (e.isComposing) return;
   e.preventDefault();
   apply();
+  store.refilter(); // now: the watcher on the query runs later, and `visible` would be stale
   const first = store.visible[0];
-  if (first) select(first.slot, true);
+  if (first) select(first.id, true);
   document.getElementById("grid-body")?.focus();
 }
 
-const scopes = SCOPES;
+const states: StateFilter[] = ["any", "missing", "translated", "same", "kept", "extra", "dirty"];
+const severities: SeverityFilter[] = ["any", "error", "problems", "issues", "clean", "glossary"];
 const statusFilters: StatusFilter[] = ["any", ...STATUSES];
-const openExport = () => (exportOpen.value = true);
-const openGlossary = () => (glossaryOpen.value = true);
-const markList = (status: (typeof STATUSES)[number]) => setStatus(store.visible.map((r) => r.slot), status);
-const problems: { value: Problem; key: string }[] = [
-  { value: "any", key: "any" },
-  { value: "edited", key: "edited" },
-  { value: "issues", key: "issues" },
-  { value: "near-limit", key: "nearLimit" },
-  { value: "glossary", key: "glossary" },
-];
+const markList = (status: (typeof STATUSES)[number]) => setStatus(store.visible.filter((r) => r.en !== null), status);
 
-defineExpose({
-  focusSearch() {
+onMounted(() =>
+  registerSearch(() => {
     const el = search.value?.$el as HTMLInputElement | undefined;
     el?.focus();
     el?.select();
-  },
-});
+  }),
+);
+onBeforeUnmount(() => registerSearch(null));
 </script>
 
 <template>
@@ -77,7 +70,7 @@ defineExpose({
       ref="search"
       v-model="query"
       type="search"
-      class="min-w-0 flex-[1_1_260px]"
+      class="min-w-0 flex-[1_1_280px]"
       spellcheck="false"
       autocomplete="off"
       :placeholder="t('toolbar.search')"
@@ -87,17 +80,11 @@ defineExpose({
       @keydown.enter="toResults"
       @keydown.down="toResults"
     />
-    <Select v-model="store.filter.scope">
-      <SelectTrigger class="w-auto" :aria-label="t('toolbar.scopeLabel')" data-testid="scope"><SelectValue /></SelectTrigger>
+    <Select v-model="store.filter.state">
+      <SelectTrigger class="w-auto" :aria-label="t('toolbar.stateLabel')" data-testid="state-filter"><SelectValue /></SelectTrigger>
       <SelectContent>
-        <SelectItem v-for="s in scopes" :key="s" :value="s">{{ t(`toolbar.scope.${s}`) }}</SelectItem>
-      </SelectContent>
-    </Select>
-    <Select v-model="store.filter.problem">
-      <SelectTrigger class="w-auto" :aria-label="t('toolbar.problemLabel')" data-testid="problem"><SelectValue /></SelectTrigger>
-      <SelectContent>
-        <SelectItem v-for="p in problems" :key="p.value" :value="p.value" :data-testid="`problem-${p.value}`">
-          {{ t(`toolbar.problem.${p.key}`) }}
+        <SelectItem v-for="s in states" :key="s" :value="s" :data-testid="`state-${s}`">
+          <StateDot v-if="s !== 'any' && s !== 'dirty'" :state="s" />{{ t(`toolbar.state.${s}`) }}
         </SelectItem>
       </SelectContent>
     </Select>
@@ -110,6 +97,14 @@ defineExpose({
         </SelectItem>
       </SelectContent>
     </Select>
+    <Select v-model="store.filter.severity">
+      <SelectTrigger class="w-auto" :aria-label="t('toolbar.severityLabel')" data-testid="severity-filter"><SelectValue /></SelectTrigger>
+      <SelectContent>
+        <SelectItem v-for="s in severities" :key="s" :value="s" :disabled="s === 'glossary' && !store.glossary" :data-testid="`severity-${s}`">
+          {{ t(`toolbar.severity.${s}`) }}
+        </SelectItem>
+      </SelectContent>
+    </Select>
     <span class="text-muted-foreground ml-auto text-xs tabular-nums" aria-live="polite" data-testid="result-count">
       {{ t("toolbar.rows", { n: n(store.visible.length) }, store.visible.length) }}
     </span>
@@ -118,24 +113,15 @@ defineExpose({
         <Button variant="outline" data-testid="actions">{{ t("toolbar.actions") }}<ChevronDown /></Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" class="min-w-64">
-        <DropdownMenuItem data-testid="action-export" @select="openExport"><Download />{{ t("actions.export") }}</DropdownMenuItem>
+        <DropdownMenuItem data-testid="action-export" @select="exportOpen = true"><Download />{{ t("actions.export") }}</DropdownMenuItem>
         <DropdownMenuItem data-testid="action-import" @select="startImport"><Upload />{{ t("actions.import") }}</DropdownMenuItem>
-        <DropdownMenuItem data-testid="action-compare" @select="compareWith"><GitCompare />{{ t("actions.compare") }}</DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem data-testid="action-glossary" @select="openGlossary"><BookOpen />{{ t("actions.glossary") }}</DropdownMenuItem>
-        <DropdownMenuItem data-testid="action-reference" @select="chooseReference"><FileText />{{ t("actions.reference") }}</DropdownMenuItem>
-        <DropdownMenuItem v-if="store.reference" @select="clearReference"><X />{{ t("actions.clearReference") }}</DropdownMenuItem>
+        <DropdownMenuItem data-testid="action-glossary" @select="glossaryOpen = true"><BookOpen />{{ t("actions.glossary") }}</DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuLabel class="text-muted-foreground text-xs font-normal">
           {{ t("actions.markList", { n: n(store.visible.length) }, store.visible.length) }}
         </DropdownMenuLabel>
-        <DropdownMenuItem
-          v-for="s in STATUSES"
-          :key="s"
-          :disabled="!store.visible.length"
-          :data-testid="`mark-${s}`"
-          @select="markList(s)"
-        >
+        <DropdownMenuItem v-for="s in STATUSES" :key="s" :disabled="!store.visible.length" :data-testid="`mark-${s}`" @select="markList(s)">
           <StatusDot :status="s" with-label />
         </DropdownMenuItem>
       </DropdownMenuContent>

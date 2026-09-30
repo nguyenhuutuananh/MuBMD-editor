@@ -1,115 +1,144 @@
-MuBMD-editor {{VERSION}} - Hướng dẫn sử dụng
-=============================================
+MuMain-translator {{VERSION}} - Hướng dẫn sử dụng
+==================================================
 
-Công cụ dịch tên vật phẩm của client MuMain (Mu Online season 6) sang tiếng Việt.
-Chạy trên máy của bạn, giao diện mở trong trình duyệt (http://localhost:4817).
-Giao diện có Tiếng Anh (mặc định) và Tiếng Việt - chọn ở nút ngôn ngữ góc trên bên phải.
+Dịch mọi chữ mà client MuMain hiển thị, trong một công cụ:
+  - Chuỗi giao diện: MuMain/src/Localization/<Group>.<locale>.resx (Game, Dialog, Editor, Metadata).
+    Được build của MuMain biên dịch vào game -> phải BUILD LẠI MuMain mới thấy bản dịch.
+  - Tên vật phẩm: Data/Items/Group00_Sword.json ... Group15_Etc.json, mỗi vật phẩm có tên theo từng
+    ngôn ngữ ("en", "es", "pt", "vi"...). Game đọc khi khởi động -> chỉ cần KHỞI ĐỘNG LẠI game.
+Tiếng Anh (en) là bản gốc mà mọi bản dịch làm theo. Cả hai phần dùng chung mã ngôn ngữ (vi, de...),
+nên chọn "vi" là dịch cả hai cùng lúc.
+Chạy trên máy của bạn; giao diện mở trong trình duyệt (http://localhost:4837).
+Giao diện có tiếng Anh (mặc định) và tiếng Việt - đổi bằng nút ngôn ngữ (góc trên phải).
 
-Từ bản 2.0: MuMain không còn đọc Item.bmd nữa mà đọc các file Data/Items/Group00_Sword.json ...
-Group15_Etc.json. Mỗi vật phẩm có tên theo từng ngôn ngữ ("en", "es", "pt"...); công cụ này ghi tên
-tiếng Việt ("vi"). Game hiện tên theo ngôn ngữ đang chọn, thiếu thì hiện tên tiếng Anh.
-Bản dịch cũ trong Item.bmd: dùng MuBMD-editor 1.x xuất ra TSV, rồi nhập file TSV đó ở bản này.
+Công cụ này thay cho MuResx-editor (chuỗi giao diện) và MuBMD-editor (tên vật phẩm): dữ liệu làm
+việc của chúng được chuyển sang tự động (mục 8).
 
 
 0. BẢN WEB (KHÔNG CẦN CÀI)
 --------------------------
-Mở https://nguyenhuutuananh.github.io/MuBMD-editor/ bằng Chrome hoặc Edge trên máy tính:
-  - "Chọn thư mục game…" -> chọn thư mục game. Trình duyệt sửa trực tiếp file và giữ backup ngay
-    cạnh đó, giống hệt bản desktop. Không có gì bị tải lên mạng.
-  - Có thể cài như app (biểu tượng cài đặt trên thanh địa chỉ), sau đó dùng được cả khi offline.
-  - Firefox / Safari: chọn thư mục game (hoặc Data/Items), bạn làm việc trên bản sao lưu trong trình
-    duyệt; Lưu sẽ tải file đã sửa (nhiều file thì là Items.zip) về để chép lại vào Data/Items.
-Phần còn lại của hướng dẫn dùng chung cho cả bản web và bản desktop.
+  - Chrome / Edge trên máy tính: "Chọn thư mục…" rồi cho phép trình duyệt sửa thư mục. Các file được
+    đọc và ghi ngay trên máy bạn, có backup như bản desktop. Không có gì bị tải lên mạng.
+  - Firefox / Safari: vẫn "Chọn thư mục (tải lên)…" như thường. Chỉ những file cần dịch được đọc vào
+    một bản sao trong trình duyệt (không gửi đi đâu). Khi lưu, file đã sửa được tải về: một file thì
+    tải nguyên file, nhiều file thì một file zip có đúng cấu trúc thư mục - giải nén đè lên thư mục.
+  - Cài được như một ứng dụng (biểu tượng cài đặt trên thanh địa chỉ), sau đó chạy được offline.
+  - Bản web chỉ thấy chính thư mục đã chọn, nên không kiểm tra được ngôn ngữ đã có trong code game
+    chưa (mục 7).
+Phần còn lại áp dụng cho cả bản web và bản desktop.
 
 
 1. CHẠY CHƯƠNG TRÌNH
 --------------------
 Windows:
-  - Giải nén, nhấp đúp MuBMD-editor.exe. Một cửa sổ dòng lệnh mở ra và trình duyệt tự mở.
+  - Giải nén rồi double-click MuMain-translator.exe. Một cửa sổ console mở ra và trình duyệt tự mở.
   - Nếu Windows SmartScreen chặn: "More info" -> "Run anyway" (chương trình chưa được ký số).
-  - Giữ cửa sổ dòng lệnh mở trong lúc dịch. Đóng cửa sổ đó = tắt chương trình.
+  - Giữ cửa sổ console mở trong lúc dịch. Đóng nó là thoát chương trình.
 
 macOS:
   - Giải nén. Lần đầu, mở Terminal trong thư mục vừa giải nén và chạy:
-        xattr -d com.apple.quarantine MuBMD-editor
-        ./MuBMD-editor
-    (máy Mac chip Intel dùng bản macos-x64, chip Apple M1/M2/M3... dùng bản macos-arm64)
-  - Các lần sau: nhấp đúp file MuBMD-editor, hoặc chạy ./MuBMD-editor trong Terminal.
+        xattr -d com.apple.quarantine MuMain-translator
+        ./MuMain-translator
+    (Mac Intel dùng bản macos-x64, Mac chip Apple M1/M2/M3... dùng bản macos-arm64)
+  - Các lần sau: double-click MuMain-translator, hoặc chạy ./MuMain-translator trong Terminal.
 
-Tuỳ chọn dòng lệnh: MuBMD-editor [đường/dẫn/thư-mục-game] [--port 4817] [--no-open] [--help]
+Dòng lệnh: MuMain-translator [thư-mục] [--locale vi] [--port 4837] [--no-open] [--help]
 
 
-2. MỞ THƯ MỤC GAME
-------------------
-Bấm "Chọn thư mục game…" (hoặc dán đường dẫn) và chọn THƯ MỤC GAME - không cần tìm file.
-Công cụ tự tìm dữ liệu vật phẩm:
-  - Windows / Linux:   <game>/Data/Items                          (cạnh Main.exe / Main)
-  - macOS:             <game>/Main.app/Contents/MacOS/Data/Items  (bên trong app)
-  - Mã nguồn MuMain:   <repo>/src/bin/Data/Items
-  - Chọn thẳng Data hoặc Data/Items cũng được.
-Nếu một thư mục có cả bản Windows lẫn bản macOS, bản của hệ điều hành đang chạy được chọn; muốn
-sửa bản kia thì chọn thẳng thư mục của nó. Thanh trên cùng cho biết đã tìm thấy ở đâu (ví dụ
-"Ứng dụng macOS"; rê chuột vào để xem đường dẫn).
-Nên làm trên BẢN SAO, và đóng game trước khi lưu.
+2. MỞ THƯ MỤC
+-------------
+Chọn MỘT thư mục (hoặc dán đường dẫn); những gì dịch được trong đó được tự tìm:
+  - Repo mã nguồn MuMain         -> src/Localization + src/bin/Data/Items (cả hai phần)
+    (chọn src hoặc src/Localization bên trong repo cũng được)
+  - Thư mục game Windows / Linux -> Data/Items (chỉ tên vật phẩm)
+  - Thư mục game macOS           -> Main.app/Contents/MacOS/Data/Items (chỉ tên vật phẩm)
+  - Chính Data/Items, hoặc một thư mục Localization riêng lẻ
+Game đã phát hành không có file .resx (chúng đã được biên dịch vào game), nên ở thư mục game chỉ dịch
+được tên vật phẩm. Nếu một thư mục có cả bản Windows lẫn macOS, bản của hệ điều hành đang chạy được
+chọn; muốn sửa bản kia thì chọn thẳng thư mục của nó.
+
+Sau đó chọn ngôn ngữ cần dịch. "Ngôn ngữ mới" để bắt đầu một ngôn ngữ (vd. th): bản dịch được thêm
+ở lần lưu đầu. Có thể chọn thêm một ngôn ngữ tham khảo, hiện ở cột riêng (vd. de).
+
+Bên trái: "Tất cả", rồi "Chuỗi giao diện" và "Tên vật phẩm" với từng nhóm, tiến độ (xanh = đã dịch,
+vàng = giống hệt tiếng Anh), số lỗi / cảnh báo và số thay đổi chưa lưu. Trên cùng: huy hiệu cho biết
+đã tìm thấy phần nào và ở đâu.
 
 
 3. DỊCH
 -------
-  - Chọn một dòng, bấm Enter (hoặc nhấp đúp) để sửa tên. Lần đầu sẽ hỏi tên người dịch.
-  - Cột "Tiếng Anh" là tên gốc. Để trống tên = chưa dịch (game hiện tên tiếng Anh).
-  - Tên tối đa 49 ký tự (game cắt phần dư). Quá giới hạn thì không lưu được. Không dùng "||".
-  - Enter / Tab: lưu và sang dòng dưới. Shift+Enter: lên dòng trên. Esc: huỷ.
-  - Ctrl+S: lưu. Ctrl+Z / Ctrl+Y: hoàn tác / làm lại. Ctrl+F: tìm.
-  - Tìm không cần gõ dấu ("truong kiem" tìm được "Trường Kiếm"), tìm cả tên tiếng Anh ("helm"),
-    hoặc theo vị trí: 7:1, #3585.
-  - Lọc: "Chưa có tên tiếng Việt" để xem những gì còn phải dịch.
-  - Trạng thái: Chưa dịch / Đã dịch / Đã duyệt. Alt+1 / Alt+2 / Alt+3, hoặc ở khung bên phải.
-    Đánh dấu hàng loạt: Thao tác -> "Đánh dấu N dòng đang hiện là…".
-  - Khi lưu, chỉ các file có tên bị sửa được ghi lại, và trong đó chỉ phần "name" của các vật phẩm
-    đó thay đổi (đúng định dạng MuMain tự ghi) - phần còn lại giữ nguyên từng byte.
+  - Chọn một dòng rồi nhấn Enter (hoặc double-click) để sửa. Lần đầu sẽ hỏi tên của bạn.
+  - Enter / Tab: lưu và sang dòng sau. Shift+Enter / Shift+Tab: dòng trước. Esc: huỷ.
+    Bộ gõ tiếng Việt (Telex/VNI, Unikey…) được tôn trọng: Enter khi đang gõ dấu không lưu.
+  - Để trống = chưa dịch: game hiện tiếng Anh.
+  - Kiểm tra chạy ngay khi gõ: đỏ = lỗi, vàng = cảnh báo, xám = ghi chú.
+  - Trạng thái: Alt+1 / Alt+2 / Alt+3 = Chưa dịch / Đã dịch / Đã duyệt; mỗi dòng có một ghi chú.
+  - Hoàn tác / làm lại: Ctrl+Z / Ctrl+Y. Tìm: Ctrl+F (không phân biệt dấu, tìm cả tiếng Anh).
+
+Chuỗi giao diện:
+  - Xuống dòng viết là \n, giống bản tiếng Anh. Placeholder (%d, %s, {0}) được tô màu: giữ nguyên,
+    đúng thứ tự (sai có thể làm game crash). ↵ = \n, # = xuống dòng của Item Shop, ⏎ = xuống dòng
+    thật (sai).
+  - "Giữ nguyên tiếng Anh" (Alt+K) cho dòng cố ý để tiếng Anh (vd. Gulim).
+  - Tìm #470 = dòng có legacy id 470 (GlobalText cũ).
+
+Tên vật phẩm:
+  - Cột ID là nhóm:số (7:1 = vật phẩm 1 của nhóm 7 - Mũ). Tìm "7:1" để nhảy tới đó.
+  - Tối đa 49 ký tự (game cắt phần dư): bộ đếm x/49 hiện khi sửa, quá thì báo lỗi đỏ.
+  - Không được có "||" hay ký tự điều khiển (game sẽ không khởi động): tool không nhận.
 
 
-4. LÀM VIỆC NHÓM
+4. LƯU
+------
+  - Ctrl+S chỉ ghi các file có thay đổi, và chỉ phần đã sửa trong đó; phần còn lại giữ nguyên từng
+    byte (diff git gọn). File vật phẩm được ghi đúng định dạng MuMain tự ghi ("en" trước, rồi các
+    ngôn ngữ khác theo thứ tự chữ cái).
+  - Bản cũ được cất vào .mumain-translator/backups/ ở gốc thư mục đã mở; changes.tsv ghi ai sửa gì.
+    Trong repo MuMain, hãy thêm ".mumain-translator/" vào .gitignore (hoặc .git/info/exclude): cả
+    build lẫn game đều không đọc nó.
+  - Thay đổi chưa lưu được giữ trong .mumain-translator/draft-<ngôn ngữ>.json; lần mở sau sẽ hỏi có
+    khôi phục không.
+  - Nếu file đã đổi trên đĩa kể từ lúc đọc (git pull, Google Drive, trình sửa vật phẩm của MuMain…),
+    khi lưu sẽ hỏi: "Gộp và lưu" đặt thay đổi của bạn lên file mới, "Ghi đè" ghi bản của bạn.
+    "Đọc lại" gộp như vậy bất cứ lúc nào. Key bị sửa ở cả hai phía giữ bản của bạn và được liệt kê.
+  - Sau khi lưu: chuỗi giao diện -> build lại MuMain; tên vật phẩm -> khởi động lại game.
+
+
+5. LÀM VIỆC NHÓM
 ----------------
-  1. Người điều phối giữ bộ file Data/Items chính (hoặc repo MuMain), chia sẻ qua Google Drive / git.
-  2. Mỗi người dịch chép các file đó vào thư mục game của mình, mở, dịch phần được giao, lưu.
-  3. Người dịch: Thao tác -> "Xuất bản dịch (TSV)…" -> "Các slot tôi đã sửa" -> gửi file TSV.
-  4. Người điều phối: Thao tác -> "Nhập bản dịch (TSV)…". Màn hình xem trước cho biết:
-       Thay đổi   = chỉ người kia sửa (được chọn sẵn)
-       Xung đột   = cả hai cùng sửa (mặc định giữ bản của mình)
-     Chọn xong bấm "Áp dụng", xem lại bằng bộ lọc "Đã sửa", rồi Ctrl+S.
-  5. Người điều phối chia sẻ bộ file mới; người dịch thay file trên máy bằng bản mới.
-
-  File TSV mở được bằng Excel / Google Sheets. File TSV kiểu cũ (ItemType, ItemIndex, Name) cũng
-  nhập được - kể cả file do MuBMD-editor 1.x xuất từ Item.bmd.
-  "So sánh với thư mục game khác…" liệt kê các tên tiếng Việt khác nhau và cho lấy tên từ bên kia.
+  - Dùng git: mỗi người dịch trên repo của mình, commit các file đã sửa, "Đọc lại" sau khi pull.
+  - Không dùng git: Thao tác -> Xuất bản dịch (TSV) -> "Các key tôi đã sửa" -> gửi file.
+    Người điều phối: Thao tác -> Nhập bản dịch -> xem trước (Thay đổi / Xung đột / Trạng thái)
+    -> Áp dụng -> Lưu. Một file TSV chứa cả chuỗi giao diện lẫn tên vật phẩm (Group "Items.Helm",
+    Key "1"). Mở được bằng Excel / Google Sheets; dòng chưa dịch có ô Translation trống để điền rồi
+    nhập lại. File TSV của MuBMD-editor (ItemType, ItemIndex, Name) cũng nhập được.
+  - Thuật ngữ: Thao tác -> Bảng thuật ngữ… -> file thuật ngữ của nhóm (TSV, hoặc MuMain_VI_Glossary.csv
+    cũ). Được so với câu / tên tiếng Anh; gợi ý hiện ở panel chi tiết, bộ lọc "Lỗi thuật ngữ".
 
 
-5. THUẬT NGỮ VÀ THAM CHIẾU
---------------------------
-  - Thao tác -> "Bảng thuật ngữ…": mở bảng thuật ngữ của nhóm (TSV, hoặc MuMain_VI_Glossary.csv cũ),
-    thêm / xoá thuật ngữ, lưu thành TSV để chia sẻ. Thuật ngữ được so với tên tiếng Anh.
-    Bộ lọc "Lệch thuật ngữ" tìm các tên chưa theo thuật ngữ (ví dụ "Đồng Helm" khi đã chốt Helm -> Mũ).
-  - Thao tác -> "Chọn file tham chiếu (TSV / CSV)…": hiện thêm cột tên gốc (ví dụ tên tiếng Nhật,
-    hoặc MuMain_VI_Item.csv - cột Nguon). Tìm kiếm cũng tìm trong cột này.
-
-
-6. DỮ LIỆU ĐƯỢC LƯU Ở ĐÂU
--------------------------
-Cạnh thư mục Data/Items có thư mục "Data/Items.mubmd" (game không đọc thư mục này):
-  backups/       bản cũ của từng file trước mỗi lần lưu (20 bản mới nhất cho mỗi file)
-  changes.tsv    nhật ký: ai đổi tên vật phẩm nào, từ gì sang gì
-  project.json   trạng thái / ghi chú của từng vật phẩm
-  draft.json     thay đổi chưa lưu (tắt ngang vẫn khôi phục được)
-
-
-7. XỬ LÝ SỰ CỐ
+6. XỬ LÝ SỰ CỐ
 --------------
-  - "Không tìm thấy dữ liệu vật phẩm": thư mục đã chọn không có Data/Items (hoặc Main.app trên
-    macOS). Client cũ chỉ có Item.bmd thì chưa dùng được bản này - hãy build MuMain mới.
+  - "Thư mục này không có gì để dịch": chọn repo MuMain, thư mục game (có Data/Items, hoặc Main.app
+    trên macOS), hoặc chính Localization / Data/Items. Client cũ chỉ có Item.bmd thì chưa dùng được.
   - "... không phải file vật phẩm hợp lệ": file JSON đó bị hỏng (game cũng không đọc được).
-  - "File đã bị thay đổi bên ngoài": Google Drive, người khác hoặc trình sửa vật phẩm của MuMain vừa
-    ghi file. Chọn "Ghi đè" (bản trên đĩa vẫn được backup), hoặc Huỷ rồi Tải lại.
-  - "file đang bị chương trình khác giữ": đóng game client / trình sửa của MuMain rồi lưu lại.
-  - Cổng 4817 đang bận: chương trình tự dùng cổng kế tiếp (xem địa chỉ in trong cửa sổ dòng lệnh).
+  - "file đang bị chương trình khác giữ": đóng game / trình sửa của MuMain rồi lưu lại.
+  - Cổng 4837 đang bận: chương trình tự dùng cổng kế tiếp (xem địa chỉ in trong cửa sổ console).
   - Lỡ tắt khi chưa lưu: mở lại thư mục, chương trình hỏi khôi phục bản nháp.
+
+
+7. NGÔN NGỮ GAME CHƯA CÓ TRONG DANH SÁCH
+----------------------------------------
+Danh sách ngôn ngữ của game (Options) được viết tay trong code MuMain. Khi ngôn ngữ đang mở chưa có
+ở đó, sẽ hiện badge đỏ "Chưa chọn được trong game": bấm vào để xem dòng cần thêm vào
+src/source/UI/NewUI/Options/NewUIOptionWindow.cpp (và tools/ResxGen/CppEmitter.cs), rồi build lại
+MuMain. Tool không bao giờ tự sửa các file đó. (Tên vật phẩm cũng hiện theo ngôn ngữ chọn ở đó.)
+
+
+8. CHUYỂN TỪ MURESX-EDITOR / MUBMD-EDITOR
+-----------------------------------------
+Lần đầu mở một thư mục cho một ngôn ngữ, dữ liệu làm việc của hai tool cũ được chuyển sang:
+  - MuResx-editor: Localization/.muresx/project-<ngôn ngữ>.json và draft-<ngôn ngữ>.json
+  - MuBMD-editor 2.x (tiếng Việt): Data/Items.mubmd/project.json và draft.json
+Gồm trạng thái, ghi chú, người dịch, tên gốc để gộp và thay đổi chưa lưu (được hỏi khôi phục như bình
+thường). Thư mục cũ được giữ nguyên (nhật ký và backup cũ vẫn ở đó); có thể xoá khi không cần nữa.
+Bản dịch cũ trong Item.bmd (MuBMD-editor 1.x): xuất ra TSV bằng bản 1.x rồi nhập ở đây.

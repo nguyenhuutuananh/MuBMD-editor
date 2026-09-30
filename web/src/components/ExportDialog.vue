@@ -3,22 +3,23 @@ import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { exportOpen, exportTsv, mySlots } from "@/composables/actions";
-import { exists } from "@/lib/search";
+import { exportOpen, exportTsv, myRows } from "@/composables/actions";
+import type { Row } from "@/lib/rows";
 import { useDocStore } from "@/stores/doc";
 
 const { t, n } = useI18n();
 const store = useDocStore();
-type Scope = "view" | "named" | "mine";
+type Scope = "view" | "all" | "mine";
 const scope = ref<Scope>("view");
 
-// Computed when the dialog opens (the lists do not change while it is open).
-const lists = computed(() => {
-  if (!exportOpen.value) return { view: [], named: [], mine: [] };
+// Computed when the dialog opens (the lists do not change while it is open). Keys only the
+// translation has are not exported (there is no English text to translate from).
+const lists = computed((): Record<Scope, Row[]> => {
+  if (!exportOpen.value) return { view: [], all: [], mine: [] };
   return {
-    view: store.visible.map((r) => r.slot),
-    named: store.rows.filter(exists).map((r) => r.slot),
-    mine: mySlots(),
+    view: store.visible.filter((r) => r.en !== null),
+    all: store.rows.filter((r) => r.en !== null),
+    mine: myRows(),
   };
 });
 watch(exportOpen, (open) => {
@@ -27,7 +28,7 @@ watch(exportOpen, (open) => {
 
 const options = computed(() => [
   { value: "view" as Scope, label: t("exportDialog.scopeView", { n: n(lists.value.view.length) }), count: lists.value.view.length },
-  { value: "named" as Scope, label: t("exportDialog.scopeNamed", { n: n(lists.value.named.length) }), count: lists.value.named.length },
+  { value: "all" as Scope, label: t("exportDialog.scopeAll", { n: n(lists.value.all.length) }), count: lists.value.all.length },
   { value: "mine" as Scope, label: t("exportDialog.scopeMine", { n: n(lists.value.mine.length) }), count: lists.value.mine.length },
 ]);
 const selected = computed(() => lists.value[scope.value]);

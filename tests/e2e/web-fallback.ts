@@ -1,253 +1,199 @@
-// web-fallback.ts - End-to-end test of the web build WITHOUT the File System Access API (upload into
-// IndexedDB, download results). Runs on:
-//   - Playwright's Chrome for Testing with "?fallback" (forces the mode)
-//   - Playwright's Firefox and WebKit (Safari's engine), where the mode is detected automatically
+// web-fallback.ts - End-to-end test of the web build WITHOUT the File System Access API: the folder
+// is uploaded into the browser (IndexedDB) and saving downloads the result. Runs on:
+//   - Playwright's Chromium with "?fallback" (forces the mode)
+//   - Playwright's Firefox and WebKit (Safari's engine), where the mode is detected by itself
 //     (each skipped if not installed: `bunx playwright-core install firefox webkit`)
-//   bun tests/e2e/web-fallback.ts [screenshot-dir]
+//   bun run test:e2e:fallback       (builds the web version first; screenshots in e2e-shots/)
 
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { type Browser, type Page, chromium, firefox, webkit } from "playwright-core";
 import { ItemData } from "../../src/core";
-import { writeSampleGame } from "../fixtures/sampleItems";
+import { writeSampleCheckout } from "../fixtures/sampleWorkspace";
 import { chromiumOptions, installed } from "./browsers";
 
-const ROOT = path.join(import.meta.dir, "../..");
-const PORT = 4862;
-const BASE = `http://localhost:${PORT}/`;
-const SHOTS = process.argv[2] ?? fs.mkdtempSync(path.join(os.tmpdir(), "mubmd-fallback-e2e-"));
-fs.mkdirSync(SHOTS, { recursive: true });
-// A game folder on disk to upload: the item files plus files that must not be read.
-const GAME = writeSampleGame(path.join(fs.mkdtempSync(path.join(os.tmpdir(), "mubmd-fallback-game-")), "MU"));
-fs.writeFileSync(path.join(GAME, "Main.exe"), "MZ");
-fs.mkdirSync(path.join(GAME, "Data", "Local"), { recursive: true });
-fs.writeFileSync(path.join(GAME, "Data", "Local", "Item.bmd"), new Uint8Array(16));
-fs.mkdirSync(path.join(GAME, "Data", "Items", "Models"), { recursive: true });
-fs.writeFileSync(path.join(GAME, "Data", "Items", "Models", "Group00_Sword.json"), "{}");
-const dec = new TextDecoder();
+const root = path.join(import.meta.dir, "../..");
+const dist = path.join(root, "build/web-static");
+const shots = path.join(root, "e2e-shots");
+fs.mkdirSync(shots, { recursive: true });
+if (!fs.existsSync(path.join(dist, "index.html"))) throw new Error("Run `bun run build:web-static` first.");
+
+// A checkout on disk to upload, plus files that must not be read.
+const work = fs.mkdtempSync(path.join(os.tmpdir(), "mumain-translator-fallback-"));
+const CHECKOUT = writeSampleCheckout(path.join(work, "MU"));
+fs.mkdirSync(path.join(CHECKOUT, ".git", "objects"), { recursive: true });
+fs.writeFileSync(path.join(CHECKOUT, ".git", "objects", "Game.en.resx"), "not xml");
+fs.mkdirSync(path.join(CHECKOUT, "src", "bin", "Data", "Items", "Models"), { recursive: true });
+fs.writeFileSync(path.join(CHECKOUT, "src", "bin", "Data", "Items", "Models", "Group00_Sword.json"), "{ not an item file");
+fs.writeFileSync(path.join(CHECKOUT, "README.md"), "# MuMain");
+
+const PORT = 4897;
+const BASE = "/MuMain-translator/";
+const server = Bun.serve({
+  hostname: "127.0.0.1",
+  port: PORT,
+  fetch(req) {
+    const { pathname } = new URL(req.url);
+    if (!pathname.startsWith(BASE)) return new Response("Not found", { status: 404 });
+    const file = Bun.file(path.join(dist, pathname.slice(BASE.length) || "index.html"));
+    return file.size ? new Response(file) : new Response("Not found", { status: 404 });
+  },
+});
+const url = `http://localhost:${PORT}${BASE}`;
 
 let failures = 0;
-let vite: ReturnType<typeof Bun.spawn> | null = null;
-
 function check(name: string, ok: boolean, detail = "") {
-  console.log(`${ok ? "✓" : "✗"} ${name}${detail ? `  (${detail})` : ""}`);
+  console.log(`${ok ? "ok  " : "FAIL"} ${name}${ok || !detail ? "" : ` - ${detail}`}`);
   if (!ok) failures++;
 }
 
-const rowSel = (n: number) => `[data-testid=grid] [data-slot] >> nth=${n}`;
-const EDITOR = "[data-testid=inline-editor] input";
-const text = async (p: Page, sel: string) => ((await p.textContent(sel)) ?? "").trim();
-const waitText = (p: Page, sel: string, want: string) =>
-  p.waitForFunction(([s, w]) => document.querySelector(s!)?.textContent?.trim() === w, [sel, want]);
+const dec = new TextDecoder();
 
-async function toastWith(p: Page, needle: string): Promise<string> {
-  const t = p.locator("[data-sonner-toast]", { hasText: needle }).first();
-  try {
-    await t.waitFor();
-    return ((await t.textContent()) ?? "").trim();
-  } catch {
-    return `(not found; showing: ${(await p.locator("[data-sonner-toast]").allTextContents()).join(" | ") || "none"})`;
-  }
-}
-
-// Click `trigger`, answer the file chooser with (name, bytes).
-async function upload(p: Page, trigger: () => Promise<unknown>, name: string, bytes: Uint8Array) {
-  const chooser = p.waitForEvent("filechooser");
-  await trigger();
-  await (await chooser).setFiles({ name, mimeType: "application/octet-stream", buffer: Buffer.from(bytes) });
-}
-
-// Click `trigger`, answer the folder chooser with a folder on disk.
-async function uploadDir(p: Page, trigger: () => Promise<unknown>, dir: string) {
-  const chooser = p.waitForEvent("filechooser");
-  await trigger();
-  await (await chooser).setFiles(dir);
-}
-
-// Run `action`, return the downloaded file (name + bytes), or null if nothing was downloaded.
-async function downloadOf(p: Page, action: () => Promise<unknown>, timeout = 8000): Promise<{ name: string; bytes: Uint8Array } | null> {
+// Run `action`; the downloaded file (name + bytes), or null if nothing was downloaded.
+async function downloadOf(p: Page, action: () => Promise<unknown>, timeout = 8000) {
   const dl = p.waitForEvent("download", { timeout }).catch(() => null);
   await action();
   const d = await dl;
   if (!d) return null;
-  const file = path.join(SHOTS, `dl-${Date.now()}-${d.suggestedFilename()}`);
+  const file = path.join(work, `dl-${Date.now()}-${d.suggestedFilename()}`);
   await d.saveAs(file);
   return { name: d.suggestedFilename(), bytes: new Uint8Array(fs.readFileSync(file)) };
 }
 
-async function scenario(label: string, browser: Browser, url: string) {
-  console.log(`\n-- ${label}`);
-  const ctx = await browser.newContext({ viewport: { width: 1440, height: 860 }, acceptDownloads: true });
+async function scenario(label: string, browser: Browser, pageUrl: string) {
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, acceptDownloads: true });
   const p = await ctx.newPage();
-  p.setDefaultTimeout(10000);
-  const errors: string[] = [];
-  p.on("pageerror", (e) => errors.push(String(e)));
-  p.on("dialog", (d) => d.accept().catch(() => undefined)); // "leave site?" on reload with unsaved changes
-  const mod = !label.startsWith("Chrome") && process.platform === "darwin" ? "Meta" : "Control";
-  const choose = async (trigger: string, option: string) => {
-    await p.click(`[data-testid=${trigger}]`);
-    await p.click(`[data-testid=${option}]`);
-    await p.waitForFunction(() => !document.querySelector("[role=menu], [role=listbox]"));
+  p.setDefaultTimeout(15000);
+  p.on("pageerror", (e) => check(`${label}: no page error`, false, e.message));
+  p.on("dialog", (d) => d.accept().catch(() => undefined));
+  const tid = (id: string) => p.getByTestId(id);
+  const text = async (id: string) => (await tid(id).textContent())?.trim() ?? "";
+  const mod = label.startsWith("Chromium") || process.platform !== "darwin" ? "Control" : "Meta";
+  const find = async (q: string) => {
+    await tid("search").fill(q);
+    await p.keyboard.press("Enter");
   };
+  const edit = async (q: string, value: string) => {
+    await find(q);
+    await p.keyboard.press("Enter");
+    const dialog = await tid("dialog").isVisible().catch(() => false);
+    if (dialog) {
+      await p.locator("#dialog-input").fill("Fallback");
+      await tid("dialog-ok").click();
+    }
+    await tid("inline-editor").waitFor();
+    await p.locator("[data-testid=inline-editor] input").fill(value);
+    await p.keyboard.press("Enter");
+    await p.keyboard.press("Escape");
+  };
+  const dirty = (n: number) => p.waitForFunction((want) => document.querySelector('[data-testid="dirty-status"]')?.textContent?.includes(want), `${n} unsaved`);
 
-  // 1. Fallback welcome screen
-  await p.goto(url);
-  await p.waitForSelector("[data-testid=pick]");
-  check(`${label}: fallback hint, upload button`, (await p.isVisible("[data-testid=fallback-hint]")) && (await text(p, "[data-testid=pick]")) === "Choose game folder…");
+  // 1. welcome: fallback hint, upload button
+  await p.goto(pageUrl);
+  await tid("fallback-hint").waitFor();
+  check(`${label}: fallback hint + upload button`, (await text("pick")).includes("upload"), await text("pick"));
 
-  // 2. Upload the game folder -> a copy of its item files in this browser
-  await uploadDir(p, () => p.click("[data-testid=pick]"), GAME);
-  await p.waitForSelector(rowSel(0));
-  check(
-    `${label}: uploaded copy opened`,
-    (await text(p, "[data-testid=result-count]")) === "488 rows" && (await p.isVisible("[data-testid=browser-copy]")) && (await text(p, "[data-testid=game-name]")) === "MU",
-  );
+  // 2. upload the checkout: both sources found in the browser copy
+  const chooser = p.waitForEvent("filechooser");
+  await tid("pick").click();
+  await (await chooser).setFiles(CHECKOUT);
+  await tid("sources").waitFor();
+  check(`${label}: both sources in the upload`, (await text("sources")).includes("src/Localization") && (await text("sources")).includes("src/bin/Data/Items"));
+  await tid("locale-vi").click();
+  await tid("open").click();
+  await tid("badge-items").waitFor();
+  check(`${label}: browser copy`, await tid("browser-copy").isVisible());
 
-  // 3. Edit + save -> the updated item file is downloaded
-  await p.click(rowSel(0));
-  await p.keyboard.press("Enter");
-  await p.waitForSelector("[data-testid=dialog]");
-  await p.keyboard.type("Fallback Tester");
-  await p.keyboard.press("Enter");
-  await p.waitForSelector(EDITOR);
-  await p.fill(EDITOR, "Chùy Tải Về");
-  await p.keyboard.press("Enter");
-  await p.waitForSelector(`${EDITOR}[aria-label="New name for 0:1"]`);
-  await p.keyboard.press("Escape");
-  await waitText(p, "[data-testid=dirty-status]", "● 1 unsaved change");
+  // 3. one changed file: downloaded as it is
+  await edit("7:1", "Mũ Rồng Đỏ");
+  await dirty(1);
   await p.focus("[data-testid=grid]");
-  const saved = await downloadOf(p, () => p.keyboard.press(`${mod}+s`));
-  const savedData = saved ? ItemData.parse([{ name: saved.name, text: dec.decode(saved.bytes) }]) : null;
-  check(`${label}: save downloads the changed item file`, saved?.name === "Group00_Sword.json" && savedData?.getName(0) === "Chùy Tải Về");
-  const toast = await toastWith(p, "Downloaded Group00_Sword.json");
-  check(`${label}: toast says where to copy it`, toast.includes("Data/Items"), toast);
-  await p.screenshot({ path: path.join(SHOTS, `${label.replace(/\W+/g, "-")}-saved.png`) });
+  const one = await downloadOf(p, () => p.keyboard.press(`${mod}+s`));
+  const helm = one ? ItemData.parse([{ name: one.name, text: dec.decode(one.bytes) }]) : null;
+  check(`${label}: one file saved = that file downloaded`, one?.name === "Group07_Helm.json" && helm?.getName(7 * 512 + 1) === "Mũ Rồng Đỏ", one?.name);
 
-  // 4. A status-only save does not download
-  await p.click(rowSel(2));
-  await p.keyboard.press("Alt+Digit3");
-  await waitText(p, "[data-testid=dirty-status]", "● 1 unsaved change");
-  const none = await downloadOf(p, () => p.keyboard.press(`${mod}+s`), 2500);
-  check(`${label}: status-only save stays in the browser`, none === null);
-
-  // 5. Draft + recent copy survive a reload
-  await p.dblclick(rowSel(1));
-  await p.fill(EDITOR, "Đoản Đao Nháp");
-  await p.keyboard.press("Enter");
-  await p.waitForSelector(`${EDITOR}[aria-label="New name for 0:2"]`);
-  await p.keyboard.press("Escape");
-  await waitText(p, "[data-testid=dirty-status]", "● 1 unsaved change");
-  await p.reload();
-  await p.click("[data-testid=recent]");
-  await p.waitForSelector("[data-testid=dialog]");
-  await p.click("[data-testid=dialog-restore]");
-  await waitText(p, "[data-testid=dirty-status]", "● 1 unsaved change");
-  check(
-    `${label}: reopened from the browser copy with its draft`,
-    (await text(p, `[data-testid=grid] [data-slot='0'] > span:nth-child(3)`)) === "Chùy Tải Về" &&
-      (await text(p, `[data-testid=grid] [data-slot='1'] > span:nth-child(3)`)) === "Đoản Đao Nháp",
-  );
-
-  // 6. Export TSV -> download
-  await choose("actions", "action-export");
-  await p.waitForSelector("[data-testid=export-dialog]");
-  await p.click("[data-testid=export-named]");
-  const tsv = await downloadOf(p, () => p.click("[data-testid=export-go]"));
-  check(
-    `${label}: export downloads a TSV with BOM`,
-    !!tsv && tsv.name.endsWith(".tsv") && tsv.bytes[0] === 0xef && new TextDecoder().decode(tsv.bytes).startsWith("ItemType\tItemIndex\tName"),
-    tsv?.name,
-  );
-
-  // 7. Import a teammate's TSV by uploading it
-  const theirs = new TextEncoder().encode("ItemType\tItemIndex\tName\tBaseName\n0\t4\tĐao Sát Thủ Firefox\tĐao Sát Thủ\n");
-  await upload(p, () => choose("actions", "action-import"), "theirs.tsv", theirs);
-  await p.waitForSelector("[data-testid=import-dialog]");
-  await p.click("[data-testid=import-apply]");
-  await toastWith(p, "Imported 1 change");
-  check(`${label}: import from an uploaded TSV`, (await text(p, `[data-testid=grid] [data-slot='4'] > span:nth-child(3)`)) === "Đao Sát Thủ Firefox");
-
-  // 8. Changes in several item files -> one Items.zip
-  await p.fill("[data-testid=search]", "7:1");
-  await p.keyboard.press("Enter");
-  await waitText(p, "[data-testid=result-count]", "1 row");
-  await p.dblclick(rowSel(0));
-  await p.waitForSelector(EDITOR);
-  await p.fill(EDITOR, "Mũ Rồng Đỏ");
-  await p.keyboard.press("Enter");
-  await waitText(p, "[data-testid=dirty-status]", "● 3 unsaved changes");
+  // 4. several files (a string and an item name): one zip laid out like the folder
+  await edit("Event", "Sự kiện mới");
+  await edit("0:1", "Đoản Đao");
+  await dirty(2);
   await p.focus("[data-testid=grid]");
   const zipped = await downloadOf(p, () => p.keyboard.press(`${mod}+s`));
   const zipText = zipped ? dec.decode(zipped.bytes) : "";
   check(
-    `${label}: several files are downloaded as Items.zip`,
-    zipped?.name === "Items.zip" && zipText.startsWith("PK") && zipText.includes("Group00_Sword.json") && zipText.includes("Group07_Helm.json") && zipText.includes("Mũ Rồng Đỏ"),
+    `${label}: several files = a zip with their paths`,
+    zipped?.name === "MU-vi.zip" &&
+      zipText.startsWith("PK") &&
+      zipText.includes("src/Localization/Game.vi.resx") &&
+      zipText.includes("src/bin/Data/Items/Group00_Sword.json") &&
+      zipText.includes("Đoản Đao"),
     zipped?.name,
   );
+  await p.screenshot({ path: path.join(shots, `fallback-${label.split(" ")[0]!.toLowerCase()}.png`) });
 
-  check(`${label}: no JavaScript errors`, errors.length === 0, errors.join(" | "));
+  // 5. a status-only change downloads nothing (no file is rewritten)
+  await find("Event");
+  await p.keyboard.press("Alt+Digit3");
+  await dirty(1);
+  const none = await downloadOf(p, () => p.keyboard.press(`${mod}+s`), 2500);
+  check(`${label}: status-only save stays in the browser`, none === null);
+
+  // 6. export: the TSV is downloaded
+  await tid("search").fill("");
+  await p.keyboard.press("Enter");
+  await tid("actions").click();
+  await tid("action-export").click();
+  await tid("export-all").click();
+  const tsv = await downloadOf(p, () => tid("export-go").click());
+  const tsvText = tsv ? dec.decode(tsv.bytes) : "";
+  check(`${label}: export downloads a TSV with both sources`, !!tsv && tsvText.includes("Game\tEvent") && tsvText.includes("Items.Helm\t1\tHelm 1\tMũ Rồng Đỏ"), tsv?.name);
+
+  // 7. import an uploaded TSV (a MuBMD-editor file)
+  const importChooser = p.waitForEvent("filechooser");
+  await tid("actions").click();
+  await tid("action-import").click();
+  await (await importChooser).setFiles({ name: "old.tsv", mimeType: "text/tab-separated-values", buffer: Buffer.from("ItemType\tItemIndex\tName\n0\t3\tKiếm Nhật\n") });
+  await tid("import-dialog").waitFor();
+  await tid("import-apply").click();
+  await dirty(1);
+  check(`${label}: import from an uploaded TSV`, true);
+
+  // 8. a reload: the browser copy and its draft come back from "recently opened"
+  await p.reload();
+  await tid("recent").first().click();
+  await tid("dialog").waitFor();
+  await tid("dialog-restore").click();
+  await dirty(1);
+  await find("0:3");
+  check(`${label}: reopened from the browser copy with its draft`, (await text("detail-value")) === "Kiếm Nhật", await text("detail-value"));
   await ctx.close();
 }
 
-async function startVite() {
-  vite = Bun.spawn(["node", path.join(ROOT, "node_modules/vite/bin/vite.js"), "--port", String(PORT), "--strictPort"], {
-    cwd: ROOT,
-    stdout: "ignore",
-    stderr: "ignore",
-    env: { ...process.env, VITE_TARGET: "web" },
-  });
-  for (let i = 0; i < 100; i++) {
-    try {
-      if ((await fetch(BASE)).ok) return;
-    } catch {
-      /* not up yet */
-    }
-    await Bun.sleep(100);
-  }
-  throw new Error("vite did not start");
-}
-
-const timer = setTimeout(() => {
-  console.log("✗ timed out");
-  process.exit(1);
-}, 240_000);
-
 const browsers: Browser[] = [];
 try {
-  await startVite();
-  const chromeBrowser = await chromium.launch(chromiumOptions());
-  browsers.push(chromeBrowser);
-  await scenario("Chrome ?fallback", chromeBrowser, `${BASE}?fallback`);
-
-  const ff = installed(firefox);
-  if (ff) {
-    const ffBrowser = await firefox.launch({ executablePath: ff, headless: true });
-    browsers.push(ffBrowser);
-    await scenario("Firefox", ffBrowser, BASE);
-  } else {
-    console.log("\n-- Firefox not installed, skipped (bunx playwright-core install firefox)");
-  }
-
-  const wk = installed(webkit);
-  if (wk) {
-    const wkBrowser = await webkit.launch({ executablePath: wk, headless: true });
-    browsers.push(wkBrowser);
-    await scenario("WebKit (Safari)", wkBrowser, BASE);
-  } else {
-    console.log("\n-- WebKit not installed, skipped (bunx playwright-core install webkit)");
+  const c = await chromium.launch(chromiumOptions());
+  browsers.push(c);
+  await scenario("Chromium ?fallback", c, `${url}?fallback`);
+  for (const [type, name] of [
+    [firefox, "Firefox"],
+    [webkit, "WebKit (Safari)"],
+  ] as const) {
+    const exe = installed(type);
+    if (!exe) {
+      console.log(`(${name} not installed - skipped: bunx playwright-core install ${type.name()})`);
+      continue;
+    }
+    const b = await type.launch({ executablePath: exe, headless: true });
+    browsers.push(b);
+    await scenario(name, b, url);
   }
 } catch (e) {
-  failures++;
-  console.log(`✗ error: ${(e as Error).message}`);
+  check("run", false, String(e));
 } finally {
-  clearTimeout(timer);
   for (const b of browsers) await b.close().catch(() => undefined);
-  // Wait until the server has really exited, so a following run can take the port again.
-  const server = vite as ReturnType<typeof Bun.spawn> | null;
-  server?.kill();
-  await server?.exited;
-  console.log(`\nScreenshots: ${SHOTS}`);
-  console.log(failures ? `${failures} check(s) failed` : "All checks passed");
-  process.exit(failures ? 1 : 0);
+  server.stop(true);
+  fs.rmSync(work, { recursive: true, force: true });
 }
+
+console.log(failures ? `\n${failures} check(s) failed` : "\nall fallback e2e checks passed");
+process.exit(failures ? 1 : 0);

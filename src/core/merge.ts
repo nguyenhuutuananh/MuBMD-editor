@@ -1,47 +1,53 @@
-// merge.ts - 3-way merge of an imported translation TSV into the open file. Pure logic.
+// merge.ts - 3-way merge of an imported translation TSV into the open folder. Pure logic.
 //
-//   base   = BaseName column: the name the other translator started from
-//   ours   = the current name here (including unsaved edits)
-//   theirs = the Name column
+//   base   = BaseText column: the translation the other translator started from ("" = none)
+//   ours   = the current translation here (including unsaved edits; none = "")
+//   theirs = the Translation column
 //
 // Only they changed it (ours == base)    -> "apply", taken by default
 // Only we changed it (theirs == base)    -> skipped (ours is newer)
 // Both changed it differently            -> "conflict", kept ours by default
-// No BaseName column (older TSV files)   -> "apply" with base = null, taken by default
-// Same name, different status            -> "status", taken if theirs is further along
+// No BaseText column (e.g. a sheet)      -> "apply" with base = null, taken by default
+// Same text, different status            -> "status", taken if theirs is further along
+// An empty Translation cell never removes a translation; keys not in the en file are skipped.
+// A text with an error-level check (printf placeholders...) is listed, but not taken by default.
+// A new text marked "untranslated" in the file (a row exported empty, then filled in a sheet)
+// comes in as "translated".
 
-import { checkName, type NameIssue } from "./nameCodec";
+import { isXmlChar } from "./xml";
 import { type Status, type TsvRow, statusRank } from "./tsv";
+import { SEVERITY, type ValueIssue, checkValue } from "./validate";
 
 export interface OursView {
-  exists: boolean; // false: the open data has no item in this slot
-  name: string; // "" = not translated
+  en: string; // the en text of the key
+  value: string | null; // null = not translated here
   status: Status;
+  check?: (en: string, text: string) => ValueIssue[]; // the checks of this kind of text (default: checkValue)
 }
 
 export type MergeKind = "apply" | "conflict" | "status" | "invalid";
 
 export interface MergeItem {
-  slot: number;
-  itemType: number;
-  itemIndex: number;
+  group: string;
+  key: string;
   line: number;
   kind: MergeKind;
-  ours: string;
+  english: string;
+  ours: string | null;
   theirs: string;
   base: string | null;
   oursStatus: Status;
   theirsStatus: Status | null;
   translator: string | null;
   take: boolean; // default choice shown in the preview
-  issue: NameIssue | null; // why an "invalid" row cannot be applied
+  errors: ValueIssue[]; // error-level checks of `theirs` against en
 }
 
 export interface MergeCounts {
   same: number; // identical, nothing to do
   newerHere: number; // only we changed it
-  emptyName: number; // Name cell empty -> ignored (never clears a name)
-  noItem: number; // no item in that slot here -> ignored
+  empty: number; // Translation cell empty -> ignored (never removes a translation)
+  unknown: number; // group / key not in the en files -> ignored
   apply: number;
   conflict: number;
   status: number;
@@ -53,57 +59,58 @@ export interface MergeAnalysis {
   counts: MergeCounts;
 }
 
-export function analyzeImport(rows: TsvRow[], ours: (slot: number) => OursView): MergeAnalysis {
-  const counts: MergeCounts = { same: 0, newerHere: 0, emptyName: 0, noItem: 0, apply: 0, conflict: 0, status: 0, invalid: 0 };
+// A character a .resx file cannot hold (XML 1.0).
+function hasInvalidChar(s: string): boolean {
+  for (const ch of s) if (!isXmlChar(ch.codePointAt(0)!)) return true;
+  return false;
+}
+
+export function analyzeImport(rows: TsvRow[], ours: (group: string, key: string) => OursView | null): MergeAnalysis {
+  const counts: MergeCounts = { same: 0, newerHere: 0, empty: 0, unknown: 0, apply: 0, conflict: 0, status: 0, invalid: 0 };
   const items: MergeItem[] = [];
 
   for (const row of rows) {
-    const o = ours(row.slot);
-    const theirs = row.name;
-    if (!theirs) {
-      counts.emptyName++;
+    const theirs = row.value;
+    if (theirs === "") {
+      counts.empty++;
       continue;
     }
-    if (!o.exists) {
-      counts.noItem++;
+    const o = ours(row.group, row.key);
+    if (!o) {
+      counts.unknown++;
       continue;
     }
-    const item = (kind: MergeKind, take: boolean, issue: NameIssue | null = null): MergeItem => ({
-      slot: row.slot,
-      itemType: row.itemType,
-      itemIndex: row.itemIndex,
+    const errors = (o.check ?? checkValue)(o.en, theirs).filter((i) => SEVERITY[i.code] === "error");
+    const item = (kind: MergeKind, take: boolean): MergeItem => ({
+      group: row.group,
+      key: row.key,
       line: row.line,
       kind,
-      ours: o.name,
+      english: o.en,
+      ours: o.value,
       theirs,
       base: row.base ?? null,
       oursStatus: o.status,
-      theirsStatus: row.status ?? null,
+      theirsStatus: kind !== "status" && row.status === "untranslated" ? "translated" : (row.status ?? null),
       translator: row.translator ?? null,
-      take,
-      issue,
+      take: take && errors.length === 0,
+      errors,
     });
 
-    const check = checkName(theirs);
-    if (!check.ok) {
-      items.push(item("invalid", false, check.issues.find((i) => i.severity === "error") ?? null));
+    if (hasInvalidChar(theirs)) {
+      items.push({ ...item("invalid", false), take: false });
       counts.invalid++;
       continue;
     }
-
-    const oursName = o.name;
-    if (check.normalized === oursName) {
+    if (theirs === o.value) {
       if (row.status && row.status !== o.status) {
         items.push(item("status", statusRank(row.status) > statusRank(o.status)));
         counts.status++;
       } else counts.same++;
       continue;
     }
-
-    if (row.base === undefined) {
-      items.push(item("apply", true));
-      counts.apply++;
-    } else if (row.base === oursName) {
+    const oursText = o.value ?? "";
+    if (row.base === undefined || row.base === oursText) {
       items.push(item("apply", true));
       counts.apply++;
     } else if (row.base === theirs) {
@@ -113,7 +120,5 @@ export function analyzeImport(rows: TsvRow[], ours: (slot: number) => OursView):
       counts.conflict++;
     }
   }
-
-  items.sort((a, b) => a.slot - b.slot);
   return { items, counts };
 }

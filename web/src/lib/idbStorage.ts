@@ -1,13 +1,13 @@
 // idbStorage.ts - Storage kept in IndexedDB, for browsers without the File System Access API
 // (Firefox, Safari, Brave by default). Files are uploaded into it and downloaded out of it
-// (see fileTransfer.ts); the Session and its side data (backups, change log, project.json, draft)
-// work unchanged. Falls back to memory if IndexedDB is unavailable (e.g. some private modes).
+// (see fileTransfer.ts); the Session and its side data (backups, change log, project, draft) work
+// unchanged. Falls back to memory if IndexedDB is unavailable (e.g. some private modes).
 
 import { AppError } from "../../../src/core/errors";
 import { normalize, subDirs } from "../../../src/session/memoryStorage";
 import type { Storage } from "../../../src/session/storage";
 
-const DB_NAME = "mubmd-files";
+const DB_NAME = "mumain-translator-files";
 const STORE = "files";
 
 export class IdbStorage implements Storage {
@@ -74,6 +74,19 @@ export class IdbStorage implements Storage {
   async rename(from: string, to: string): Promise<void> {
     await this.writeAtomic(to, await this.read(from));
     await this.remove(from);
+  }
+
+  // A folder exists as soon as a file lives in it.
+  async isDirectory(p: string): Promise<boolean> {
+    const dir = normalize(p);
+    const prefix = dir === "/" ? "/" : `${dir}/`;
+    return (await this.keys()).some((k) => k.startsWith(prefix));
+  }
+
+  // Every stored path below `dir` (for replacing an uploaded folder).
+  async filesBelow(dir: string): Promise<string[]> {
+    const prefix = `${normalize(dir)}/`;
+    return (await this.keys()).filter((k) => k.startsWith(prefix));
   }
 
   private async keys(): Promise<string[]> {

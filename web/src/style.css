@@ -4,7 +4,7 @@
 /* Dark mode via the .dark class on <html> (App.vue sets it from the OS setting). */
 @custom-variant dark (&:is(.dark *));
 
-/* shadcn-vue palette (stone base) + the amber accent of the original UI. */
+/* shadcn-vue palette (stone base) + a teal accent (MuBMD-editor uses amber: the two tools look apart). */
 :root {
   --radius: 0.5rem;
   --background: oklch(0.975 0.004 85);
@@ -13,27 +13,27 @@
   --card-foreground: oklch(0.2 0.006 60);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.2 0.006 60);
-  --primary: oklch(0.52 0.12 60);
+  --primary: oklch(0.5 0.08 200);
   --primary-foreground: oklch(0.99 0 0);
   --secondary: oklch(0.945 0.006 85);
   --secondary-foreground: oklch(0.25 0.006 60);
   --muted: oklch(0.945 0.006 85);
   --muted-foreground: oklch(0.5 0.01 70);
-  --accent: oklch(0.945 0.02 75);
+  --accent: oklch(0.945 0.02 200);
   --accent-foreground: oklch(0.25 0.006 60);
   --destructive: oklch(0.55 0.2 27);
   --border: oklch(0.89 0.008 80);
   --input: oklch(0.89 0.008 80);
-  --ring: oklch(0.62 0.13 62);
+  --ring: oklch(0.6 0.09 200);
 
   /* tool-specific colors */
-  --brand: oklch(0.52 0.12 60);
-  --brand-soft: oklch(0.94 0.04 75);
+  --brand: oklch(0.5 0.08 200);
+  --brand-soft: oklch(0.94 0.03 200);
   --warn: oklch(0.58 0.12 80);
   --ok: oklch(0.52 0.12 150);
   --ok-soft: oklch(0.94 0.04 150);
   --bad-soft: oklch(0.94 0.04 25);
-  --row-selected: oklch(0.955 0.035 78);
+  --row-selected: oklch(0.955 0.03 200);
 }
 
 .dark {
@@ -43,26 +43,26 @@
   --card-foreground: oklch(0.94 0.004 85);
   --popover: oklch(0.215 0.004 60);
   --popover-foreground: oklch(0.94 0.004 85);
-  --primary: oklch(0.76 0.12 70);
-  --primary-foreground: oklch(0.2 0.03 60);
+  --primary: oklch(0.76 0.09 200);
+  --primary-foreground: oklch(0.2 0.03 200);
   --secondary: oklch(0.27 0.005 60);
   --secondary-foreground: oklch(0.94 0.004 85);
   --muted: oklch(0.27 0.005 60);
   --muted-foreground: oklch(0.7 0.01 80);
-  --accent: oklch(0.3 0.02 65);
+  --accent: oklch(0.3 0.02 200);
   --accent-foreground: oklch(0.94 0.004 85);
   --destructive: oklch(0.68 0.17 25);
   --border: oklch(0.33 0.006 60);
   --input: oklch(0.36 0.006 60);
-  --ring: oklch(0.76 0.12 70);
+  --ring: oklch(0.76 0.09 200);
 
-  --brand: oklch(0.76 0.12 70);
-  --brand-soft: oklch(0.3 0.05 65);
+  --brand: oklch(0.76 0.09 200);
+  --brand-soft: oklch(0.3 0.04 200);
   --warn: oklch(0.8 0.13 85);
   --ok: oklch(0.78 0.12 150);
   --ok-soft: oklch(0.3 0.04 150);
   --bad-soft: oklch(0.3 0.05 25);
-  --row-selected: oklch(0.3 0.045 65);
+  --row-selected: oklch(0.3 0.04 200);
 }
 
 @theme inline {

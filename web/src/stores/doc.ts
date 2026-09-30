@@ -1,33 +1,44 @@
-// doc.ts - State of the open game folder + API calls. Flows with dialogs (confirmations, conflicts...) live in composables/actions.ts.
+// doc.ts - State of the open folder + API calls. Flows with dialogs / errors live in composables/actions.ts.
 //
-// The 8192 rows live in a shallowRef (no deep reactivity). An edit patches the row in place and
-// bumps `rev`, so components reading `rev` re-render.
+// The rows live in a shallowRef (no deep reactivity): ~3700 plain objects. An edit replaces the
+// changed rows in place and bumps `rev`; the filtered list is NOT recomputed then, so the edited
+// row does not jump away from under the cursor.
 
 import { defineStore } from "pinia";
-import { reactive, ref, shallowRef, watch } from "vue";
+import { computed, reactive, ref, shallowRef, watch } from "vue";
+import { SEVERITY } from "../../../src/core/validate";
 import type {
   DocStatus,
   DraftInfo,
-  FileInfo,
+  WorkspaceListing,
   GlossaryEntry,
   GlossaryInfo,
-  ImportSource,
+  GroupInfo,
+  Issue,
+  KeyRef,
   MutationResponse,
-  ReferenceInfo,
+  OpenInfo,
+  RegistrationInfo,
   SaveRequest,
   Status,
 } from "../../../src/shared/api";
 import { api } from "@/lib/api";
-import { type Filter, PROBLEMS, type Row, SCOPES, applyFilter, patchRow, setReference, toRows } from "@/lib/search";
+import { type Filter, type Row, applyFilter, toRow, toRows } from "@/lib/rows";
 import { KEYS, load, save } from "@/lib/storage";
 
-export interface EditorState {
-  slot: number;
-  value: string;
-  initial: string;
+export interface RecentEntry {
+  path: string;
+  locale: string;
+  reference: string | null;
 }
 
-// Edits are sent to the server one at a time, in the order the user made them.
+export interface EditorState {
+  id: number;
+  value: string;
+  initial: string; // "" for a missing translation
+}
+
+// Changes are sent to the server one at a time, in the order the user made them.
 let chain: Promise<unknown> = Promise.resolve();
 export function serial<T>(fn: () => Promise<T>): Promise<T> {
   const run = chain.then(fn, fn);
@@ -35,49 +46,62 @@ export function serial<T>(fn: () => Promise<T>): Promise<T> {
   return run;
 }
 
-let refInfo: ReferenceInfo | null = null; // full reference data, kept out of Vue reactivity
+const rowKey = (group: number, key: string) => `${group}\u0000${key}`;
 
 export const useDocStore = defineStore("doc", () => {
   const view = ref<"welcome" | "workspace">("welcome");
-  const file = ref<FileInfo | null>(null);
+  const listing = shallowRef<WorkspaceListing | null>(null); // welcome step 2: choose the locale
+  const open = shallowRef<OpenInfo | null>(null);
+  const groups = shallowRef<GroupInfo[]>([]);
   const rows = shallowRef<Row[]>([]);
   const visible = shallowRef<Row[]>([]);
   const rev = ref(0);
+  const looseIssues = shallowRef<Issue[]>([]);
   const status = ref<DocStatus>({ dirtyCount: 0, canUndo: false, canRedo: false });
-  const selectedSlot = ref<number | null>(null);
+  const selectedId = ref<number | null>(null);
   const editor = ref<EditorState | null>(null);
   const translator = ref(load<string>(KEYS.translator, ""));
-  // (Item.bmd paths remembered by versions before 2.0 cannot be opened any more.)
-  const recent = ref(load<string[]>(KEYS.recent, []).filter((p) => !/\.bmd$/i.test(p)));
-  const reference = ref<{ path: string; fileName: string; count: number } | null>(null);
-  const rebased = ref(false);
+  const recent = ref(load<RecentEntry[]>(KEYS.recent, []));
   const glossary = shallowRef<GlossaryInfo | null>(null);
+  const registration = shallowRef<RegistrationInfo | null>(null);
   const glossaryEntries = () => glossary.value?.entries ?? [];
+  let index = new Map<string, number>(); // group + key -> row id
 
   const saved = load<Partial<Filter>>(KEYS.filter, {});
   const filter = reactive<Filter>({
+    source: saved.source === "resx" || saved.source === "items" ? saved.source : null,
     group: typeof saved.group === "number" ? saved.group : null,
-    scope: saved.scope && SCOPES.includes(saved.scope) ? saved.scope : "items",
-    problem: saved.problem && PROBLEMS.includes(saved.problem) ? saved.problem : "any",
+    state: saved.state ?? "any",
     status: saved.status ?? "any",
+    severity: saved.severity ?? "any",
     query: "",
   });
 
-  // Re-filter when the filter changes. After an edit we do NOT re-filter (only bump rev) so the edited row does not jump away.
+  const selected = computed(() => {
+    void rev.value;
+    return selectedId.value === null ? null : (rows.value[selectedId.value] ?? null);
+  });
+  // Errors in the en files: the MuMain build stops (whatever the translation says).
+  const buildErrors = computed(
+    () =>
+      rows.value.filter((r) => r.issues.some(([code, locale]) => locale === "en" && SEVERITY[code] === "error")).length +
+      looseIssues.value.filter((i) => i.severity === "error").length,
+  );
+
   function refilter() {
     editor.value = null;
     visible.value = applyFilter(rows.value, filter, glossaryEntries());
   }
   watch(
-    () => [filter.group, filter.scope, filter.problem, filter.status] as const,
-    ([group, scope, problem, status]) => {
-      save(KEYS.filter, { group, scope, problem, status });
+    () => [filter.source, filter.group, filter.state, filter.status, filter.severity] as const,
+    ([source, group, state, status, severity]) => {
+      save(KEYS.filter, { source, group, state, status, severity });
       refilter();
     },
   );
   watch(() => filter.query, refilter);
   watch(glossary, () => {
-    if (filter.problem === "glossary") refilter();
+    if (filter.severity === "glossary") refilter();
     rev.value++;
   });
 
@@ -95,74 +119,55 @@ export const useDocStore = defineStore("doc", () => {
 
   const rememberedGlossary = () => load<string | null>(KEYS.glossary, null);
 
+  function rememberRecent(entry: RecentEntry) {
+    recent.value = [entry, ...recent.value.filter((r) => r.path !== entry.path)].slice(0, 6);
+    save(KEYS.recent, recent.value);
+  }
+
   function setTranslator(name: string) {
     translator.value = name;
     save(KEYS.translator, name);
   }
 
-  function rememberRecent(path: string) {
-    recent.value = [path, ...recent.value.filter((p) => p !== path)].slice(0, 6);
-    save(KEYS.recent, recent.value);
-  }
-
-  // Returns the pending draft (if any) so the caller can ask the user.
-  // keepReference: re-attach the loaded reference names (after a save); false after opening a file,
-  // because the server forgets the reference on open and the caller loads the remembered one again.
-  async function loadItems(keepReference = true): Promise<DraftInfo | null> {
-    editor.value = null;
-    const res = await api.items();
-    file.value = res.file;
-    rows.value = toRows(res.items, res.edits, res.records, res.dirty);
+  // Returns the draft of an earlier session, if any, so the caller can offer it.
+  async function loadRows(): Promise<DraftInfo | null> {
+    const res = await api.rows();
+    open.value = res.open;
+    groups.value = res.groups;
+    rows.value = toRows(res.rows, res.groups);
+    index = new Map(rows.value.map((r) => [rowKey(r.group, r.key), r.id]));
+    looseIssues.value = res.issues;
     status.value = res.status;
-    rebased.value = res.rebased;
-    applyReferenceNames(keepReference ? refInfo : null);
-    if (selectedSlot.value !== null && !rows.value[selectedSlot.value]) selectedSlot.value = null;
+    if (filter.group !== null && filter.group >= res.groups.length) filter.group = null;
+    if (filter.source !== null && !res.groups.some((g) => g.source === filter.source)) filter.source = null;
+    if (selectedId.value !== null && !rows.value[selectedId.value]) selectedId.value = null;
     view.value = "workspace";
     refilter();
     rev.value++;
+    // Not essential: a failure only hides the "not selectable in the game" notice.
+    api.registration().then(
+      (r) => (registration.value = r),
+      () => (registration.value = null),
+    );
     return res.draft;
   }
 
-  async function open(path: string, discard = false): Promise<DraftInfo | null> {
-    const { file: opened } = await api.open(path, discard);
-    rememberRecent(opened?.root ?? path);
-    return loadItems(false);
-  }
-
   function applyMutation(res: MutationResponse) {
-    for (const st of res.changed) {
-      const row = rows.value[st.item[0]];
-      if (row) patchRow(row, st);
+    const list = rows.value;
+    for (const t of res.changed) {
+      const k = rowKey(t[0], t[1]);
+      const at = index.get(k);
+      if (at !== undefined) list[at] = toRow(t, at, res.groups);
+      else {
+        index.set(k, list.length);
+        list.push(toRow(t, list.length, res.groups));
+      }
     }
+    // The filtered list holds the old objects: swap in the new ones, same order.
+    visible.value = visible.value.map((r) => list[r.id] ?? r);
+    groups.value = res.groups;
     status.value = res.status;
     rev.value++;
-  }
-
-  // Reference files are remembered per item folder in this browser.
-  function applyReferenceNames(info: ReferenceInfo | null) {
-    refInfo = info;
-    for (const r of rows.value) if (r.reference) setReference(r, "");
-    if (info) for (const [slot, name] of info.entries) if (rows.value[slot]) setReference(rows.value[slot]!, name);
-    reference.value = info ? { path: info.path, fileName: info.fileName, count: info.entries.length } : null;
-    rev.value++;
-  }
-
-  function rememberReference(path: string | null) {
-    const f = file.value;
-    if (!f) return;
-    const all = load<Record<string, string>>(KEYS.references, {});
-    if (path) all[f.path] = path;
-    else delete all[f.path];
-    save(KEYS.references, all);
-  }
-
-  const referenceFor = (itemsPath: string) => load<Record<string, string>>(KEYS.references, {})[itemsPath] ?? null;
-
-  async function loadReference(path: string | null) {
-    const res = await api.reference(path);
-    applyReferenceNames(res.reference);
-    rememberReference(res.reference?.path ?? null);
-    return res.reference;
   }
 
   const mutate = async <T extends MutationResponse>(fn: () => Promise<T>): Promise<T> => {
@@ -171,41 +176,71 @@ export const useDocStore = defineStore("doc", () => {
     return res;
   };
 
+  async function scan(path: string) {
+    listing.value = await api.scan(path);
+    return listing.value;
+  }
+
+  async function openFolder(path: string, locale: string, reference: string | null, discard = false, create = false) {
+    const { open: info } = await serial(() => api.open(path, locale, reference, discard, create));
+    if (info) rememberRecent({ path: info.folder.path, locale: info.locale, reference: info.reference });
+    listing.value = null;
+    selectedId.value = null;
+    return loadRows();
+  }
+
+  async function setReference(locale: string | null) {
+    const { open: info } = await serial(() => api.reference(locale));
+    if (info) rememberRecent({ path: info.folder.path, locale: info.locale, reference: info.reference });
+    await loadRows();
+  }
+
+  const groupName = (r: Row) => groups.value[r.group]?.name ?? "";
+  // The sources of the open workspace, in sidebar order.
+  const sources = computed(() => [...new Set(groups.value.map((g) => g.source))]);
+  const refOf = (r: Row): KeyRef => [groupName(r), r.key];
+
   return {
     view,
-    file,
+    listing,
+    open,
+    groups,
     rows,
     visible,
     rev,
+    looseIssues,
     status,
-    selectedSlot,
+    selectedId,
+    selected,
     editor,
     translator,
     recent,
-    reference,
-    rebased,
+    filter,
+    buildErrors,
+    sources,
     glossary,
+    registration,
     loadGlossary,
     saveGlossary,
     rememberedGlossary,
-    filter,
-    loadReference,
-    referenceFor,
+    refOf,
     refilter,
+    loadRows,
+    scan,
+    openFolder,
+    setReference,
     setTranslator,
-    loadItems,
-    open,
-    applyMutation,
-    edit: (slot: number, name: string) => mutate(() => api.edit(slot, name, translator.value)),
-    revert: (slot: number) => mutate(() => api.revert(slot, translator.value)),
-    setStatus: (slots: number[], s: Status) => mutate(() => api.status(slots, s, translator.value)),
-    setNote: (slot: number, note: string) => mutate(() => api.note(slot, note, translator.value)),
-    importApply: (path: string, token: string, take: number[], source?: ImportSource) =>
-      mutate(() => api.importApply(path, token, take, translator.value, source)),
+    edit: (r: Row, value: string | null) => mutate(() => api.edit(groupName(r), r.key, value, translator.value)),
+    keep: (r: Row, keep: boolean) => mutate(() => api.keep(groupName(r), r.key, keep, translator.value)),
+    revert: (r: Row) => mutate(() => api.revert(groupName(r), r.key)),
+    setStatus: (list: Row[], s: Status) => mutate(() => api.status(list.map(refOf), s, translator.value)),
+    setNote: (r: Row, note: string) => mutate(() => api.note(groupName(r), r.key, note, translator.value)),
+    importApply: (path: string, token: string, take: KeyRef[]) => mutate(() => api.importApply(path, token, take, translator.value)),
     undo: () => mutate(() => api.undo()),
     redo: () => mutate(() => api.redo()),
     restoreDraft: () => mutate(() => api.restoreDraft()),
-    discardDraft: () => api.discardDraft(),
+    discardDraft: () => serial(() => api.discardDraft()),
     save: (opts: SaveRequest = {}) => serial(() => api.save(opts)),
+    rebase: () => serial(() => api.rebase()),
   };
 });

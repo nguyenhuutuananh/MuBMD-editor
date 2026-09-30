@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { glossaryOpen, openGlossaryFile, saveGlossary } from "@/composables/actions";
 import { tr } from "@/i18n";
 import { ask } from "@/lib/dialogs";
-import { fold } from "@/lib/search";
+import { fold } from "@/lib/rows";
 import { useDocStore } from "@/stores/doc";
 
 const { t } = useI18n();

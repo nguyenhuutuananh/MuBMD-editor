@@ -1,7 +1,7 @@
-// tabs.ts - Notice when the same file is open in another tab of this browser (web build): each tab
-// keeps its own copy in memory, so saving in both would overwrite one with the other.
+// tabs.ts - Notice when the same folder is open in another tab of this browser (web build): each
+// tab keeps its own copy in memory, so saving in both would overwrite one with the other.
 
-const channel = typeof BroadcastChannel === "function" ? new BroadcastChannel("mubmd-tabs") : null;
+const channel = typeof BroadcastChannel === "function" ? new BroadcastChannel("mumain-translator-tabs") : null;
 const tabId = Math.random().toString(36).slice(2);
 let current: string | null = null;
 let onConflict: (() => void) | null = null;
@@ -15,7 +15,7 @@ channel?.addEventListener("message", (e: MessageEvent<Msg>) => {
   onConflict?.();
 });
 
-// Call after opening a file; `warn` runs (in both tabs) if another tab has the same file open.
+// Call after opening a folder; `warn` runs (in both tabs) if another tab has the same one open.
 export function announceOpen(path: string, warn: () => void) {
   current = path;
   onConflict = warn;

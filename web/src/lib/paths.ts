@@ -1,5 +1,5 @@
-// paths.ts - How file paths are shown. Web paths contain the id of the granted folder/file
-// ("/MU@3/Data/Items"); users see it without the id ("/MU/Data/Items").
+// paths.ts - How folder paths are shown. Web paths contain the id of the granted folder
+// ("/Localization@3"); users see it without the id ("/Localization").
 
 import { isWeb } from "./api";
 

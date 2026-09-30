@@ -1,25 +1,33 @@
 // itemData.ts - In-memory model of MuMain's item data folder (Data/Items/Group00_Sword.json ...
 // Group15_Etc.json). Each item has its names by language:
 //   { "number": 1, "name": { "en": "Short Sword", "es": "Espada Corta", "pt": "Espada curta" }, ... }
-// and this tool edits one language (the target locale, "vi").
+// and this tool edits one language (the target locale).
 //
 // Rule: only the "name" value of renamed items is rewritten, in the form MuMain's own writer uses
 // (English first, then the other languages sorted by code, 2-space indent). Every other byte of the
 // file stays as it was, and an unedited file is written back byte-for-byte identical.
 
 import { AppError } from "./errors";
-import { MAX_ITEM_INDEX, MAX_ITEM_TYPE, isSlot } from "./format";
 import { type JsonNode, JsonSyntaxError, jsonString, member, parseJsonText } from "./jsonText";
-import { NameValidationError, checkName } from "./nameCodec";
 
 export const NEUTRAL_LOCALE = "en";
 export const TARGET_LOCALE = "vi";
+
+// Item ids: 16 groups (ItemType) x 512 numbers (ItemIndex); slot = group * 512 + number.
+export const MAX_ITEM_TYPE = 16;
+export const MAX_ITEM_INDEX = 512;
+export const MAX_ITEM = MAX_ITEM_TYPE * MAX_ITEM_INDEX;
+export const isSlot = (slot: number) => Number.isInteger(slot) && slot >= 0 && slot < MAX_ITEM;
 
 // Same order as MuMain's ITEM_GROUP_* constants (ItemJsonStorage.cpp).
 export const GROUP_FILE_NAMES = [
   "Sword", "Axe", "Mace", "Spear", "Bow", "Staff", "Shield", "Helm",
   "Armor", "Pants", "Gloves", "Boots", "Wing", "Helper", "Potion", "Etc",
 ] as const;
+
+// The group name of item group `group` in this tool (Session, TSV): "Items.Sword" for 0...
+export const itemGroupName = (group: number) => `Items.${GROUP_FILE_NAMES[group] ?? group}`;
+export const isItemGroupName = (name: string) => name.startsWith("Items.");
 
 export const groupFileName = (group: number) => `Group${String(group).padStart(2, "0")}_${GROUP_FILE_NAMES[group]}.json`;
 
@@ -36,7 +44,7 @@ export class ItemJsonError extends AppError {
 
 export class NoItemError extends AppError {
   constructor(slot: number) {
-    super("no-item", `There is no item in slot ${slot}.`, { slot });
+    super("not-editable", `There is no item in slot ${slot}.`, { slot });
   }
 }
 
@@ -62,7 +70,7 @@ interface FileState {
 const lineIndent = (text: string, pos: number) => /^[ \t]*/.exec(text.slice(text.lastIndexOf("\n", pos - 1) + 1))![0];
 
 export class ItemData {
-  private readonly files = new Map<string, FileState>();
+  private readonly files = new Map<string, FileState & { group: number }>();
   private readonly items = new Map<number, Item>();
   private readonly changed = new Map<number, string>(); // slot -> new target name ("" = none)
 
@@ -96,7 +104,7 @@ export class ItemData {
     const list = member(root, "items");
     if (list?.kind !== "array") fail('"items" is missing or not a list');
 
-    this.files.set(name, { text, eol: text.includes("\r\n") ? "\r\n" : "\n" });
+    this.files.set(name, { text, eol: text.includes("\r\n") ? "\r\n" : "\n", group: (group as Extract<JsonNode, { kind: "number" }>).value });
     for (const [i, item] of (list as Extract<JsonNode, { kind: "array" }>).items.entries()) {
       const where = `item ${i + 1}`;
       const num = member(item, "number");
@@ -131,6 +139,18 @@ export class ItemData {
 
   get fileNames(): string[] {
     return [...this.files.keys()];
+  }
+
+  // The group ("group" field) of a file.
+  fileGroup(name: string): number | null {
+    return this.files.get(name)?.group ?? null;
+  }
+
+  // Every locale that has a name somewhere, English included.
+  locales(): string[] {
+    const set = new Set<string>();
+    for (const it of this.items.values()) for (const l of it.names.keys()) set.add(l);
+    return [...set];
   }
 
   get itemCount(): number {
@@ -186,13 +206,11 @@ export class ItemData {
     return it;
   }
 
-  // Throws NameValidationError for an invalid name, NoItemError for a slot without an item.
-  // "" removes the translation (the game then shows the English name).
+  // NoItemError for a slot without an item. "" removes the translation (the game then shows the
+  // English name). Stored in NFC; checking the name is up to the caller (itemName.ts).
   setName(slot: number, name: string): void {
     const it = this.item(slot);
-    const check = checkName(name);
-    if (!check.ok) throw new NameValidationError(check, slot);
-    const next = check.normalized;
+    const next = name.normalize("NFC");
     if (next === (it.names.get(this.locale) ?? "")) this.changed.delete(slot);
     else this.changed.set(slot, next);
   }

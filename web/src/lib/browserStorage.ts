@@ -2,14 +2,14 @@
 //
 // Every folder or file the user grants is registered in IndexedDB under a stable id and "mounted"
 // at a virtual path containing that id:
-//   folder "MU"         -> "/MU@3"                    (so an item file is "/MU@3/Data/Items/Group00_Sword.json"
-//                                                      and the side data "/MU@3/Data/Items.mubmd/…" lives next to it)
-//   file   "ref.tsv"    -> "/ref.tsv@5/ref.tsv"
-// A single file has no folder to write side data into, so anything else under its mount (backups,
-// anything written next to a picked TSV) goes to the browser's private
-// file system (OPFS) under side/<id>/. Mounts from earlier sessions are restored lazily from
-// IndexedDB; the browser then asks for permission again if needed (which needs a user click).
-// Writes use createWritable(), which the browser commits atomically on close().
+//   folder "Localization" -> "/Localization@3"        (files "/Localization@3/Game.vi.resx", side data
+//                                                     "/Localization@3/.mumain-translator/…" inside it, as on disk)
+//   file   "team.tsv"     -> "/team.tsv@5/team.tsv"   (a TSV to import / export, the glossary)
+// Paths outside every mount (e.g. "../source/…" next to the folder) simply do not exist. Anything
+// else under a file's mount goes to the browser's private file system (OPFS) under side/<id>/.
+// Mounts from earlier sessions are restored lazily from IndexedDB; the browser then asks for
+// permission again if needed (which needs a user click). Writes use createWritable(), which the
+// browser commits atomically on close(). (Adapted from MuBMD-editor.)
 
 import { AppError } from "../../../src/core/errors";
 import { normalize } from "../../../src/session/memoryStorage";
@@ -31,7 +31,7 @@ function mapError(e: unknown, path: string): unknown {
     case "NotFoundError":
       return new AppError("file-not-found", `No such file: ${path}`, { path });
     case "TypeMismatchError":
-      return new AppError("not-a-file", `Not a file: ${path}`, { path });
+      return new AppError("is-directory", `Not a file: ${path}`, { path });
     case "NotAllowedError":
     case "SecurityError":
       return new AppError("permission-denied", `No permission for ${path}`, { path });
@@ -139,6 +139,20 @@ export class BrowserStorage implements Storage {
     try {
       const h = await this.fileHandle(p, "read", false);
       await h.getFile(); // a mounted file that was deleted outside still has a handle
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async isDirectory(p: string): Promise<boolean> {
+    try {
+      const [name = "", ...parts] = normalize(p).split("/").filter(Boolean);
+      const m = await this.mount(name);
+      if (m.kind !== "directory") return false;
+      await this.ensure(name, m.handle, "read");
+      let dir = m.handle;
+      for (const part of parts) dir = await dir.getDirectoryHandle(part);
       return true;
     } catch {
       return false;

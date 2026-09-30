@@ -1,53 +1,81 @@
-// actions.ts - User flows: open / edit / save, including dialogs and toasts.
+// actions.ts - User flows: choose a folder, pick the locale, open, reload; edit / keep / revert,
+// status / note, undo, save (with conflicts), the draft; TSV export / import, the glossary;
+// selection and keyboard shortcuts.
 
 import { ref, shallowRef } from "vue";
 import { toast } from "vue-sonner";
-import { checkName } from "../../../src/core/nameCodec";
-import type { DraftInfo, GlossaryEntry, ImportPreview, SaveRequest, Status } from "../../../src/shared/api";
-import { currentLang, errorText, fmtTime, issueText, tr } from "@/i18n";
+import type { DraftInfo, GlossaryEntry, ImportPreview, KeyRef, SaveRequest, Status } from "../../../src/shared/api";
+import { currentLang, errorText, fmtTime, tr } from "@/i18n";
 import { ApiError, api, isFallback, isWeb } from "@/lib/api";
-import { displayPath } from "@/lib/paths";
-import { exists } from "@/lib/search";
 import { announceOpen } from "@/lib/tabs";
 import { ask, isDialogOpen } from "@/lib/dialogs";
-import { useDocStore } from "@/stores/doc";
+import type { Row } from "@/lib/rows";
+import { type RecentEntry, useDocStore } from "@/stores/doc";
 
 export const welcomeError = ref<string | null>(null);
 export const exportOpen = ref(false);
 export const importPreview = shallowRef<ImportPreview | null>(null);
 export const glossaryOpen = ref(false);
-
+export const registrationOpen = ref(false);
 export const anyDialogOpen = () =>
-  isDialogOpen.value || exportOpen.value || importPreview.value !== null || glossaryOpen.value;
+  isDialogOpen.value || exportOpen.value || importPreview.value !== null || glossaryOpen.value || registrationOpen.value;
 
-// ItemGrid registers a function that scrolls to a row (by index in the filtered list).
+// RowGrid registers a function that scrolls to a row (by index in the filtered list).
 let scroller: ((index: number) => void) | null = null;
 export function registerScroller(fn: ((index: number) => void) | null) {
   scroller = fn;
 }
 
-const store = () => useDocStore();
-const visibleIndex = (slot: number) => store().visible.findIndex((r) => r.slot === slot);
+// RowToolbar registers how to focus the search box (Ctrl+F).
+let searchFocus: (() => void) | null = null;
+export function registerSearch(fn: (() => void) | null) {
+  searchFocus = fn;
+}
 
-export function select(slot: number | null, scroll = false) {
+const store = () => useDocStore();
+const visibleIndex = (id: number) => store().visible.findIndex((r) => r.id === id);
+
+export function select(id: number | null, scroll = false) {
   const s = store();
-  s.selectedSlot = slot;
-  if (scroll && slot !== null) {
-    const i = visibleIndex(slot);
+  s.selectedId = id;
+  if (scroll && id !== null) {
+    const i = visibleIndex(id);
     if (i >= 0) scroller?.(i);
   }
 }
 
-// ---- open ----
+// ---- welcome / open ----
 
 export function showWelcome() {
   store().editor = null;
+  store().listing = null;
   store().view = "welcome";
 }
 
-export function backToFile() {
+export function backToFolder() {
   welcomeError.value = null;
+  store().listing = null;
   store().view = "workspace";
+}
+
+// Step 1: a folder (typed, picked, or recent) -> the list of its locales.
+export async function scanPath(path: string) {
+  welcomeError.value = null;
+  try {
+    await store().scan(path);
+  } catch (e) {
+    welcomeError.value = errorText(e);
+  }
+}
+
+export async function pickFolder() {
+  welcomeError.value = null;
+  try {
+    const { path } = await api.pick(currentLang());
+    if (path) await scanPath(path);
+  } catch (e) {
+    welcomeError.value = errorText(e);
+  }
 }
 
 async function confirmDiscard(): Promise<boolean> {
@@ -63,35 +91,26 @@ async function confirmDiscard(): Promise<boolean> {
   return r.action === "discard";
 }
 
-// After a folder is opened: re-load its remembered reference file, report a rebase, offer the draft.
-async function afterOpen(draft: DraftInfo | null) {
-  const s = store();
-  if (isWeb && s.file) announceOpen(s.file.path, () => toast.warning(tr("toast.otherTab"), { duration: 15000 }));
-  // Web: a remembered glossary may need the permission prompt, which only works right after a click.
-  if (isWeb && !s.glossary) {
-    const g = s.rememberedGlossary();
-    if (g) await s.loadGlossary(g).catch(() => undefined);
-  }
-  const refPath = s.file ? s.referenceFor(s.file.path) : null;
-  if (refPath) {
-    try {
-      await s.loadReference(refPath);
-    } catch (e) {
-      toast.error(errorText(e));
-      await s.loadReference(null).catch(() => undefined);
-    }
-  }
-  if (s.rebased) toast.info(tr("toast.rebased"), { duration: 10000 });
-  if (draft) await offerDraft(draft);
-}
-
-export async function openPath(path: string, discard = false): Promise<void> {
+// Step 2 (or a recent entry): open for translating `locale`; `create` for a new language.
+export async function openFolder(path: string, locale: string, reference: string | null, discard = false, create = false): Promise<void> {
   welcomeError.value = null;
   try {
-    await afterOpen(await store().open(path, discard));
+    const draft = await store().openFolder(path, locale, reference, discard, create);
+    // Web: each tab keeps its own copy of the folder in memory.
+    const opened = store().open;
+    const m = opened?.migrated;
+    if (m) toast.info(tr("toast.migrated", { from: m.from.join(", "), n: m.records, draft: m.draftEdits }), { duration: 15000 });
+    if (isWeb && opened) announceOpen(`${opened.folder.path}|${opened.locale}`, () => toast.warning(tr("toast.otherTab"), { duration: 15000 }));
+    if (draft) await offerDraft(draft);
+    const isNew = !store().open?.folder.locales.some((l) => l.code === locale);
+    if (create && isNew) toast.info(tr("toast.newLocale", { locale }), { duration: 10000 });
   } catch (e) {
     if (e instanceof ApiError && e.code === "dirty") {
-      if (await confirmDiscard()) return openPath(path, true);
+      if (await confirmDiscard()) return openFolder(path, locale, reference, true, create);
+      return;
+    }
+    if (e instanceof ApiError && e.code === "locale-code") {
+      welcomeError.value = errorText(e); // stay on the locale choice
       return;
     }
     showWelcome();
@@ -99,31 +118,46 @@ export async function openPath(path: string, discard = false): Promise<void> {
   }
 }
 
-export async function pickAndOpen() {
-  welcomeError.value = null;
+// A recent entry may be a language whose files were never saved: open it as new again.
+export const openRecent = (r: RecentEntry) => openFolder(r.path, r.locale, r.reference, false, true);
+
+// Read the files again; unsaved edits are put back on top of what is on disk now.
+export async function reload() {
+  if (!(await commitEditor())) return;
   try {
-    const { path } = await api.pick(currentLang(), "game");
-    if (path) await openPath(path);
+    const res = await store().rebase();
+    await store().loadRows();
+    if (res.conflicts.length) {
+      toast.warning(tr("toast.rebaseConflicts", { n: res.conflicts.length, keys: res.conflicts.map((c) => c.key).join(", ") }), { duration: 15000 });
+    } else if (res.changedFiles.length) {
+      toast.info(tr("toast.reloadedChanged", { files: res.changedFiles.join(", ") }));
+    } else {
+      toast(tr("toast.reloaded"));
+    }
   } catch (e) {
-    welcomeError.value = errorText(e);
+    toast.error(errorText(e));
   }
 }
 
-export async function reload() {
-  const f = store().file;
-  if (f) await openPath(f.root);
+export async function setReference(locale: string | null) {
+  try {
+    await store().setReference(locale);
+  } catch (e) {
+    toast.error(errorText(e));
+  }
 }
 
 // On startup: if the server already has a folder open (path on the command line), go straight to it.
 export async function start() {
-  // The team glossary is remembered per browser (one file for every game folder).
-  // Web: no permission prompt is possible without a click, so failures are silent here and the
-  // glossary is retried after the next file is opened (afterOpen).
+  // The team glossary is remembered per browser (one file for every folder).
   const g = store().rememberedGlossary();
-  if (g) store().loadGlossary(g).catch((e) => !isWeb && toast.error(errorText(e)));
+  if (g) store().loadGlossary(g).catch((e) => toast.error(errorText(e)));
   try {
     const state = await api.state();
-    if (state.file) await afterOpen(await store().loadItems(false));
+    if (state.open) {
+      const draft = await store().loadRows();
+      if (draft) await offerDraft(draft);
+    }
   } catch (e) {
     welcomeError.value = errorText(e);
   }
@@ -132,7 +166,6 @@ export async function start() {
 async function offerDraft(d: DraftInfo) {
   const body = [tr("draftDialog.body", { n: d.count, time: fmtTime(d.savedAt) })];
   if (d.translators.length) body.push(tr("draftDialog.who", { names: d.translators.join(", ") }));
-  if (!d.baseMatches) body.push(tr("draftDialog.baseChanged"));
   const r = await ask({
     title: tr("draftDialog.title"),
     body,
@@ -161,12 +194,7 @@ export async function askTranslator(): Promise<boolean> {
   const r = await ask({
     title: tr("translatorDialog.title"),
     body: [tr("translatorDialog.body")],
-    input: {
-      label: tr("translatorDialog.label"),
-      value: store().translator,
-      placeholder: tr("translatorDialog.placeholder"),
-      required: true,
-    },
+    input: { label: tr("translatorDialog.label"), value: store().translator, placeholder: tr("translatorDialog.placeholder"), required: true },
     actions: [
       { id: "cancel", label: tr("common.cancel") },
       { id: "ok", label: tr("translatorDialog.save"), kind: "primary" },
@@ -181,39 +209,38 @@ const ensureTranslator = async () => Boolean(store().translator) || askTranslato
 
 // ---- edit ----
 
-export async function startEdit(slot: number) {
-  if (!(await ensureTranslator())) return;
+// Rows without English text (keys only the translation has) cannot get new text.
+export const canEdit = (r: Row) => r.en !== null;
+// "Keep English" exists for the UI strings (resx), not for item names.
+export const canKeep = (r: Row) => canEdit(r) && store().groups[r.group]?.canKeep === true;
+
+export async function startEdit(id: number) {
   const s = store();
-  const row = s.rows[slot];
-  if (!row || !exists(row) || visibleIndex(slot) < 0) return;
-  select(slot, true);
-  s.editor = { slot, value: row.text, initial: row.text };
+  const row = s.rows[id];
+  if (!row || !canEdit(row) || visibleIndex(id) < 0) return;
+  if (!(await ensureTranslator())) return;
+  select(id, true);
+  const initial = row.value ?? "";
+  s.editor = { id, value: initial, initial };
 }
 
 export function cancelEdit() {
   store().editor = null;
 }
 
-// Returns true if the editor is closed (saved, or nothing changed).
-export async function commitEditor(opts: { quiet?: boolean } = {}): Promise<boolean> {
+// Returns true if the editor is closed (saved, or nothing changed). An emptied field removes the
+// translation (the game shows English).
+export async function commitEditor(): Promise<boolean> {
   const s = store();
   const ed = s.editor;
   if (!ed) return true;
-  const row = s.rows[ed.slot];
-  if (!row) return true;
-  const c = checkName(ed.value);
-  const unchanged = c.normalized === ed.initial;
-  if (unchanged) {
+  const row = s.rows[ed.id];
+  if (!row || ed.value === ed.initial) {
     if (s.editor === ed) s.editor = null;
     return true;
   }
-  if (!c.ok) {
-    if (!opts.quiet) toast.error(issueText(c.issues.find((i) => i.severity === "error")!));
-    return false;
-  }
   try {
-    const value = ed.value;
-    await s.edit(ed.slot, value);
+    await s.edit(row, ed.value === "" ? null : ed.value);
     if (s.editor === ed) s.editor = null;
     return true;
   } catch (e) {
@@ -226,16 +253,51 @@ export async function moveEdit(step: number) {
   const s = store();
   const ed = s.editor;
   if (!ed) return;
-  const from = visibleIndex(ed.slot);
+  const from = visibleIndex(ed.id);
   if (!(await commitEditor())) return;
-  const next = s.visible[from + step];
-  if (next) await startEdit(next.slot);
+  // Skip rows that cannot be edited.
+  for (let i = from + step; i >= 0 && i < s.visible.length; i += step) {
+    const next = s.visible[i]!;
+    if (canEdit(next)) return startEdit(next.id);
+  }
 }
 
-export async function revert(slot: number) {
-  cancelEdit();
+async function rowAction(id: number, fn: (r: Row) => Promise<unknown>) {
+  const row = store().rows[id];
+  if (!row || !(await ensureTranslator())) return;
+  if (!(await commitEditor())) return;
   try {
-    await store().revert(slot);
+    await fn(store().rows[id]!);
+  } catch (e) {
+    toast.error(errorText(e));
+  }
+}
+
+export const toggleKeep = (id: number) => {
+  const row = store().rows[id];
+  if (row && canKeep(row)) return rowAction(id, (r) => store().keep(r, !r.keep));
+};
+export const removeTranslation = (id: number) => rowAction(id, (r) => store().edit(r, null));
+export const revert = (id: number) => rowAction(id, (r) => store().revert(r));
+
+// ---- status / note ----
+
+export async function setStatus(rows: Row[], status: Status) {
+  if (!rows.length || !(await ensureTranslator())) return;
+  if (!(await commitEditor())) return;
+  try {
+    const res = await store().setStatus(rows, status);
+    if (rows.length > 1) toast.success(tr("toast.statusSet", { n: res.changed.length, status: tr(`status.${status}`) }));
+  } catch (e) {
+    toast.error(errorText(e));
+  }
+}
+
+export async function setNote(id: number, note: string) {
+  const row = store().rows[id];
+  if (!row || !(await ensureTranslator())) return;
+  try {
+    await store().setNote(row, note);
   } catch (e) {
     toast.error(errorText(e));
   }
@@ -245,51 +307,60 @@ export async function undoRedo(which: "undo" | "redo") {
   if (!(await commitEditor())) return;
   try {
     const res = await (which === "undo" ? store().undo() : store().redo());
-    const first = res.changed[0]?.item[0];
-    if (first !== undefined && visibleIndex(first) >= 0) select(first, true);
+    const t = res.changed[0];
+    const r = t ? store().rows.find((x) => x.group === t[0] && x.key === t[1]) : undefined;
+    if (r && visibleIndex(r.id) >= 0) select(r.id, true);
   } catch (e) {
     toast.error(errorText(e));
   }
 }
 
-// ---- status / note ----
+// ---- save ----
 
-export async function setStatus(slots: number[], status: Status) {
-  if (!slots.length || !(await ensureTranslator())) return;
+export async function saveAll(opts: SaveRequest = {}): Promise<void> {
   if (!(await commitEditor())) return;
   try {
-    const res = await store().setStatus(slots, status);
-    if (slots.length > 1) toast.success(tr("toast.statusSet", { n: res.changed.length, status: tr(`status.${status}`) }));
+    const res = await store().save(opts);
+    // "Unsaved changes" would now list nothing: show every row again.
+    if (store().filter.state === "dirty") store().filter.state = "any";
+    await store().loadRows();
+    if (!res.savedCount) {
+      toast(tr("toast.nothingToSave"));
+      return;
+    }
+    const lines = [tr("toast.savedFiles", { files: res.files.join(", ") })];
+    if (res.created.length) lines.push(tr("toast.created", { files: res.created.join(", ") }));
+    if (isFallback && res.files.length) lines.push(tr(res.files.length > 1 ? "toast.downloadedZip" : "toast.downloaded", { n: res.files.length }));
+    else if (res.backups.length) lines.push(tr("toast.backups", { n: res.backups.length }));
+    toast.success(tr("toast.saved", { n: res.savedCount }), { description: lines.join(" "), duration: 8000 });
   } catch (e) {
-    toast.error(errorText(e));
+    if (e instanceof ApiError && e.code === "conflict") return resolveConflict(String(e.params.files ?? ""));
+    toast.error(tr("toast.saveFailed", { reason: errorText(e) }), { duration: 10000 });
   }
 }
 
-export async function setNote(slot: number, note: string) {
-  if (!(await ensureTranslator())) return;
+// Files changed on disk (git pull, Drive, another editor): merge our edits into them, or overwrite.
+async function resolveConflict(files: string): Promise<void> {
+  const r = await ask({
+    title: tr("conflictDialog.title"),
+    body: [tr("conflictDialog.body", { files }), tr("conflictDialog.hint")],
+    actions: [
+      { id: "cancel", label: tr("common.cancel") },
+      { id: "force", label: tr("conflictDialog.force"), kind: "danger" },
+      { id: "merge", label: tr("conflictDialog.merge"), kind: "primary" },
+    ],
+  });
+  if (r.action === "force") return saveAll({ force: true });
+  if (r.action !== "merge") return;
   try {
-    await store().setNote(slot, note);
-  } catch (e) {
-    toast.error(errorText(e));
-  }
-}
-
-// ---- reference ----
-
-export async function chooseReference() {
-  try {
-    const { path } = await api.pick(currentLang(), "reference");
-    if (!path) return;
-    const info = await store().loadReference(path);
-    if (info) toast.success(tr("toast.referenceLoaded", { file: info.fileName, n: info.entries.length }));
-  } catch (e) {
-    toast.error(errorText(e));
-  }
-}
-
-export async function clearReference() {
-  try {
-    await store().loadReference(null);
+    const res = await store().rebase();
+    await store().loadRows();
+    if (res.conflicts.length) {
+      // Both sides changed the same keys: let the user look before writing.
+      toast.warning(tr("toast.rebaseConflicts", { n: res.conflicts.length, keys: res.conflicts.map((c) => c.key).join(", ") }), { duration: 15000 });
+      return;
+    }
+    await saveAll();
   } catch (e) {
     toast.error(errorText(e));
   }
@@ -297,25 +368,24 @@ export async function clearReference() {
 
 // ---- TSV export / import ----
 
-// Slots "I changed": last touched by me and different from the merge base.
-export function mySlots(): number[] {
+// Rows "I changed": last touched by me and different from the merge base.
+export function myRows(): Row[] {
   const s = store();
   const me = s.translator;
   if (!me) return [];
-  return s.rows.filter((r) => r.record.translator === me && r.record.origin !== undefined && r.record.origin !== r.text).map((r) => r.slot);
+  return s.rows.filter((r) => r.record?.translator === me && r.record.origin !== undefined && r.record.origin !== (r.value ?? ""));
 }
 
-export async function exportTsv(slots: number[]) {
+export async function exportTsv(rows: Row[]) {
   if (!(await commitEditor())) return;
   const s = store();
   const d = new Date();
   const ymd = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
   const who = (s.translator || "export").replace(/[^\p{L}\p{N}_-]+/gu, "_");
-  const base = `Items-${s.file?.locale ?? "vi"}`;
   try {
-    const { path } = await api.pickSave(currentLang(), "tsv", `${base}-${who}-${ymd}.tsv`);
+    const { path } = await api.pickSave(currentLang(), "tsv", `MuMain-${s.open?.locale ?? ""}-${who}-${ymd}.tsv`);
     if (!path) return;
-    const res = await api.exportTsv(path, slots);
+    const res = await api.exportTsv(path, rows.map((r) => s.refOf(r)));
     exportOpen.value = false;
     toast.success(tr("toast.exported", { n: res.count, file: res.path.split(/[\\/]/).pop() ?? res.path }), { duration: 8000 });
   } catch (e) {
@@ -334,14 +404,16 @@ export async function startImport() {
   }
 }
 
-export async function applyImport(take: number[]) {
+export async function applyImport(take: KeyRef[]) {
   const p = importPreview.value;
   if (!p || !(await ensureTranslator())) return;
   try {
-    const res = await store().importApply(p.path, p.token, take, p.source);
+    const res = await store().importApply(p.path, p.token, take);
     importPreview.value = null;
     toast.success(tr("toast.imported", { n: res.changed.length }), { duration: 8000 });
-    store().filter.problem = "edited"; // show what came in, for review
+    // Show what came in, for review before saving.
+    store().filter.query = "";
+    store().filter.state = "dirty";
   } catch (e) {
     toast.error(errorText(e));
     if (e instanceof ApiError && e.code === "import-changed") importPreview.value = null;
@@ -382,74 +454,22 @@ export async function saveGlossary(entries: GlossaryEntry[], forceAsk = false): 
   }
 }
 
-// ---- compare with another game folder (reuses the import preview) ----
-
-export async function compareWith() {
-  if (!(await commitEditor())) return;
-  try {
-    const { path } = await api.pick(currentLang(), "compare");
-    if (!path) return;
-    importPreview.value = await api.importPreview(path, "game");
-  } catch (e) {
-    toast.error(errorText(e));
-  }
-}
-
-// ---- save ----
-
-export async function saveFile(opts: SaveRequest = {}) {
-  if (!(await commitEditor())) return;
-  try {
-    const res = await store().save(opts);
-    await store().loadItems();
-    if (!res.savedCount) {
-      toast(tr("toast.nothingToSave"));
-      return;
-    }
-    // Fallback mode: the saved item files were handed over as a download (see localBackend.ts).
-    const downloaded = isFallback && res.written.length > 0;
-    const files = res.written.map((p) => p.split(/[\\/]/).pop()).join(", ");
-    toast.success(tr("toast.saved", { n: res.savedCount }), {
-      description: downloaded
-        ? tr(res.written.length > 1 ? "toast.downloadedZip" : "toast.downloaded", { file: files })
-        : res.backupDir
-          ? tr("toast.backup", { files, path: displayPath(res.backupDir) })
-          : undefined,
-      duration: 8000,
-    });
-  } catch (e) {
-    if (e instanceof ApiError && e.code === "conflict") return resolveConflict(String(e.params.file ?? ""));
-    toast.error(tr("toast.saveFailed", { reason: errorText(e) }), { duration: 10000 });
-  }
-}
-
-async function resolveConflict(file: string) {
-  const r = await ask({
-    title: tr("conflictDialog.title"),
-    body: [tr("errors.conflict", { file }), tr("conflictDialog.body")],
-    actions: [
-      { id: "cancel", label: tr("common.cancel"), kind: "primary" },
-      { id: "force", label: tr("conflictDialog.force"), kind: "danger" },
-    ],
-  });
-  if (r.action === "force") await saveFile({ force: true });
-}
-
-// ---- global shortcuts ----
+// ---- keyboard ----
 
 const inTextField = (el: Element | null) => el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement;
 
-export function onGlobalKeydown(e: KeyboardEvent, focusSearch: () => void) {
-  if (store().view !== "workspace" || anyDialogOpen()) return;
-  if (!(e.ctrlKey || e.metaKey) || e.isComposing) return;
+export function onGlobalKeydown(e: KeyboardEvent) {
+  const s = store();
+  if (s.view !== "workspace" || anyDialogOpen() || e.isComposing) return;
+  const mod = e.ctrlKey || e.metaKey;
   const key = e.key.toLowerCase();
-  if (key === "s") {
+  if (mod && !e.altKey && key === "s") {
     e.preventDefault();
-    saveFile();
-  } else if (key === "f") {
+    saveAll();
+  } else if (mod && !e.shiftKey && !e.altKey && key === "f") {
     e.preventDefault();
-    focusSearch();
-  } else if (!inTextField(document.activeElement) && (key === "z" || key === "y")) {
+    searchFocus?.();
+  } else if (mod && !inTextField(document.activeElement) && (key === "z" || key === "y")) {
     // Inside a text field, let the browser undo the typed text itself.
     e.preventDefault();
     undoRedo(key === "y" || e.shiftKey ? "redo" : "undo");

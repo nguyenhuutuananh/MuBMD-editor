@@ -1,12 +1,14 @@
-// tsv.ts - Translation TSV files (Excel / Google Sheets friendly), pure logic. CSV is read too.
+// tsv.ts - Translation TSV files exchanged between translators (Excel / Google Sheets friendly),
+// pure logic. CSV is read too.
 //
-// Columns are matched by header name (case-insensitive), so older files such as
-// "ItemType, ItemIndex, Name" or "ItemType, ItemIndex, Status, Name" import too.
-// The Name column is the first header starting with "name" (e.g. "Name(Japanese)"), or
-// "TiengViet" / "Vietnamese"; "Nguon" / "Source" / "Original" is the reference (source) column.
+// Columns (matched by header name, case-insensitive; order does not matter):
+//   Group, Key, English, Translation, Status, Translator, UpdatedAt, BaseText, Note
+// Group + Key identify the row; Translation is required, the rest is optional. "BaseText" is the
+// translation the sender started from (for the 3-way merge, see merge.ts). A cell holding a tab,
+// a line break or a quote is quoted Excel-style, so every text survives the round trip.
 
 import { AppError } from "./errors";
-import { MAX_ITEM_INDEX, MAX_ITEM_TYPE } from "./format";
+import { MAX_ITEM_INDEX, MAX_ITEM_TYPE, itemGroupName } from "./itemData";
 
 export const STATUSES = ["untranslated", "translated", "reviewed"] as const;
 export type Status = (typeof STATUSES)[number];
@@ -14,63 +16,53 @@ export const isStatus = (v: unknown): v is Status => STATUSES.includes(v as Stat
 export const statusRank = (s: Status): number => STATUSES.indexOf(s);
 
 export interface TsvRow {
-  line: number; // 1-based line number in the file (for error messages)
-  itemType: number;
-  itemIndex: number;
-  slot: number;
-  name: string; // NFC-normalized; "" when the cell is empty
+  line: number; // 1-based line number in the file (for messages)
+  group: string;
+  key: string;
+  english?: string;
+  value: string; // NFC; "" when the cell is empty
   status?: Status;
   translator?: string;
   updatedAt?: string;
+  base?: string; // BaseText (present when the column exists, "" = the sender had no translation)
   note?: string;
-  base?: string; // BaseName: the name the translator started from (for 3-way merge)
-  reference?: string;
 }
 
 export interface TsvProblem {
   line: number;
-  code: "bad-slot" | "duplicate";
+  code: "missing-key" | "duplicate";
   detail: string;
 }
 
 export interface TsvParseResult {
   rows: TsvRow[];
   problems: TsvProblem[];
-  columns: { base: boolean; status: boolean; translator: boolean; note: boolean; reference: boolean };
+  columns: { base: boolean; status: boolean; translator: boolean; note: boolean };
 }
 
-export const EXPORT_COLUMNS = [
-  "ItemType",
-  "ItemIndex",
-  "Name",
-  "Status",
-  "Translator",
-  "UpdatedAt",
-  "BaseName",
-  "Reference",
-  "Note",
-] as const;
+export const EXPORT_COLUMNS = ["Group", "Key", "English", "Translation", "Status", "Translator", "UpdatedAt", "BaseText", "Note"] as const;
 
-type Field = "itemType" | "itemIndex" | "name" | "status" | "translator" | "updatedAt" | "note" | "base" | "reference";
+type Field = "group" | "key" | "english" | "value" | "status" | "translator" | "updatedAt" | "base" | "note";
 
 function fieldOf(header: string): Field | null {
   const h = header.trim().toLowerCase().replace(/[\s_-]/g, "");
-  if (h === "itemtype" || h === "type") return "itemType";
-  if (h === "itemindex" || h === "index") return "itemIndex";
+  if (h === "group" || h === "file") return "group";
+  if (h === "key" || h === "name") return "key";
+  if (h === "english" || h === "en" || h === "source") return "english";
+  if (h === "translation" || h === "value" || h === "text" || h === "tiengviet" || h === "vietnamese") return "value";
   if (h === "status") return "status";
   if (h === "translator") return "translator";
   if (h === "updatedat") return "updatedAt";
+  if (h === "basetext" || h === "base" || h === "origin") return "base";
   if (h === "note" || h === "notes") return "note";
-  if (h === "basename" || h === "base" || h === "origin") return "base";
-  if (["reference", "ref", "source", "nguon", "original"].includes(h)) return "reference";
-  if (h.startsWith("name") || h === "tiengviet" || h === "vietnamese") return "name";
   return null;
 }
 
 // Split a TSV or CSV text into rows of cells. The delimiter is a tab if the first line has one,
 // otherwise a comma. A cell starting with '"' is quoted Excel-style ("" = a literal quote, may span lines).
+// (Same as MuBMD-editor's, so both tools read the same files the same way.)
 export function parseDelimited(text: string): string[][] {
-  const src = text.replace(/^\uFEFF/, "");
+  const src = text.replace(/^﻿/, "");
   const firstLine = src.slice(0, src.search(/\r|\n|$/));
   const delim = firstLine.includes("\t") ? "\t" : ",";
   const rows: string[][] = [];
@@ -123,60 +115,99 @@ export function parseDelimited(text: string): string[][] {
   return rows;
 }
 
-const cellText = (s: string | undefined) => (s ?? "").trim().normalize("NFC");
+const nfc = (s: string | undefined) => (s ?? "").normalize("NFC");
+const short = (s: string | undefined) => nfc(s).trim();
+
+// A file of the item editor MuBMD-editor (ItemType, ItemIndex, Name, Status, Translator, UpdatedAt,
+// BaseName, Reference, Note): read as rows of the item groups ("Items.Sword" / "12").
+function itemColumns(header: string[]): Map<Field, number> | null {
+  const norm = header.map((h) => h.trim().toLowerCase().replace(/[\s_-]/g, ""));
+  const type = norm.indexOf("itemtype");
+  const index = norm.indexOf("itemindex");
+  if (type < 0 || index < 0 || norm.includes("group")) return null;
+  const col = new Map<Field, number>([
+    ["group", type],
+    ["key", index],
+  ]);
+  const map: Record<string, Field> = {
+    basename: "base",
+    base: "base",
+    reference: "english",
+    status: "status",
+    translator: "translator",
+    updatedat: "updatedAt",
+    note: "note",
+    notes: "note",
+  };
+  norm.forEach((h, i) => {
+    const f = h.startsWith("name") || h === "tiengviet" || h === "vietnamese" || h === "translation" ? "value" : map[h];
+    if (f && !col.has(f)) col.set(f, i);
+  });
+  return col;
+}
+
+// ItemType / ItemIndex cells of an item file -> the group name + key, or null when out of range.
+function itemRef(type: string, index: string): [string, string] | null {
+  const t = Number(type.trim());
+  const i = Number(index.trim());
+  if (!Number.isInteger(t) || t < 0 || t >= MAX_ITEM_TYPE || !Number.isInteger(i) || i < 0 || i >= MAX_ITEM_INDEX) return null;
+  return [itemGroupName(t), String(i)];
+}
 
 export function parseTranslationTsv(text: string): TsvParseResult {
   const table = parseDelimited(text);
   const header = table[0] ?? [];
-  const col = new Map<Field, number>();
-  header.forEach((h, i) => {
-    const f = fieldOf(h);
-    if (f && !col.has(f)) col.set(f, i);
-  });
-  if (!col.has("itemType") || !col.has("itemIndex") || !col.has("name")) {
-    throw new AppError("tsv-header", `TSV header must contain ItemType, ItemIndex and Name columns (got: ${header.join(", ")}).`, {
+  const items = itemColumns(header);
+  const col = items ?? new Map<Field, number>();
+  if (!items) {
+    header.forEach((h, i) => {
+      const f = fieldOf(h);
+      if (f && !col.has(f)) col.set(f, i);
+    });
+  }
+  if (!col.has("group") || !col.has("key") || !col.has("value")) {
+    throw new AppError("tsv-header", `The header must contain Group, Key and Translation columns (got: ${header.join(", ")}).`, {
       columns: header.join(", "),
     });
   }
 
   const rows: TsvRow[] = [];
   const problems: TsvProblem[] = [];
-  const bySlot = new Map<number, number>(); // slot -> index in rows
+  const byId = new Map<string, number>(); // group + key -> index in rows
   const get = (cells: string[], f: Field) => (col.has(f) ? cells[col.get(f)!] : undefined);
+  const opt = (cells: string[], f: Field) => (col.has(f) ? short(get(cells, f)) : undefined);
 
   table.slice(1).forEach((cells, i) => {
     const line = i + 2;
     if (!cells.join("").trim()) return;
-    const t = Number(cellText(get(cells, "itemType")));
-    const x = Number(cellText(get(cells, "itemIndex")));
-    const validType = Number.isInteger(t) && t >= 0 && t < MAX_ITEM_TYPE;
-    const validIndex = Number.isInteger(x) && x >= 0 && x < MAX_ITEM_INDEX;
-    if (!validType || !validIndex) {
-      problems.push({ line, code: "bad-slot", detail: `${get(cells, "itemType") ?? ""}:${get(cells, "itemIndex") ?? ""}` });
+    // Keys and texts are kept exactly (leading / trailing spaces can matter in game texts).
+    let group = short(get(cells, "group"));
+    let key = nfc(get(cells, "key"));
+    if (items) [group, key] = itemRef(group, key) ?? ["", ""];
+    if (!group || !key) {
+      problems.push({ line, code: "missing-key", detail: `${group}/${key}` });
       return;
     }
-    const status = cellText(get(cells, "status")).toLowerCase();
-    const opt = (f: Field) => (col.has(f) ? cellText(get(cells, f)) : undefined);
+    const status = opt(cells, "status")?.toLowerCase();
     const row: TsvRow = {
       line,
-      itemType: t,
-      itemIndex: x,
-      slot: t * MAX_ITEM_INDEX + x,
-      // Keep inner spaces as typed; only strip a trailing \r-like whitespace at the ends.
-      name: (get(cells, "name") ?? "").replace(/^\s+|\s+$/g, "").normalize("NFC"),
+      group,
+      key,
+      english: col.has("english") ? nfc(get(cells, "english")) : undefined,
+      value: nfc(get(cells, "value")),
       status: isStatus(status) ? status : undefined,
-      translator: opt("translator") || undefined,
-      updatedAt: opt("updatedAt") || undefined,
-      note: opt("note"),
-      base: col.has("base") ? (get(cells, "base") ?? "").replace(/^\s+|\s+$/g, "").normalize("NFC") : undefined,
-      reference: opt("reference") || undefined,
+      translator: opt(cells, "translator") || undefined,
+      updatedAt: opt(cells, "updatedAt") || undefined,
+      base: col.has("base") ? nfc(get(cells, "base")) : undefined,
+      note: opt(cells, "note"),
     };
-    const prev = bySlot.get(row.slot);
+    const id = `${group}\u0000${key}`;
+    const prev = byId.get(id);
     if (prev !== undefined) {
-      problems.push({ line, code: "duplicate", detail: `${t}:${x}` });
-      rows[prev] = row; // the last row for a slot wins
+      problems.push({ line, code: "duplicate", detail: `${group}/${key}` });
+      rows[prev] = row; // the last row for a key wins
     } else {
-      bySlot.set(row.slot, rows.length);
+      byId.set(id, rows.length);
       rows.push(row);
     }
   });
@@ -184,37 +215,30 @@ export function parseTranslationTsv(text: string): TsvParseResult {
   return {
     rows,
     problems,
-    columns: {
-      base: col.has("base"),
-      status: col.has("status"),
-      translator: col.has("translator"),
-      note: col.has("note"),
-      reference: col.has("reference"),
-    },
+    columns: { base: col.has("base"), status: col.has("status"), translator: col.has("translator"), note: col.has("note") },
   };
 }
 
 export interface ExportRow {
-  itemType: number;
-  itemIndex: number;
-  name: string;
+  group: string;
+  key: string;
+  english: string;
+  value: string; // "" = not translated
   status: Status;
   translator: string;
   updatedAt: string;
   base: string;
-  reference: string;
   note: string;
 }
 
-const clean = (s: string) => s.replace(/[\t\r\n]+/g, " ");
+// Excel-style quoting, only where needed.
+const cell = (s: string) => (/[\t\r\n"]/.test(s) || s.startsWith(" ") || s.endsWith(" ") ? `"${s.replace(/"/g, '""')}"` : s);
 
 // UTF-8 with BOM so Excel on Windows detects the encoding (Vietnamese would be garbled otherwise).
 export function serializeTranslationTsv(rows: ExportRow[]): string {
   const lines = [EXPORT_COLUMNS.join("\t")];
   for (const r of rows) {
-    lines.push(
-      [r.itemType, r.itemIndex, r.name, r.status, r.translator, r.updatedAt, r.base, r.reference, r.note].map((v) => clean(String(v))).join("\t"),
-    );
+    lines.push([r.group, r.key, r.english, r.value, r.status, r.translator, r.updatedAt, r.base, r.note].map(cell).join("\t"));
   }
-  return `\uFEFF${lines.join("\n")}\n`;
+  return `﻿${lines.join("\n")}\n`;
 }

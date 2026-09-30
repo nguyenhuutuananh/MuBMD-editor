@@ -1,44 +1,42 @@
 <script setup lang="ts">
 import { usePreferredDark } from "@vueuse/core";
-import { onBeforeUnmount, onMounted, ref, watchEffect } from "vue";
+import { onBeforeUnmount, onMounted, watchEffect } from "vue";
 import "vue-sonner/style.css";
 import AppDialogs from "@/components/AppDialogs.vue";
 import AppTopbar from "@/components/AppTopbar.vue";
 import DetailPanel from "@/components/DetailPanel.vue";
 import ExportDialog from "@/components/ExportDialog.vue";
 import GlossaryDialog from "@/components/GlossaryDialog.vue";
-import GroupSidebar from "@/components/GroupSidebar.vue";
 import ImportDialog from "@/components/ImportDialog.vue";
-import ItemGrid from "@/components/ItemGrid.vue";
-import ItemToolbar from "@/components/ItemToolbar.vue";
+import RegistrationDialog from "@/components/RegistrationDialog.vue";
+import GroupSidebar from "@/components/GroupSidebar.vue";
+import RowGrid from "@/components/RowGrid.vue";
+import RowToolbar from "@/components/RowToolbar.vue";
 import WelcomeScreen from "@/components/WelcomeScreen.vue";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { onGlobalKeydown, start } from "@/composables/actions";
-import { isWeb } from "@/lib/api";
 import { useDocStore } from "@/stores/doc";
 
 const store = useDocStore();
-const toolbar = ref<InstanceType<typeof ItemToolbar> | null>(null);
 
 // Light/dark follows the OS setting.
 const dark = usePreferredDark();
 watchEffect(() => document.documentElement.classList.toggle("dark", dark.value));
 
-const onKey = (e: KeyboardEvent) => onGlobalKeydown(e, () => toolbar.value?.focusSearch());
-// Web: the edits live in this tab; warn before closing it with unsaved changes (the draft is kept anyway).
+// Unsaved edits are kept in the draft anyway, but closing the tab should not be silent.
 const onBeforeUnload = (e: BeforeUnloadEvent) => {
-  if (!isWeb || !store.status.dirtyCount) return;
+  if (!store.status.dirtyCount) return;
   e.preventDefault();
   e.returnValue = "";
 };
 onMounted(() => {
-  window.addEventListener("keydown", onKey);
+  window.addEventListener("keydown", onGlobalKeydown);
   window.addEventListener("beforeunload", onBeforeUnload);
   start();
 });
 onBeforeUnmount(() => {
-  window.removeEventListener("keydown", onKey);
+  window.removeEventListener("keydown", onGlobalKeydown);
   window.removeEventListener("beforeunload", onBeforeUnload);
 });
 </script>
@@ -50,12 +48,12 @@ onBeforeUnmount(() => {
       <WelcomeScreen v-if="store.view === 'welcome'" />
       <div
         v-else
-        class="grid min-h-0 flex-1 grid-cols-1 grid-rows-[auto_minmax(0,1fr)] md:grid-cols-[220px_minmax(0,1fr)] md:grid-rows-1 xl:grid-cols-[240px_minmax(0,1fr)_300px]"
+        class="grid min-h-0 flex-1 grid-cols-1 grid-rows-[auto_minmax(0,1fr)] md:grid-cols-[260px_minmax(0,1fr)] md:grid-rows-1 xl:grid-cols-[270px_minmax(0,1fr)_360px]"
       >
         <GroupSidebar />
         <section class="flex min-h-0 min-w-0 flex-col">
-          <ItemToolbar ref="toolbar" />
-          <ItemGrid />
+          <RowToolbar />
+          <RowGrid />
         </section>
         <DetailPanel class="hidden xl:block" />
       </div>
@@ -64,6 +62,7 @@ onBeforeUnmount(() => {
     <ExportDialog />
     <ImportDialog />
     <GlossaryDialog />
+    <RegistrationDialog />
     <Toaster rich-colors close-button position="bottom-right" :theme="dark ? 'dark' : 'light'" />
   </TooltipProvider>
 </template>

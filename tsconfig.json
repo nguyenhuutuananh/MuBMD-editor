@@ -24,7 +24,6 @@
     "vite.config.ts"
   ],
   "exclude": [
-    "web",
-    "web-legacy"
+    "web"
   ]
 }

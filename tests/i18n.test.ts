@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { ErrorCode, NameIssueCode } from "../src/core";
+import { SEVERITY, type ErrorCode, type IssueCode } from "../src/core";
 import type { ClientErrorCode } from "../web/src/lib/backend";
 import en from "../web/src/i18n/locales/en.json";
 import vi from "../web/src/i18n/locales/vi.json";
@@ -33,29 +33,32 @@ describe("locale files", () => {
     expect(mismatch.map(([k]) => k)).toEqual([]);
   });
 
-  test("no empty strings", () => {
+  test("no empty strings, no characters vue-i18n treats specially", () => {
     expect([...EN, ...VI].filter(([, v]) => !v.trim()).map(([k]) => k)).toEqual([]);
+    // "@" starts a linked message, "<" is refused by the build, "|" only as the plural separator.
+    expect([...EN, ...VI].filter(([, v]) => /[@<$]/.test(v)).map(([k]) => k)).toEqual([]);
   });
 
-  test("every error code and name-issue code is translated", () => {
+  test("every error code and issue code is translated", () => {
     // Listed by hand: adding a code to core/errors.ts without translating it fails this test (and tsc).
     const errorCodes: Record<ErrorCode | ClientErrorCode, true> = {
-      "item-json": true, "items-not-found": true, "no-item": true, "invalid-slot": true, "invalid-name": true, "tsv-header": true, "import-changed": true,
-      "no-file": true, dirty: true, conflict: true, "save-verify-failed": true,
-      "file-not-found": true, "file-locked": true, "permission-denied": true, "is-directory": true,
-      "not-a-file": true, "disk-full": true, "picker-unsupported": true, "picker-failed": true,
-      "missing-path": true, "missing-name": true, "bad-json": true, "unsupported-media": true,
-      "not-local": true, "unknown-api": true, internal: true, offline: true, "bad-response": true,
-      "fs-unsupported": true,
+      "item-json": true, "item-name-invalid": true, "nothing-to-translate": true, "items-not-found": true, "resx-encoding": true, "resx-xml": true, "resx-root": true, "resx-invalid-char": true, "resx-not-editable": true,
+      "resx-file-name": true, "locale-code": true, "no-folder": true, "no-resx": true, "no-default": true,
+      "locale-not-found": true, "file-not-found": true, "not-a-folder": true, "file-locked": true,
+      "permission-denied": true, "is-directory": true, "disk-full": true, "picker-unsupported": true,
+      "picker-failed": true, "missing-path": true, "bad-json": true, "unsupported-media": true, "not-local": true,
+      "unknown-api": true, internal: true, offline: true, "bad-response": true, "fs-unsupported": true,
+      dirty: true, conflict: true, "save-verify-failed": true, "not-editable": true, "tsv-header": true, "import-changed": true,
     };
-    const issueCodes: Record<NameIssueCode, true> = {
-      "too-long": true, "control-char": true, "lone-surrogate": true, separator: true, "edge-whitespace": true, "double-space": true,
+    for (const code of Object.keys(errorCodes)) expect([code, EN.has(`errors.${code}`)]).toEqual([code, true]);
+    // SEVERITY lists every issue code; some have variants (see issueKey in web/src/i18n/index.ts).
+    const variants: Partial<Record<IssueCode, string[]>> = {
+      "stray-backslash": ["stray-backslash-newline", "stray-backslash-end", "stray-backslash-other"],
+      "duplicate-key": ["duplicate-key", "duplicate-key-lost"],
     };
-    for (const code of Object.keys(errorCodes)) expect(EN.has(`errors.${code}`)).toBe(true);
-    for (const code of Object.keys(issueCodes)) {
-      expect(EN.has(`issues.${code}`)).toBe(true);
-      expect(EN.has(`issueDetail.${code}`)).toBe(true);
+    for (const code of Object.keys(SEVERITY) as IssueCode[]) {
+      for (const k of variants[code] ?? [code]) expect([k, EN.has(`issue.${k}`)]).toEqual([k, true]);
     }
-    for (let g = 0; g < 16; g++) expect(EN.has(`itemTypes.${g}`)).toBe(true);
+    for (const s of ["error", "warning", "info"]) expect(EN.has(`severity.${s}`)).toBe(true);
   });
 });

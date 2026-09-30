@@ -1,13 +1,14 @@
 // handleDb.ts - Remember the folders / files the user granted (File System Access handles are
 // storable in IndexedDB), each under a stable numeric id. The id is part of the virtual path
-// ("/MU@3/Data/Items"), so recent folders, the remembered reference and glossary, and drafts keep
-// working after a reload. The browser may ask for permission again when a handle is reused.
+// ("/Localization@3/Game.vi.resx"), so recent folders and the remembered glossary keep working after
+// a reload. The browser may ask for permission again when a handle is reused.
+// (Copied from MuBMD-editor, with its own database name.)
 //
 // Handles inside the browser's private file system (OPFS) are stored by their path instead of as
 // handle objects: Chromium 153 crashes the whole browser when an OPFS directory handle is read back
 // from IndexedDB after a reload. (Handles of the user's own files/folders are stored as usual.)
 
-const DB_NAME = "mubmd";
+const DB_NAME = "mumain-translator";
 const STORE = "handles";
 
 export interface HandleRecord {

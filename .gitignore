@@ -1,11 +1,11 @@
 dist/
 build/
-node_modules/
-*.bak
 releases/
+node_modules/
+e2e-shots/
+*.bak
 .DS_Store
 .idea/
-e2e-shots/
-# side data created when running the tool on the sample file
-data/*
 tests/fixtures/.generated/
+# side data created when running the tool on the sample folder
+data/*

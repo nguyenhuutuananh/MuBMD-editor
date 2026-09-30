@@ -1,5 +1,5 @@
 // glossaryFiles.ts - Load / save the team glossary through a Storage. The glossary is a standalone
-// file shared by the team, not tied to the open game folder.
+// file shared by the team, not tied to the open folder (the same file as MuBMD-editor's).
 
 import { type GlossaryEntry, parseGlossary, serializeGlossary } from "../core";
 import type { GlossaryInfo } from "../shared/api";

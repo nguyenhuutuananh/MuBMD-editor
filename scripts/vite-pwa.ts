@@ -4,14 +4,15 @@
 //     cache-first (so the app opens offline), removes old caches, and waits for the page's
 //     "skip-waiting" message before a new version takes over (see web/src/lib/pwa.ts)
 //   - <link rel="manifest">, theme colour and the Apple touch icon in index.html
-// All URLs are relative, so the site works under any path (e.g. GitHub Pages /MuBMD-editor/).
+// All URLs are relative, so the site works under any path (e.g. GitHub Pages /MuMain-translator/).
+// (Copied from MuBMD-editor, with this tool's name and colour.)
 
 import { createHash } from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import type { Plugin } from "vite";
 
-const THEME = "#9a5b13";
+const THEME = "#1d6b73";
 
 function listFiles(dir: string, base = dir): string[] {
   if (!fs.existsSync(dir)) return [];
@@ -34,7 +35,7 @@ self.addEventListener("activate", (e) => {
   e.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((k) => k.startsWith("mubmd-") && k !== CACHE).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => k.startsWith("mumain-translator-") && k !== CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim()),
   );
 });
@@ -50,7 +51,7 @@ self.addEventListener("fetch", (e) => {
   e.respondWith(
     (async () => {
       const cache = await caches.open(CACHE);
-      // Navigations (with or without "?fallback") get the app shell.
+      // Navigations get the app shell.
       // ignoreVary: servers may send "Vary: Origin", and module scripts are requested with an Origin
       // header while the precached copies were fetched without one.
       if (req.mode === "navigate") return (await cache.match(scoped("./index.html"), { ignoreVary: true })) ?? fetch(req);
@@ -62,7 +63,7 @@ self.addEventListener("fetch", (e) => {
 
 export function pwa(opts: { publicDir: string; version: string }): Plugin {
   return {
-    name: "mubmd-pwa",
+    name: "mumain-translator-pwa",
     apply: "build",
     transformIndexHtml: () => [
       { tag: "link", attrs: { rel: "manifest", href: "./manifest.webmanifest" }, injectTo: "head" },
@@ -71,9 +72,9 @@ export function pwa(opts: { publicDir: string; version: string }): Plugin {
     ],
     generateBundle(_options, bundle) {
       const manifest = {
-        name: "MuBMD-editor",
-        short_name: "MuBMD",
-        description: "Translate the item names of the MuMain client (Mu Online season 6).",
+        name: "MuMain-translator",
+        short_name: "MuMain-tr",
+        description: "Translate the .resx string tables of the MuMain client (src/Localization).",
         start_url: "./",
         scope: "./",
         display: "standalone",
@@ -93,7 +94,7 @@ export function pwa(opts: { publicDir: string; version: string }): Plugin {
         .map((f) => (f === "./" ? f : `./${f}`));
       const unique = [...new Set(files)].sort();
       const hash = createHash("sha1").update(`${opts.version}\n${unique.join("\n")}`).digest("hex").slice(0, 12);
-      this.emitFile({ type: "asset", fileName: "sw.js", source: serviceWorker(`mubmd-${hash}`, unique) });
+      this.emitFile({ type: "asset", fileName: "sw.js", source: serviceWorker(`mumain-translator-${hash}`, unique) });
     },
   };
 }

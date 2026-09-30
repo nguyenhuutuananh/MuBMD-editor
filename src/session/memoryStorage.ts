@@ -17,6 +17,7 @@ export function normalize(p: string): string {
 export class MemoryStorage implements Storage {
   readonly files = new Map<string, Uint8Array>();
   readonly locked = new Set<string>(); // simulate "held by another program"
+  private readonly folders = new Set<string>(["/"]);
 
   constructor(initial: Record<string, Uint8Array> = {}) {
     for (const [p, b] of Object.entries(initial)) this.files.set(normalize(p), b.slice());
@@ -35,6 +36,17 @@ export class MemoryStorage implements Storage {
 
   async exists(p: string): Promise<boolean> {
     return this.files.has(normalize(p));
+  }
+
+  // A folder exists as soon as a file lives in it (or when it was created with addFolder).
+  async isDirectory(p: string): Promise<boolean> {
+    const dir = normalize(p);
+    const prefix = dir === "/" ? "/" : `${dir}/`;
+    return this.folders.has(dir) || [...this.files.keys()].some((k) => k.startsWith(prefix));
+  }
+
+  addFolder(p: string): void {
+    this.folders.add(normalize(p));
   }
 
   async writeAtomic(p: string, bytes: Uint8Array): Promise<void> {
@@ -60,7 +72,7 @@ export class MemoryStorage implements Storage {
   }
 
   async listDirs(dir: string): Promise<string[]> {
-    return subDirs([...this.files.keys()], dir);
+    return subDirs([...this.files.keys(), ...[...this.folders].map((f) => `${f}/`)], dir);
   }
 }
 

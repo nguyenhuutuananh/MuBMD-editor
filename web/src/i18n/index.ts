@@ -2,9 +2,8 @@
 
 import { createI18n } from "vue-i18n";
 import type { GlossaryHint } from "../../../src/core/glossary";
-import { isLang, type Lang, type NameIssue } from "../../../src/shared/api";
+import { isLang, type Lang, type RowIssue } from "../../../src/shared/api";
 import { ApiError } from "@/lib/api";
-import { displayPath } from "@/lib/paths";
 import { KEYS, load, save } from "@/lib/storage";
 import en from "./locales/en.json";
 import vi from "./locales/vi.json";
@@ -56,12 +55,18 @@ export function fmtTime(iso: string): string {
   return iso ? i18n.global.d(new Date(iso), "long") : "";
 }
 
-export function fmtNumber(n: number): string {
-  return new Intl.NumberFormat(currentLang() === "vi" ? "vi-VN" : "en-US").format(n);
+// Validator issue -> sentence. A few codes have variants chosen by their params.
+export function issueKey([code, , params = {}]: RowIssue): string {
+  if (code === "stray-backslash") {
+    const next = params.next;
+    return next === "newline" ? "issue.stray-backslash-newline" : next === "end" ? "issue.stray-backslash-end" : "issue.stray-backslash-other";
+  }
+  if (code === "duplicate-key" && params.lostLegacyIds) return "issue.duplicate-key-lost";
+  return `issue.${code}`;
 }
 
-export function issueText(issue: Pick<NameIssue, "code" | "params">): string {
-  return tr(`issueDetail.${issue.code}`, issue.params ?? {});
+export function issueText(issue: RowIssue): string {
+  return tr(issueKey(issue), issue[2] ?? {});
 }
 
 export function glossaryHintText(h: GlossaryHint): string {
@@ -72,14 +77,8 @@ export function glossaryHintText(h: GlossaryHint): string {
 // Server / client error -> sentence in the current language.
 export function errorText(e: unknown): string {
   if (e instanceof ApiError) {
-    const firstIssue = e.issues?.find((i) => i.severity === "error");
-    if (e.code === "invalid-name" && firstIssue) return issueText(firstIssue);
     const key = `errors.${e.code}`;
-    // Paths are shown like everywhere else (web: without the "@<id>" of the granted folder).
-    const params = Object.fromEntries(
-      Object.entries(e.params).map(([k, v]) => [k, typeof v === "string" && (k === "folder" || k === "path") ? displayPath(v) : v]),
-    );
-    if (i18n.global.te(key, "en")) return tr(key, params);
+    if (i18n.global.te(key, "en")) return tr(key, e.params);
     return e.message;
   }
   return e instanceof Error ? e.message : String(e);

@@ -1,48 +1,58 @@
-// session.ts - The item data folder being edited (Data/Items of a game folder): translated names,
-// per-slot status / note, undo/redo, auto-saved draft, TSV export / import (3-way merge), compare with
-// another game folder, reference names, and saving the item files + project.json with backups and a
-// change log. Runtime-neutral: all file access goes through a Storage (disk for the desktop build,
-// the browser's file APIs for the web build).
+// session.ts - The workspace being translated: MuMain's Localization string tables and / or its item
+// names (see workspace.ts), one target locale (vi, de...) against en, with an optional reference
+// locale; editing with undo/redo, an auto-saved draft, and saving with backups + a change log
+// (sidecar.ts); per-key status / note in .mumain-translator/project-<locale>.json; TSV export /
+// import with a 3-way merge. Runtime-neutral: all file access goes through a Storage (disk for the
+// desktop build, the browser's file APIs for the web build).
 //
-// Methods that touch files are async and run one at a time (see `exclusive`), so they behave exactly
-// like the earlier synchronous version even when requests arrive concurrently.
+// Everything is per key of a group. Each group (a <Group> of .resx files, or one Data/Items file)
+// is a SourceGroup that knows its format (sources/); here a key is either absent (the game shows
+// English) or a text + comment, and may have a record (status, note, who, merge base). Undo, the
+// draft and "reload keeping my edits" all work on those key states, so they survive a file changing
+// on disk (git pull, Drive sync) as long as the same key was not changed there too. Keys are
+// identified by group NAME + key, so they stay valid when the workspace is read again.
+//
+// Methods that touch files are async and run one at a time (see `exclusive`), so concurrent
+// requests cannot interleave.
 
 import {
   AppError,
-  ItemData,
-  type ItemFileText,
-  MAX_ITEM,
-  type MergeAnalysis,
-  NoItemError,
+  DEFAULT_LOCALE,
+  type Issue,
   type Status,
-  type TsvParseResult,
   analyzeImport,
-  checkName,
-  isItemFileName,
-  isSlot,
-  nameLength,
+  checkEmitter,
+  checkLocaleCode,
+  checkOptionWindow,
   parseTranslationTsv,
   serializeTranslationTsv,
   sha1,
-  typeIndexOf,
 } from "../core";
 import {
-  DEFAULT_RECORD,
   type DocStatus,
   type DraftInfo,
-  type EditInfo,
   type ExportResponse,
-  type FileInfo,
+  type GroupInfo,
   type ImportPreview,
-  type ImportSource,
-  type ItemTuple,
+  type KeyRecord,
+  type KeyRef,
   type MutationResponse,
-  type ReferenceInfo,
-  type SlotRecord,
-  type SlotState,
+  type OpenInfo,
+  type RebaseResponse,
+  type RegistrationFile,
+  type RegistrationInfo,
+  ROW_DIRTY,
+  ROW_KEEP,
+  type RowTuple,
+  type RowsResponse,
+  type WorkspaceListing,
 } from "../shared/api";
+import { localeName } from "../shared/locales";
+import type { Platform } from "./itemsFolder";
+import { migrateLegacy } from "./migrate";
 import {
   type Draft,
+  type EntryState,
   type Project,
   appendChangeLog,
   backup,
@@ -58,8 +68,21 @@ import {
   writeDraft,
   writeProject,
 } from "./sidecar";
-import { type ItemsFolder, ItemsNotFoundError, type Platform, findItemsFolder } from "./itemsFolder";
-import { type Storage, readText, writeText } from "./storage";
+import { loadItemsGroups } from "./sources/itemsGroup";
+import { loadResxGroups } from "./sources/resxGroup";
+import type { SourceGroup, WritePlan } from "./sources/types";
+import { type Storage, tryReadText, writeText } from "./storage";
+import { type Workspace, findWorkspace, listWorkspace } from "./workspace";
+
+// The two hand-written locale lists of MuMain, relative to src/Localization.
+export const OPTION_WINDOW_FILE = "../source/UI/NewUI/Options/NewUIOptionWindow.cpp";
+export const EMITTER_FILE = "../../tools/ResxGen/CppEmitter.cs";
+
+export class NoFolderError extends AppError {
+  constructor() {
+    super("no-folder", "No folder is open.");
+  }
+}
 
 export class DirtyError extends AppError {
   constructor(count: number) {
@@ -68,395 +91,485 @@ export class DirtyError extends AppError {
 }
 
 export class ConflictError extends AppError {
-  constructor(file: string) {
-    super("conflict", `${file} changed on disk after it was opened; overwriting would lose that change.`, { file });
+  constructor(readonly files: string[]) {
+    super("conflict", `Changed on disk since they were read: ${files.join(", ")}.`, { files: files.join(", ") });
   }
 }
 
-export class NoFileError extends AppError {
-  constructor() {
-    super("no-file", "No game folder is open.");
-  }
-}
-
-// Everything undo/redo needs to restore one slot.
-interface Snap {
-  name: string;
-  record: SlotRecord | null; // null = default record
+// Everything undo / the draft need to restore one key.
+interface KeyState {
+  entry: EntryState;
+  record: KeyRecord | null;
 }
 
 interface Change {
-  slot: number;
-  before: Snap;
-  after: Snap;
+  group: string;
+  key: string;
+  before: KeyState;
+  after: KeyState;
 }
-
-const MAX_HISTORY = 500;
-
-const utf8 = new TextDecoder();
-const encoder = new TextEncoder();
-const textSha1 = (text: string) => sha1(encoder.encode(text));
-// Identity of the translated names (merge bases and drafts refer to it).
-const namesSha1 = (data: ItemData) => textSha1(JSON.stringify(data.targetNames()));
-
-function sameRecord(a: SlotRecord | null | undefined, b: SlotRecord | null | undefined): boolean {
-  const x = a ?? DEFAULT_RECORD;
-  const y = b ?? DEFAULT_RECORD;
-  return (
-    x.status === y.status &&
-    x.note === y.note &&
-    x.translator === y.translator &&
-    x.updatedAt === y.updatedAt &&
-    (x.origin ?? null) === (y.origin ?? null)
-  );
-}
-
-const isDefault = (r: SlotRecord) => sameRecord(r, DEFAULT_RECORD);
 
 export interface SaveResult {
-  file: FileInfo;
+  files: string[];
+  created: string[];
   savedCount: number;
-  written: string[];
-  backupDir: string | null;
+  backups: string[];
   logPath: string;
 }
 
-interface LoadedFolder {
-  folder: ItemsFolder;
-  data: ItemData;
-  shas: Map<string, string>; // file name -> SHA-1 of its bytes as read
-  token: string; // SHA-1 over every file (import preview / apply check)
+const MAX_HISTORY = 500;
+const id = (group: string, key: string) => `${group}\u0000${key}`;
+function splitId(k: string): [string, string] {
+  const i = k.indexOf("\u0000");
+  return [k.slice(0, i), k.slice(i + 1)];
 }
 
+const sameState = (a: EntryState, b: EntryState) => a === b || (a !== null && b !== null && a.value === b.value && a.comment === b.comment);
+const sameRecord = (a: KeyRecord | null, b: KeyRecord | null) =>
+  a === b ||
+  (a !== null &&
+    b !== null &&
+    a.status === b.status &&
+    a.note === b.note &&
+    a.translator === b.translator &&
+    a.updatedAt === b.updatedAt &&
+    (a.origin ?? null) === (b.origin ?? null));
+const sameKeyState = (a: KeyState, b: KeyState) => sameState(a.entry, b.entry) && sameRecord(a.record, b.record);
+
 export class Session {
-  private data: ItemData | null = null;
-  private folder: ItemsFolder | null = null;
-  private info: FileInfo | null = null;
-  private fileShas = new Map<string, string>();
-  private diskSha1 = ""; // names on disk (see namesSha1)
-  private projectText: string | null = null; // project.json as read / last written (conflict detection)
-  private savedRecords = new Map<number, SlotRecord>();
-  private records = new Map<number, SlotRecord>();
+  private info: OpenInfo | null = null;
+  private workspace: Workspace | null = null;
+  private groups: SourceGroup[] = [];
+  private records = new Map<string, KeyRecord>(); // current, by id
+  private savedRecords = new Map<string, KeyRecord>(); // as in project-<locale>.json
+  private projectText: string | null = null; // the project file as read / last written (conflict detection)
+  private touched = new Set<string>(); // keys changed since the last save (dirty or changed back)
   private undoStack: Change[][] = [];
   private redoStack: Change[][] = [];
   private pendingDraft: Draft | null = null;
-  private rebased = false;
-  private reference: { path: string; names: Map<number, string> } | null = null;
   private queue: Promise<unknown> = Promise.resolve();
 
   constructor(
     readonly storage: Storage,
     private readonly now: () => Date = () => new Date(),
-    // The OS this runs on: decides which build layout wins when a folder holds several (itemsFolder.ts).
+    // The OS this runs on: decides which game layout wins when a folder holds several (itemsFolder.ts).
     readonly platform: Platform = "other",
   ) {}
 
   // Run `fn` after every earlier call has finished (a FIFO lock around state + files).
-  private exclusive<T>(fn: () => Promise<T>): Promise<T> {
+  private exclusive<T>(fn: () => Promise<T> | T): Promise<T> {
     const run = this.queue.then(fn, fn);
     this.queue = run.catch(() => undefined);
     return run;
   }
 
-  get file(): FileInfo | null {
+  get open(): OpenInfo | null {
     return this.info;
-  }
-
-  get document(): ItemData | null {
-    return this.data;
-  }
-
-  private doc(): ItemData {
-    if (!this.data) throw new NoFileError();
-    return this.data;
   }
 
   // ---- open ----
 
-  // Find the item folder in `picked` and read every item file in it.
-  private async load(picked: string): Promise<LoadedFolder> {
-    const st = this.storage;
-    const folder = await findItemsFolder(st, picked, this.platform);
-    const names = (await st.list(folder.dir)).filter(isItemFileName).sort();
-    if (!names.length) throw new ItemsNotFoundError(folder.root);
-    const files: ItemFileText[] = [];
-    const shas = new Map<string, string>();
-    for (const name of names) {
-      const bytes = await st.read(st.join(folder.dir, name));
-      shas.set(name, sha1(bytes));
-      files.push({ name, text: utf8.decode(bytes) });
-    }
-    const token = textSha1([...shas].map(([n, h]) => `${n}:${h}`).join("\n"));
-    return { folder, data: ItemData.parse(files), shas, token };
+  // What a folder holds, without opening it (for choosing the locale).
+  scan(path: string): Promise<WorkspaceListing> {
+    return this.exclusive(async () => (await this.readListing(path)).listing);
   }
 
-  // `picked` is the game folder (or Data/Items itself). Rejects (ItemsNotFoundError, ItemJsonError,
-  // DirtyError...) if it cannot open; the currently open folder is then kept.
-  open(picked: string, opts: { discard?: boolean } = {}): Promise<FileInfo> {
+  private async readListing(path: string): Promise<{ ws: Workspace; listing: WorkspaceListing }> {
+    const ws = await findWorkspace(this.storage, path, this.platform);
+    const listing = await listWorkspace(this.storage, ws);
+    if (ws.resx && !ws.items && !listing.resx!.groups.some((g) => g.hasDefault)) {
+      throw new AppError("no-default", `No <Group>.${DEFAULT_LOCALE}.resx file in ${ws.resx.dir}.`, { path: ws.resx.dir });
+    }
+    return { ws, listing };
+  }
+
+  // Opens `path` for translating `locale`. Every file is read before anything changes, so a
+  // broken file leaves the previously open workspace as it was. Unsaved edits of the open one
+  // block this unless `discard` (then their draft is deleted too). `create` accepts a locale the
+  // workspace has no translation for yet: nothing is written until the first save.
+  openFolder(
+    path: string,
+    locale: string,
+    reference: string | null = null,
+    opts: { discard?: boolean; create?: boolean } = {},
+  ): Promise<OpenInfo> {
     return this.exclusive(async () => {
-      const st = this.storage;
-      // Read + validate the new folder first: a bad path errors right away instead of a pointless "discard changes?".
-      const { folder, data, shas } = await this.load(picked);
-      const dirty = this.data ? this.dirtySlots().length : 0;
+      const { ws, listing } = await this.readListing(path);
+      const exists = listing.locales.some((l) => l.code === locale);
+      if (opts.create && !exists) checkLocaleCode(locale);
+      if (locale === DEFAULT_LOCALE || (!exists && !opts.create)) {
+        throw new AppError("locale-not-found", `There is no ${locale} translation in ${path}.`, { locale, path });
+      }
+      const ref = reference && reference !== locale && reference !== DEFAULT_LOCALE ? reference : null;
+      const groups = await this.loadGroups(ws, locale, ref);
+      const dirty = this.dirtyIds().length;
       if (dirty && !opts.discard) throw new DirtyError(dirty);
+      if (dirty && this.info) await deleteDraft(this.storage, this.info.folder.path, this.info.locale);
 
-      // Discarding the old folder's edits also drops its draft, so it is not offered for restore later.
-      if (this.info && dirty) await deleteDraft(st, this.info.path);
-
-      this.data = data;
-      this.folder = folder;
-      this.fileShas = shas;
-      this.diskSha1 = namesSha1(data);
-      this.info = this.describe(folder, data);
+      this.workspace = ws;
+      this.groups = groups;
+      // The first open of this locale: carry over what MuResx-editor / MuBMD-editor kept.
+      let migrated = null;
+      try {
+        migrated = await migrateLegacy(this.storage, ws, listing.path, locale, groups, this.now());
+      } catch (e) {
+        console.warn(`Could not carry over the old side data: ${(e as Error).message}`);
+      }
+      this.info = { folder: listing, locale, reference: ref, loadedAt: this.now().toISOString(), migrated };
+      await this.loadProject();
+      this.records = new Map(this.savedRecords);
+      this.touched.clear();
       this.undoStack = [];
       this.redoStack = [];
-      this.pendingDraft = await readDraft(st, folder.dir);
-      if (this.pendingDraft && this.pendingDraft.slots.length === 0) this.pendingDraft = null;
-      this.reference = null; // the UI sends the reference remembered for this folder again
-      await this.loadProject(folder.dir);
+      this.pendingDraft = await readDraft(this.storage, listing.path, locale);
       return this.info;
     });
   }
 
-  private async loadProject(abs: string) {
-    const st = this.storage;
-    this.projectText = await readProjectText(st, abs);
-    const project = parseProject(this.projectText);
-    this.savedRecords = new Map();
-    for (const [k, r] of Object.entries(project?.records ?? {})) {
-      const slot = Number(k);
-      if (Number.isInteger(slot) && slot >= 0 && slot < MAX_ITEM && r && typeof r === "object") {
-        this.savedRecords.set(slot, { ...DEFAULT_RECORD, ...r });
-      }
-    }
-    // The file was replaced from outside since our last save (e.g. a new master copy): the names we
-    // started from are gone, so every merge base becomes the current name. Persisted right away so
-    // this happens (and is reported) once.
-    this.rebased = false;
-    if (project && project.namesSha1 !== this.diskSha1) {
-      for (const [slot, r] of this.savedRecords) r.origin = this.nameText(slot);
-      this.rebased = this.savedRecords.size > 0;
-      try {
-        this.projectText = await writeProject(st, abs, this.projectData());
-      } catch (e) {
-        console.warn(`Could not update project.json: ${(e as Error).message}`);
-      }
-    }
-    this.records = new Map([...this.savedRecords].map(([s, r]) => [s, { ...r }]));
-  }
-
-  private projectData(): Project {
-    const records: Record<string, SlotRecord> = {};
-    for (const [slot, r] of [...this.savedRecords].sort((a, b) => a[0] - b[0])) if (!isDefault(r)) records[slot] = r;
-    return { version: 2, namesSha1: this.diskSha1, records };
-  }
-
-  private describe(folder: ItemsFolder, data: ItemData): FileInfo {
-    const st = this.storage;
-    // The item folder relative to the picked folder, e.g. "Data/Items" or "Main.app/Contents/MacOS/Data/Items".
-    const parts: string[] = [];
-    for (let p = folder.dir; p !== folder.root && parts.length < 8; p = st.dirname(p)) parts.unshift(st.basename(p));
-    return {
-      path: folder.dir,
-      root: folder.root,
-      layout: folder.layout,
-      fileName: parts.join("/") || st.basename(folder.dir),
-      locale: data.locale,
-      fileCount: data.fileNames.length,
-      itemCount: data.itemCount,
-      translatedCount: data.slots().filter((s) => data.originalName(s) !== "").length,
-      loadedAt: this.now().toISOString(),
-    };
-  }
-
-  // ---- read ----
-
-  private nameText(slot: number): string {
-    return this.doc().getName(slot);
-  }
-
-  record(slot: number): SlotRecord {
-    return this.records.get(slot) ?? DEFAULT_RECORD;
-  }
-
-  private recordDirty(slot: number): boolean {
-    return !sameRecord(this.records.get(slot), this.savedRecords.get(slot));
-  }
-
-  dirtySlots(): number[] {
-    if (!this.data) return [];
-    const set = new Set(this.data.dirtySlots);
-    for (const slot of new Set([...this.records.keys(), ...this.savedRecords.keys()])) if (this.recordDirty(slot)) set.add(slot);
-    return [...set].sort((a, b) => a - b);
-  }
-
-  item(slot: number): ItemTuple {
-    const data = this.doc();
-    const name = data.getName(slot);
-    const issues = name ? checkName(name).issues.map((i) => i.code) : [];
-    return [slot, name, data.english(slot), nameLength(name), issues];
-  }
-
-  items(): ItemTuple[] {
-    if (!this.data) return [];
-    const out: ItemTuple[] = new Array(MAX_ITEM);
-    for (let slot = 0; slot < MAX_ITEM; slot++) out[slot] = this.item(slot);
+  private async loadGroups(ws: Workspace, locale: string, ref: string | null): Promise<SourceGroup[]> {
+    const out: SourceGroup[] = [];
+    if (ws.resx) out.push(...(await loadResxGroups(this.storage, ws.resx.dir, ws.resx.rel, locale, ref)));
+    if (ws.items) out.push(...(await loadItemsGroups(this.storage, ws.items.dir, ws.items.rel, locale, ref)));
     return out;
   }
 
-  editInfo(slot: number): EditInfo | null {
-    const data = this.doc();
-    if (!data.dirtySlots.includes(slot)) return null;
-    const r = this.record(slot);
-    return { slot, originalText: data.originalName(slot), translator: r.translator, at: r.updatedAt };
+  // Reads project-<locale>.json into savedRecords. A group whose translations changed from outside
+  // since the project was written (git pull, a new master copy) gets its merge bases reset to what is
+  // on disk now; that is written back right away so it happens (and is reported) once. Returns the
+  // names of those groups.
+  private async loadProject(): Promise<string[]> {
+    const { folder, locale } = this.folderInfo();
+    const st = this.storage;
+    this.projectText = await readProjectText(st, folder.path, locale);
+    const project = parseProject(this.projectText, locale);
+    this.savedRecords = new Map();
+    for (const [group, keys] of Object.entries(project?.records ?? {})) {
+      for (const [key, r] of Object.entries(keys)) this.savedRecords.set(id(group, key), r);
+    }
+    const reset: string[] = [];
+    if (!project) return reset;
+    for (const g of this.groups) {
+      const known = project.bases[g.name];
+      if (known === undefined || known === g.baseHash()) continue;
+      reset.push(g.name);
+      for (const [k, r] of this.savedRecords) {
+        const [group, key] = splitId(k);
+        if (group === g.name) this.savedRecords.set(k, { ...r, origin: g.saved(key)?.value ?? "" });
+      }
+    }
+    if (reset.length) {
+      try {
+        this.projectText = await writeProject(st, folder.path, this.projectData());
+      } catch (e) {
+        console.warn(`Could not update ${projectPath(st, folder.path, locale)}: ${(e as Error).message}`);
+      }
+    }
+    return reset;
   }
 
-  edits(): EditInfo[] {
-    if (!this.data) return [];
-    return this.data.dirtySlots.map((s) => this.editInfo(s)!);
+  private projectData(): Project {
+    const { locale } = this.folderInfo();
+    const bases: Record<string, string> = {};
+    for (const g of this.groups) if (g.targetFile) bases[g.name] = g.baseHash();
+    const records: Project["records"] = {};
+    for (const [k, r] of [...this.savedRecords].sort((a, b) => (a[0] < b[0] ? -1 : 1))) {
+      const [group, key] = splitId(k);
+      (records[group] ??= {})[key] = r;
+    }
+    return { version: 1, locale, bases, records };
   }
 
-  recordList(): [number, SlotRecord][] {
-    return [...this.records].filter(([, r]) => !isDefault(r)).sort((a, b) => a[0] - b[0]);
+  setReference(locale: string | null): Promise<OpenInfo> {
+    return this.exclusive(async () => {
+      const info = this.folderInfo();
+      const ref = locale && locale !== info.locale && locale !== DEFAULT_LOCALE ? locale : null;
+      if (ref && !info.folder.locales.some((l) => l.code === ref)) {
+        throw new AppError("locale-not-found", `There is no ${ref} translation in ${info.folder.path}.`, { locale: ref, path: info.folder.path });
+      }
+      for (const g of this.groups) await g.setReference(ref);
+      this.info = { ...info, reference: ref };
+      return this.info;
+    });
   }
 
-  wasRebased(): boolean {
-    return this.rebased;
+  // Whether the game's option window and ResxGen know the open locale (read only; see registration.ts).
+  // Needs the Localization folder of a checkout (the files are next to it).
+  registration(): Promise<RegistrationInfo> {
+    return this.exclusive(async () => {
+      const { locale } = this.folderInfo();
+      const resxDir = this.workspace?.resx?.dir ?? null;
+      const name = localeName(locale);
+      const read = async (rel: string, check: typeof checkOptionWindow): Promise<RegistrationFile | null> => {
+        if (!resxDir) return null;
+        const text = await tryReadText(this.storage, this.storage.join(resxDir, rel));
+        if (text === null) return null;
+        const c = check(text, locale, name);
+        // A file without any entry is not the file we think it is.
+        return c.codes.length ? { path: rel, registered: c.registered, line: c.line, after: c.after } : null;
+      };
+      return { locale, name, optionWindow: await read(OPTION_WINDOW_FILE, checkOptionWindow), emitter: await read(EMITTER_FILE, checkEmitter) };
+    });
+  }
+
+  private folderInfo(): OpenInfo {
+    if (!this.info) throw new NoFolderError();
+    return this.info;
+  }
+
+  // ---- key state ----
+
+  private group(name: string): SourceGroup {
+    const g = this.groups.find((x) => x.name === name);
+    if (!g) throw new AppError("not-editable", `No group named ${name}.`, { group: name });
+    return g;
+  }
+
+  private keyState(g: SourceGroup, key: string): KeyState {
+    return { entry: g.current(key), record: this.records.get(id(g.name, key)) ?? null };
+  }
+
+  private savedState(g: SourceGroup, key: string): KeyState {
+    return { entry: g.saved(key), record: this.savedRecords.get(id(g.name, key)) ?? null };
+  }
+
+  // The record's status, else what the text says: none / identical to en = untranslated.
+  private statusOf(g: SourceGroup, key: string, s: KeyState): Status {
+    if (s.record) return s.record.status;
+    if (!s.entry) return "untranslated";
+    if (g.isKeep(s.entry)) return "translated";
+    return s.entry.value === g.en(key) ? "untranslated" : "translated";
+  }
+
+  private setKey(g: SourceGroup, key: string, s: KeyState) {
+    g.apply(key, s.entry);
+    if (s.record) this.records.set(id(g.name, key), s.record);
+    else this.records.delete(id(g.name, key));
+  }
+
+  private isDirty(k: string): boolean {
+    const [group, key] = splitId(k);
+    const g = this.groups.find((x) => x.name === group);
+    return g !== undefined && !sameKeyState(this.keyState(g, key), this.savedState(g, key));
+  }
+
+  private dirtyIds(): string[] {
+    return [...this.touched].filter((k) => this.isDirty(k));
   }
 
   status(): DocStatus {
-    return {
-      dirtyCount: this.dirtySlots().length,
-      canUndo: this.undoStack.length > 0,
-      canRedo: this.redoStack.length > 0,
-    };
+    return { dirtyCount: this.dirtyIds().length, canUndo: this.undoStack.length > 0, canRedo: this.redoStack.length > 0 };
   }
 
   draftInfo(): DraftInfo | null {
     const d = this.pendingDraft;
     if (!d) return null;
+    return { count: d.edits.length, savedAt: d.savedAt, translators: [...new Set(d.edits.map((e) => e.record?.translator ?? "").filter(Boolean))] };
+  }
+
+  // ---- rows ----
+
+  // Rows + summary of one group, validated as it is now.
+  private buildGroup(gi: number): { info: GroupInfo; rows: Map<string, RowTuple>; loose: Issue[] } {
+    const g = this.groups[gi]!;
+    const report = g.report();
+    const rows = new Map<string, RowTuple>();
+    let dirtyCount = 0;
+    for (const key of g.keys()) {
+      const k = id(g.name, key);
+      const dirty = this.touched.has(k) && this.isDirty(k);
+      if (dirty) dirtyCount++;
+      const state = this.keyState(g, key);
+      const saved = g.saved(key);
+      const meta = g.meta(key);
+      rows.set(key, [
+        gi,
+        key,
+        g.en(key),
+        state.entry?.value ?? null,
+        g.reference(key),
+        report.byKey.get(key) ?? [],
+        meta.legacyIds,
+        meta.enLine,
+        meta.line,
+        (dirty ? ROW_DIRTY : 0) | (g.isKeep(state.entry) ? ROW_KEEP : 0),
+        dirty ? (saved?.value ?? null) : null,
+        this.statusOf(g, key, state),
+        state.record,
+      ]);
+    }
     return {
-      count: d.slots.length,
-      savedAt: d.savedAt,
-      translators: [...new Set(d.slots.map((e) => e.record?.translator ?? "").filter(Boolean))],
-      baseMatches: d.baseSha1 === this.diskSha1,
+      info: {
+        source: g.source,
+        name: g.name,
+        itemType: g.itemType,
+        canKeep: g.canKeep,
+        enFile: g.enFile,
+        file: g.targetFile,
+        referenceFile: g.referenceFile,
+        progress: report.progress,
+        counts: report.counts,
+        dirty: dirtyCount,
+      },
+      rows,
+      loose: report.loose,
     };
+  }
+
+  // Everything the grid shows.
+  rows(): RowsResponse {
+    const info = this.folderInfo();
+    const groups: GroupInfo[] = [];
+    const rows: RowTuple[] = [];
+    const issues: Issue[] = [];
+    this.groups.forEach((_, gi) => {
+      const b = this.buildGroup(gi);
+      groups.push(b.info);
+      rows.push(...b.rows.values());
+      issues.push(...b.loose);
+    });
+    return { open: info, groups, rows, issues, status: this.status(), draft: this.draftInfo() };
+  }
+
+  private response(changes: { group: string; key: string }[]): MutationResponse {
+    const built = new Map<number, ReturnType<Session["buildGroup"]>>();
+    const changed: RowTuple[] = [];
+    for (const c of changes) {
+      const gi = this.groups.findIndex((g) => g.name === c.group);
+      if (gi < 0) continue;
+      if (!built.has(gi)) built.set(gi, this.buildGroup(gi));
+      const row = built.get(gi)!.rows.get(c.key);
+      if (row && !changed.includes(row)) changed.push(row);
+    }
+    const groups = this.groups.map((_, gi) => (built.get(gi) ?? this.buildGroup(gi)).info);
+    return { changed, groups, status: this.status() };
   }
 
   // ---- edit ----
 
-  private snap(slot: number): Snap {
-    const r = this.records.get(slot);
-    return { name: this.doc().getName(slot), record: r ? { ...r } : null };
-  }
-
-  private restore(slot: number, s: Snap) {
-    this.doc().restoreName(slot, s.name);
-    this.setRecord(slot, s.record);
-  }
-
-  // Status and notes only make sense for slots that have an item.
-  private requireItem(slot: number) {
-    if (!isSlot(slot) || !this.doc().exists(slot)) throw new NoItemError(slot);
-  }
-
-  private setRecord(slot: number, r: SlotRecord | null) {
-    if (r && !isDefault(r)) this.records.set(slot, { ...r });
-    else this.records.delete(slot);
-  }
-
-  // Run `fn` on one slot and return the change for undo, or null if nothing changed.
-  private mutate(slot: number, fn: () => void): Change | null {
-    const before = this.snap(slot);
-    fn();
-    const after = this.snap(slot);
-    if (before.name === after.name && sameRecord(before.record, after.record)) return null;
-    return { slot, before, after };
-  }
-
-  // A change that brings name + status + note back to the saved state restores the saved record
-  // exactly, so the slot is no longer dirty (instead of differing only by "updatedAt").
-  private settle(slot: number, next: SlotRecord) {
-    const saved = this.savedRecords.get(slot) ?? DEFAULT_RECORD;
-    const nameClean = !this.doc().dirtySlots.includes(slot);
-    if (nameClean && next.status === saved.status && next.note === saved.note) this.setRecord(slot, saved);
-    else this.setRecord(slot, next);
-  }
-
-  private stamped(slot: number, translator: string, patch: Partial<SlotRecord>, originName: string): SlotRecord {
-    const cur = this.record(slot);
-    return { ...cur, translator, updatedAt: this.now().toISOString(), origin: cur.origin ?? originName, ...patch };
-  }
-
-  private async commit(changes: Change[]): Promise<MutationResponse> {
+  // One undoable step: `next` gives the new state of each key from its current one.
+  private async change(targets: { group: string; key: string }[], next: (cur: KeyState, g: SourceGroup, key: string) => KeyState) {
+    const changes: Change[] = [];
+    for (const { group, key } of targets) {
+      const g = this.group(group);
+      const before = this.keyState(g, key);
+      const after = next(before, g, key);
+      if (sameKeyState(before, after)) continue;
+      this.setKey(g, key, after);
+      changes.push({ group, key, before, after });
+      this.touched.add(id(group, key));
+    }
     if (changes.length) {
       this.undoStack.push(changes);
       if (this.undoStack.length > MAX_HISTORY) this.undoStack.shift();
       this.redoStack = [];
       await this.persistDraft();
     }
-    return this.response(changes.map((c) => c.slot));
+    return this.response(changes);
   }
 
-  private slotState(slot: number): SlotState {
-    return { item: this.item(slot), edit: this.editInfo(slot), record: this.record(slot), dirty: this.dirtySlots().includes(slot) };
+  // A new record for `cur`, stamped with who / when; the merge base is the text before the first change.
+  private stamped(g: SourceGroup, key: string, cur: KeyState, translator: string, patch: Partial<KeyRecord>): KeyRecord {
+    return {
+      status: this.statusOf(g, key, cur),
+      note: cur.record?.note ?? "",
+      translator,
+      updatedAt: this.now().toISOString(),
+      origin: cur.record?.origin ?? cur.entry?.value ?? "",
+      ...patch,
+    };
   }
 
-  private response(slots: number[]): MutationResponse {
-    return { changed: [...new Set(slots)].map((s) => this.slotState(s)), status: this.status() };
+  // A change that brings text + status + note back to the saved state restores the saved record
+  // exactly, so the key is no longer dirty (instead of differing only by who / when).
+  private settle(g: SourceGroup, key: string, entry: EntryState, next: KeyRecord): KeyState {
+    const saved = this.savedState(g, key);
+    if (sameState(entry, saved.entry) && next.status === this.statusOf(g, key, saved) && next.note === (saved.record?.note ?? "")) return saved;
+    return { entry, record: next };
   }
 
-  // Throws NameValidationError for an invalid name, NoItemError for a slot without an item. Editing a
-  // name marks the slot "translated"; an empty name removes the translation.
-  edit(slot: number, name: string, translator: string): Promise<MutationResponse> {
+  // Keys the English source has; keys only the translation has (resx extras) can be removed /
+  // reverted, not given new text.
+  private editable(g: SourceGroup, key: string): boolean {
+    const inEn = g.en(key) !== null;
+    if (!inEn && g.current(key) === null && g.saved(key) === null) {
+      throw new AppError("not-editable", `${key} is not a key of ${g.name}.`, { group: g.name, key });
+    }
+    return inEn;
+  }
+
+  // null or "" removes the translation (the game shows English). Text is stored NFC. Editing
+  // sets the status to translated (untranslated when removed).
+  edit(group: string, key: string, value: string | null, translator: string): Promise<MutationResponse> {
     return this.exclusive(() => {
-      const data = this.doc();
-      this.requireItem(slot);
-      const change = this.mutate(slot, () => {
-        const before = this.nameText(slot);
-        data.setName(slot, name);
-        if (!data.dirtySlots.includes(slot)) {
-          this.setRecord(slot, this.savedRecords.get(slot) ?? null); // typed the original name again = revert
-        } else {
-          this.setRecord(slot, this.stamped(slot, translator, { status: data.getName(slot) ? "translated" : "untranslated" }, before));
-        }
+      this.folderInfo();
+      const g = this.group(group);
+      const inEn = this.editable(g, key);
+      const text = value === null || value === "" ? null : value.normalize("NFC");
+      if (text !== null && !inEn) throw new AppError("not-editable", `${key} is not in the English source.`, { group, key });
+      if (text !== null) g.validateText(key, text);
+      return this.change([{ group, key }], (cur) => {
+        const entry = text === null ? null : g.entryFor(key, cur.entry, text);
+        if (sameState(entry, cur.entry)) return cur;
+        // Typed the saved text again = revert (status and note included).
+        const saved = this.savedState(g, key);
+        if (sameState(entry, saved.entry)) return saved;
+        return this.settle(g, key, entry, this.stamped(g, key, cur, translator, { status: entry ? "translated" : "untranslated" }));
       });
-      return this.commit(change ? [change] : []);
     });
   }
 
-  // Back to the saved state: name from the files on disk and the record from project.json.
-  revert(slot: number, _translator: string): Promise<MutationResponse> {
+  // keep = stay English on purpose (resx only).
+  setKeep(group: string, key: string, keep: boolean, translator: string): Promise<MutationResponse> {
     return this.exclusive(() => {
-      this.requireItem(slot);
-      const change = this.mutate(slot, () => {
-        this.doc().revert(slot);
-        this.setRecord(slot, this.savedRecords.get(slot) ?? null);
+      this.folderInfo();
+      const g = this.group(group);
+      if (!this.editable(g, key) || !g.canKeep) throw new AppError("not-editable", `${key} of ${group} cannot be marked "keep".`, { group, key });
+      const en = g.en(key)!;
+      return this.change([{ group, key }], (cur) => {
+        const entry = g.keepEntry(key, cur.entry, keep);
+        if (sameState(entry, cur.entry)) return cur;
+        const status: Status = keep ? "translated" : entry && entry.value !== en ? "translated" : "untranslated";
+        return this.settle(g, key, entry, this.stamped(g, key, cur, translator, { status }));
       });
-      return this.commit(change ? [change] : []);
     });
   }
 
-  setStatus(slots: number[], status: Status, translator: string): Promise<MutationResponse> {
+  // Back to the files on disk (text and record).
+  revert(group: string, key: string): Promise<MutationResponse> {
     return this.exclusive(() => {
-      const changes: Change[] = [];
-      for (const slot of new Set(slots)) {
-        if (!isSlot(slot) || !this.doc().exists(slot)) continue;
-        if (this.record(slot).status === status) continue;
-        const c = this.mutate(slot, () => this.settle(slot, this.stamped(slot, translator, { status }, this.nameText(slot))));
-        if (c) changes.push(c);
-      }
-      return this.commit(changes);
+      this.folderInfo();
+      const g = this.group(group);
+      return this.change([{ group, key }], () => this.savedState(g, key));
     });
   }
 
-  setNote(slot: number, note: string, translator: string): Promise<MutationResponse> {
-    return this.exclusive(async () => {
+  setStatus(keys: KeyRef[], status: Status, translator: string): Promise<MutationResponse> {
+    return this.exclusive(() => {
+      this.folderInfo();
+      const targets = uniqueRefs(keys).filter(([group, key]) => {
+        const g = this.groups.find((x) => x.name === group);
+        return g !== undefined && (g.en(key) !== null || g.current(key) !== null);
+      });
+      return this.change(
+        targets.map(([group, key]) => ({ group, key })),
+        (cur, g, key) => {
+          if (this.statusOf(g, key, cur) === status) return cur;
+          return this.settle(g, key, cur.entry, this.stamped(g, key, cur, translator, { status }));
+        },
+      );
+    });
+  }
+
+  setNote(group: string, key: string, note: string, translator: string): Promise<MutationResponse> {
+    return this.exclusive(() => {
+      this.folderInfo();
+      const g = this.group(group);
+      this.editable(g, key);
       const clean = note.replace(/[\t\r\n]+/g, " ").trim();
-      this.requireItem(slot);
-      if (this.record(slot).note === clean) return this.response([]);
-      const change = this.mutate(slot, () => this.settle(slot, this.stamped(slot, translator, { note: clean }, this.nameText(slot))));
-      return this.commit(change ? [change] : []);
+      return this.change([{ group, key }], (cur) => {
+        if ((cur.record?.note ?? "") === clean) return cur;
+        return this.settle(g, key, cur.entry, this.stamped(g, key, cur, translator, { note: clean }));
+      });
     });
   }
 
@@ -472,101 +585,70 @@ export class Session {
     const group = from.pop();
     if (!group) return this.response([]);
     const ordered = side === "before" ? [...group].reverse() : group;
-    for (const c of ordered) this.restore(c.slot, c[side]);
+    for (const c of ordered) {
+      const g = this.groups.find((x) => x.name === c.group);
+      if (!g) continue; // the group disappeared from disk
+      this.setKey(g, c.key, c[side]);
+      this.touched.add(id(c.group, c.key));
+    }
     to.push(group);
     await this.persistDraft();
-    return this.response(group.map((c) => c.slot));
-  }
-
-  // ---- reference names ----
-
-  // Load names from a TSV / CSV (e.g. the Japanese originals). Not persisted on the server: the UI
-  // remembers the path per folder and sends it again after opening. Without one, the English names
-  // of the item files serve as the reference.
-  setReference(refPath: string | null): Promise<ReferenceInfo | null> {
-    return this.exclusive(async () => {
-      if (!refPath) {
-        this.reference = null;
-        return null;
-      }
-      const st = this.storage;
-      const abs = st.resolve(refPath);
-      const names = new Map<number, string>();
-      // A file with a source column (e.g. MuMain_VI_Item.csv: Nguon = Japanese original) shows that
-      // column; otherwise its Name column.
-      const parsed = parseTranslationTsv(await readText(st, abs));
-      const useRef = parsed.columns.reference && parsed.rows.some((r) => r.reference);
-      for (const r of parsed.rows) {
-        const name = useRef ? r.reference : r.name;
-        if (name) names.set(r.slot, name);
-      }
-      this.reference = { path: abs, names };
-      return { path: abs, fileName: st.basename(abs), entries: [...names].sort((a, b) => a[0] - b[0]) };
-    });
+    return this.response(group);
   }
 
   // ---- TSV export / import ----
 
-  exportTsv(target: string, slots: number[]): Promise<ExportResponse> {
+  exportTsv(target: string, keys: KeyRef[]): Promise<ExportResponse> {
     return this.exclusive(async () => {
-    const data = this.doc();
-    const rows = [...new Set(slots)]
-      .filter((s) => isSlot(s) && data.exists(s))
-      .sort((a, b) => a - b)
-      .map((slot) => {
-        const r = this.record(slot);
-        const name = this.nameText(slot);
-        return {
-          ...typeIndexOf(slot),
-          name,
-          status: r.status,
-          translator: r.translator,
-          updatedAt: r.updatedAt,
-          base: r.origin ?? name,
-          reference: this.reference?.names.get(slot) ?? data.english(slot) ?? "",
-          note: r.note,
-        };
-      });
-    const abs = this.storage.resolve(target);
-    await writeText(this.storage, abs, serializeTranslationTsv(rows));
-    return { path: abs, count: rows.length };
+      this.folderInfo();
+      const rows = [];
+      for (const [group, key] of uniqueRefs(keys)) {
+        const g = this.groups.find((x) => x.name === group);
+        if (!g) continue;
+        const en = g.en(key);
+        const cur = this.keyState(g, key);
+        if (en === null && !cur.entry) continue;
+        const value = cur.entry?.value ?? "";
+        rows.push({
+          group,
+          key,
+          english: en ?? "",
+          value,
+          status: this.statusOf(g, key, cur),
+          translator: cur.record?.translator ?? "",
+          updatedAt: cur.record?.updatedAt ?? "",
+          base: cur.record?.origin ?? value,
+          note: cur.record?.note ?? "",
+        });
+      }
+      const abs = this.storage.resolve(target);
+      await writeText(this.storage, abs, serializeTranslationTsv(rows));
+      return { path: abs, count: rows.length };
     });
   }
 
-  // Rows of a translation file, or the translated names of another game folder (a plain name list,
-  // compared 2-way).
-  private async readRows(source: string, kind: ImportSource): Promise<{ path: string; fileName: string; token: string; parsed: TsvParseResult }> {
-    const st = this.storage;
-    if (kind === "game") {
-      const other = await this.load(source);
-      const rows = other.data.targetNames().map(([slot, name]) => ({ line: slot + 1, ...typeIndexOf(slot), slot, name }));
-      return {
-        path: other.folder.root,
-        fileName: st.basename(other.folder.root),
-        token: other.token,
-        parsed: { rows, problems: [], columns: { base: false, status: false, translator: false, note: false, reference: false } },
-      };
-    }
-    const abs = st.resolve(source);
-    const bytes = await st.read(abs);
-    return { path: abs, fileName: st.basename(abs), token: sha1(bytes), parsed: parseTranslationTsv(utf8.decode(bytes)) };
+  private analyze(text: string) {
+    const parsed = parseTranslationTsv(text);
+    const analysis = analyzeImport(parsed.rows, (group, key) => {
+      const g = this.groups.find((x) => x.name === group);
+      const en = g ? g.en(key) : null;
+      if (!g || en === null) return null;
+      const cur = this.keyState(g, key);
+      return { en, value: cur.entry?.value ?? null, status: this.statusOf(g, key, cur), check: g.check };
+    });
+    return { parsed, analysis };
   }
 
-  private analyze(parsed: TsvParseResult): MergeAnalysis {
-    const data = this.doc();
-    return analyzeImport(parsed.rows, (slot) => ({ exists: data.exists(slot), name: data.getName(slot), status: this.record(slot).status }));
-  }
-
-  previewImport(source: string, kind: ImportSource = "tsv"): Promise<ImportPreview> {
+  previewImport(source: string): Promise<ImportPreview> {
     return this.exclusive(async () => {
-      this.doc();
-      const { path, fileName, token, parsed } = await this.readRows(source, kind);
-      const analysis = this.analyze(parsed);
+      this.folderInfo();
+      const abs = this.storage.resolve(source);
+      const bytes = await this.storage.read(abs);
+      const { parsed, analysis } = this.analyze(new TextDecoder().decode(bytes));
       return {
-        path,
-        fileName,
-        source: kind,
-        token,
+        path: abs,
+        fileName: this.storage.basename(abs),
+        token: sha1(bytes),
         items: analysis.items,
         counts: analysis.counts,
         problems: parsed.problems,
@@ -575,101 +657,126 @@ export class Session {
     });
   }
 
-  // Apply the chosen rows of a previewed file as ONE undoable step.
-  applyImport(source: string, token: string, take: number[], translator: string, kind: ImportSource = "tsv"): Promise<MutationResponse> {
+  // Applies the chosen rows of a previewed file as ONE undoable step.
+  applyImport(source: string, token: string, take: KeyRef[], translator: string): Promise<MutationResponse> {
     return this.exclusive(async () => {
-      const data = this.doc();
-      const { fileName, token: now, parsed } = await this.readRows(source, kind);
-      if (now !== token) throw new AppError("import-changed", "The file changed since the preview.", { file: fileName });
-      const analysis = this.analyze(parsed);
-      const rows = new Map(parsed.rows.map((r) => [r.slot, r]));
-      const wanted = new Set(take);
-      const changes: Change[] = [];
-
-      for (const it of analysis.items) {
-        if (!wanted.has(it.slot) || it.kind === "invalid") continue;
-        const row = rows.get(it.slot)!;
-        const c = this.mutate(it.slot, () => {
-          const before = this.nameText(it.slot);
-          if (it.kind !== "status") data.setName(it.slot, it.theirs);
-          const cur = this.record(it.slot);
-          this.setRecord(it.slot, {
-            ...cur,
-            status: row.status ?? (it.kind === "status" ? cur.status : "translated"),
-            translator: row.translator || translator,
-            updatedAt: row.updatedAt || this.now().toISOString(),
-            note: row.note ? row.note : cur.note,
-            origin: cur.origin ?? before,
-          });
-        });
-        if (c) changes.push(c);
-      }
-      return this.commit(changes);
+      this.folderInfo();
+      const abs = this.storage.resolve(source);
+      const bytes = await this.storage.read(abs);
+      if (sha1(bytes) !== token) throw new AppError("import-changed", "The file changed since the preview.", { file: this.storage.basename(abs) });
+      const { parsed, analysis } = this.analyze(new TextDecoder().decode(bytes));
+      const rows = new Map(parsed.rows.map((r) => [id(r.group, r.key), r]));
+      const items = new Map(analysis.items.map((it) => [id(it.group, it.key), it]));
+      const wanted = uniqueRefs(take).filter(([group, key]) => {
+        const it = items.get(id(group, key));
+        if (it === undefined || it.kind === "invalid") return false;
+        // A text the file cannot hold is never taken (the preview marks it invalid already).
+        try {
+          if (it.kind !== "status") this.group(group).validateText(key, it.theirs);
+          return true;
+        } catch {
+          return false;
+        }
+      });
+      return this.change(
+        wanted.map(([group, key]) => ({ group, key })),
+        (cur, g, key) => {
+          const it = items.get(id(g.name, key))!;
+          const row = rows.get(id(g.name, key))!;
+          const entry = it.kind === "status" ? cur.entry : g.entryFor(key, cur.entry, it.theirs);
+          return {
+            entry,
+            record: {
+              status: it.theirsStatus ?? (it.kind === "status" ? this.statusOf(g, key, cur) : "translated"),
+              note: row.note ? row.note : (cur.record?.note ?? ""),
+              translator: row.translator || translator,
+              updatedAt: row.updatedAt || this.now().toISOString(),
+              origin: cur.record?.origin ?? cur.entry?.value ?? "",
+            },
+          };
+        },
+      );
     });
   }
 
   // ---- draft ----
 
-  // Apply the draft as one (undoable) step. Names that are no longer valid are skipped.
+  // Applies the draft as one (undoable) step; edits of groups / keys that no longer exist, or texts
+  // the file cannot hold, are skipped.
   restoreDraft(): Promise<MutationResponse & { skipped: number }> {
     return this.exclusive(async () => {
-    const draft = this.pendingDraft;
-    if (!draft) return { ...this.response([]), skipped: 0 };
-    this.pendingDraft = null;
-    const data = this.doc();
-    const changes: Change[] = [];
-    let skipped = 0;
-    for (const e of draft.slots) {
-      if (!isSlot(e.slot) || !data.exists(e.slot) || (e.name !== undefined && !checkName(e.name).ok)) {
-        skipped++;
-        continue;
+      this.folderInfo();
+      const draft = this.pendingDraft;
+      if (!draft) return { ...this.response([]), skipped: 0 };
+      this.pendingDraft = null;
+      const states = new Map<string, KeyState>();
+      let skipped = 0;
+      for (const e of draft.edits) {
+        const g = this.groups.find((x) => x.name === e.group);
+        const known = g && (g.en(e.key) !== null || g.current(e.key) !== null);
+        let ok = !!known;
+        if (ok && e.state !== null) {
+          try {
+            if (g!.en(e.key) === null) throw new Error("extra");
+            g!.validateText(e.key, e.state.value);
+          } catch {
+            ok = false;
+          }
+        }
+        if (!ok) {
+          skipped++;
+          continue;
+        }
+        states.set(id(e.group, e.key), { entry: e.state, record: e.record });
       }
-      const c = this.mutate(e.slot, () => {
-        if (e.name !== undefined) data.setName(e.slot, e.name);
-        if (e.record !== undefined) this.setRecord(e.slot, e.record ? { ...DEFAULT_RECORD, ...e.record } : null);
-      });
-      if (c) changes.push(c);
-    }
-    return { ...(await this.commit(changes)), skipped };
+      const res = await this.change(
+        [...states.keys()].map((k) => {
+          const [group, key] = splitId(k);
+          return { group, key };
+        }),
+        (_cur, g, key) => states.get(id(g.name, key))!,
+      );
+      await this.persistDraft();
+      return { ...res, skipped };
     });
   }
 
   discardDraft(): Promise<void> {
     return this.exclusive(async () => {
-      if (!this.info) return;
+      const info = this.info;
+      if (!info) return;
       this.pendingDraft = null;
-      if (this.dirtySlots().length === 0) await deleteDraft(this.storage, this.info.path);
+      if (this.dirtyIds().length === 0) await deleteDraft(this.storage, info.folder.path, info.locale);
     });
   }
 
   // Called inside `exclusive`. A failed draft write never fails the edit itself.
   private async persistDraft() {
-    const data = this.data;
     const info = this.info;
     const st = this.storage;
-    if (!data || !info) return;
+    if (!info) return;
+    const folder = info.folder.path;
     try {
       // An unanswered old draft plus a new edit: archive the old draft under another name instead of overwriting it.
       if (this.pendingDraft) {
-        const old = draftPath(st, info.path);
-        if (await st.exists(old)) await st.rename(old, st.join(workDir(info.path), `draft-${stamp(this.now())}.json`));
+        const old = draftPath(st, folder, info.locale);
+        if (await st.exists(old)) await st.rename(old, st.join(workDir(st, folder), `draft-${info.locale}-${stamp(this.now())}.json`));
         this.pendingDraft = null;
       }
-      const dirty = this.dirtySlots();
+      const dirty = this.dirtyIds();
       if (!dirty.length) {
-        await deleteDraft(st, info.path);
+        await deleteDraft(st, folder, info.locale);
         return;
       }
-      const nameDirty = new Set(data.dirtySlots);
-      await writeDraft(st, info.path, {
-        version: 2,
-        baseSha1: this.diskSha1,
+      await writeDraft(st, folder, {
+        version: 1,
+        locale: info.locale,
         savedAt: this.now().toISOString(),
-        slots: dirty.map((slot) => ({
-          slot,
-          ...(nameDirty.has(slot) ? { name: data.getName(slot) } : {}),
-          ...(this.recordDirty(slot) ? { record: this.records.get(slot) ?? null } : {}),
-        })),
+        edits: dirty.map((k) => {
+          const [group, key] = splitId(k);
+          const s = this.keyState(this.group(group), key);
+          return { group, key, state: s.entry, record: s.record };
+        }),
       });
     } catch (e) {
       console.warn(`Could not write draft: ${(e as Error).message}`);
@@ -683,82 +790,127 @@ export class Session {
   }
 
   private async saveNow(opts: { force?: boolean }): Promise<SaveResult> {
+    const info = this.folderInfo();
     const st = this.storage;
-    const data = this.doc();
-    const info = this.info!;
-    const dir = info.path;
-    const logPath = changeLogPath(st, dir);
-    const dirty = this.dirtySlots();
-    if (dirty.length === 0) return { file: info, savedCount: 0, written: [], backupDir: null, logPath };
+    const folder = info.folder.path;
+    const logPath = changeLogPath(st, folder);
+    const dirty = this.dirtyIds();
+    if (!dirty.length) return { files: [], created: [], savedCount: 0, backups: [], logPath };
 
-    const changed = data.changedFiles();
-    // Someone / something else wrote an item file we are about to replace, or project.json, since we
-    // read them (e.g. Google Drive sync, or MuMain's item editor).
-    if (!opts.force) {
-      for (const f of changed) {
-        const p = st.join(dir, f.name);
-        const disk = (await st.exists(p)) ? sha1(await st.read(p)) : null;
-        if (disk !== this.fileShas.get(f.name)) throw new ConflictError(f.name);
-      }
-      if ((await readProjectText(st, dir)) !== this.projectText) throw new ConflictError("project.json");
+    // Groups with a changed text; the project file is written on every save with changes.
+    const byGroup = new Map<string, string[]>();
+    for (const k of dirty) {
+      const [group, key] = splitId(k);
+      const g = this.group(group);
+      if (!sameState(g.current(key), g.saved(key))) byGroup.set(group, [...(byGroup.get(group) ?? []), key]);
     }
 
-    // Verify before writing: the new files parse and hold exactly the names we expect.
-    const texts = new Map(data.fileNames.map((n) => [n, data.fileText(n)!]));
-    for (const f of changed) texts.set(f.name, f.text);
-    let check: ItemData;
-    try {
-      check = ItemData.parse([...texts].map(([name, text]) => ({ name, text })), data.locale);
-    } catch (e) {
-      throw new AppError("save-verify-failed", `Internal error: output does not parse (${(e as Error).message}) - save aborted.`);
+    // Someone / something else wrote a file since we read it (git pull, Drive sync, another editor).
+    const planned: { g: SourceGroup; plan: WritePlan; keys: string[] }[] = [];
+    const conflicts: string[] = [];
+    for (const g of this.groups) {
+      const keys = byGroup.get(g.name);
+      if (!keys) continue;
+      const plan = g.planWrite(keys); // verified: reads back as intended
+      if (!opts.force && (await g.diskChanged())) conflicts.push(plan.file);
+      planned.push({ g, plan, keys });
     }
-    for (const slot of data.slots()) {
-      if (check.getName(slot) !== data.getName(slot) || check.english(slot) !== data.english(slot)) {
-        throw new AppError("save-verify-failed", `Internal error: slot ${slot} written incorrectly - save aborted.`, { slot });
-      }
+    const projectFile = projectPath(st, folder, info.locale);
+    if ((await readProjectText(st, folder, info.locale)) !== this.projectText && !opts.force) {
+      conflicts.push(`${st.basename(workDir(st, folder))}/${st.basename(projectFile)}`);
     }
-    if (check.itemCount !== data.itemCount) throw new AppError("save-verify-failed", "Internal error: item count changed - save aborted.");
+    if (conflicts.length) throw new ConflictError(conflicts);
 
     const now = this.now();
-    const written: string[] = [];
-    for (const f of changed) {
-      const p = st.join(dir, f.name);
-      await backup(st, dir, now, p);
-      const bytes = encoder.encode(f.text);
-      await st.writeAtomic(p, bytes);
-      this.fileShas.set(f.name, sha1(bytes));
-      written.push(p);
+    const backups: string[] = [];
+    const created: string[] = [];
+    const log = [];
+    for (const { g, plan, keys } of planned) {
+      const b = await backup(st, folder, plan.path, now);
+      if (b) backups.push(b);
+      else created.push(plan.file);
+      await st.writeAtomic(plan.path, new TextEncoder().encode(plan.text));
+      for (const key of keys) {
+        const r = this.records.get(id(g.name, key));
+        log.push({
+          at: r?.updatedAt || now.toISOString(),
+          translator: r?.translator ?? "",
+          file: plan.file,
+          key,
+          oldValue: g.saved(key)?.value ?? null,
+          newValue: g.current(key)?.value ?? null,
+        });
+      }
+      g.committed(plan); // the written file becomes the new saved state
     }
+    if (log.length) await appendChangeLog(st, folder, log);
 
-    const rows = data.dirtySlots.map((slot) => {
-      const r = this.record(slot);
-      return {
-        at: r.updatedAt || now.toISOString(),
-        translator: r.translator,
-        ...typeIndexOf(slot),
-        oldName: data.originalName(slot),
-        newName: data.getName(slot),
-      };
-    });
-    if (rows.length) await appendChangeLog(st, dir, rows);
-
-    // The written files become the new originals; the current records become the saved ones.
-    this.data = check;
-    this.diskSha1 = namesSha1(check);
-    this.savedRecords = new Map([...this.records].map(([s, r]) => [s, { ...r }]));
-    await backup(st, dir, now, projectPath(st, dir));
-    this.projectText = await writeProject(st, dir, this.projectData());
-    await deleteDraft(st, dir);
-    this.info = this.describe(this.folder!, check);
+    this.savedRecords = new Map(this.records);
+    await backup(st, folder, projectFile, now);
+    this.projectText = await writeProject(st, folder, this.projectData());
+    for (const k of dirty) this.touched.delete(k);
+    await deleteDraft(st, folder, info.locale);
     this.pendingDraft = null;
-    this.rebased = false;
+    if (created.length) this.info = { ...info, folder: (await this.readListing(folder)).listing };
     // Undo history is kept (undo after save = a new edit).
-    return {
-      file: this.info,
-      savedCount: dirty.length,
-      written,
-      backupDir: written.length ? st.join(workDir(dir), "backups") : null,
-      logPath,
-    };
+    return { files: planned.map((p) => p.plan.file), created, savedCount: dirty.length, backups, logPath };
   }
+
+  // ---- reload ----
+
+  // Reads every file again (en, target, reference, project) and puts the unsaved edits back on
+  // top. A key whose text also changed on disk keeps our version and is reported as a conflict.
+  rebase(): Promise<RebaseResponse> {
+    return this.exclusive(async () => {
+      const info = this.folderInfo();
+      const { ws, listing } = await this.readListing(info.folder.path);
+      const fresh = await this.loadGroups(ws, info.locale, info.reference);
+      const changedFiles: string[] = [];
+      const conflicts: { group: string; key: string }[] = [];
+
+      // What we have that is not saved, before replacing the files.
+      const ours = new Map<string, { base: EntryState; mine: KeyState }>();
+      for (const k of this.dirtyIds()) {
+        const [group, key] = splitId(k);
+        const g = this.group(group);
+        ours.set(k, { base: g.saved(key), mine: this.keyState(g, key) });
+      }
+      for (const g of fresh) {
+        const old = this.groups.find((x) => x.name === g.name);
+        if (old && g.baseHash() !== old.baseHash()) changedFiles.push(g.targetFile ?? g.name);
+      }
+
+      this.workspace = ws;
+      this.groups = fresh;
+      this.info = { ...info, folder: listing, loadedAt: this.now().toISOString() };
+      await this.loadProject();
+      this.records = new Map(this.savedRecords);
+      this.touched = new Set();
+      for (const [k, { base, mine }] of ours) {
+        const [group, key] = splitId(k);
+        const g = fresh.find((x) => x.name === group);
+        if (!g) continue; // the group disappeared from disk: its edits are dropped
+        if (g.en(key) === null && g.saved(key) === null && mine.entry !== null) continue; // the item / key is gone
+        const theirs = g.saved(key);
+        if (!sameState(theirs, base) && !sameState(theirs, mine.entry)) conflicts.push({ group, key });
+        this.setKey(g, key, mine);
+        this.touched.add(k);
+      }
+      await this.persistDraft();
+      return { changedFiles, conflicts };
+    });
+  }
+}
+
+function uniqueRefs(keys: KeyRef[]): KeyRef[] {
+  const seen = new Set<string>();
+  const out: KeyRef[] = [];
+  for (const k of Array.isArray(keys) ? keys : []) {
+    if (!Array.isArray(k) || typeof k[0] !== "string" || typeof k[1] !== "string") continue;
+    const i = id(k[0], k[1]);
+    if (seen.has(i)) continue;
+    seen.add(i);
+    out.push([k[0], k[1]]);
+  }
+  return out;
 }

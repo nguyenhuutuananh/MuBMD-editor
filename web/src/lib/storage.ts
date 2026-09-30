@@ -18,10 +18,10 @@ export function save(key: string, value: unknown): void {
 }
 
 export const KEYS = {
-  lang: "mubmd.lang",
-  recent: "mubmd.recent",
-  filter: "mubmd.filter",
-  translator: "mubmd.translator",
-  references: "mubmd.references", // { [item folder path]: reference file path }
-  glossary: "mubmd.glossary", // path of the team glossary file (one for all game folders)
+  lang: "mumain-translator.lang",
+  recent: "mumain-translator.recent", // [{ path, locale }]
+  filter: "mumain-translator.filter",
+  references: "mumain-translator.references", // { [folder path]: reference locale }
+  translator: "mumain-translator.translator",
+  glossary: "mumain-translator.glossary", // path of the team glossary file (one for every folder)
 } as const;
