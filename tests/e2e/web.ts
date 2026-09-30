@@ -1,15 +1,16 @@
 // web.ts - End-to-end test of the WEB build (Session in the browser, File System Access API) in real
 // headless Chrome. Native pickers cannot be clicked headlessly, so window.__MUBMD_TEST_PICK__ answers
 // them with handles from the page's Origin Private File System (OPFS): the test queues OPFS paths
-// with pickNext(); with an empty queue the folder picker returns "Local" (preloaded with the sample).
+// with pickNext(); with an empty queue the folder picker returns "MU" (a macOS game folder preloaded
+// with the sample item files inside Main.app).
 //   bun tests/e2e/web.ts [screenshot-dir]
 
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { type Browser, type Page, chromium } from "playwright-core";
-import { ItemBmd } from "../../src/core";
-import { buildSampleBmd } from "../fixtures/sampleBmd";
+import { ItemData } from "../../src/core";
+import { sampleFiles } from "../fixtures/sampleItems";
 import { chromiumOptions } from "./browsers";
 
 // The e2e hook read by web/src/lib/localBackend.ts (declared there for the web build too).
@@ -20,7 +21,7 @@ declare global {
   }
 }
 
-// Answer the next native picker(s) with these OPFS paths ("Local" = folder, "out/x.tsv" = file).
+// Answer the next native picker(s) with these OPFS paths ("MU" = folder, "out/x.tsv" = file).
 const pickNext = (p: Page, ...paths: string[]) => p.evaluate((q) => (window.__pickQueue = q), paths);
 
 const ROOT = path.join(import.meta.dir, "../..");
@@ -102,6 +103,17 @@ async function opfsList(p: Page, rel: string): Promise<string[]> {
   }, rel);
 }
 
+const FILES = sampleFiles();
+const ITEMS = "MU/Main.app/Contents/MacOS/Data/Items";
+const SWORDS = `${ITEMS}/Group00_Sword.json`;
+const enc = new TextEncoder();
+const dec = new TextDecoder();
+
+async function writeGame(p: Page, itemsDir: string) {
+  for (const [name, text] of Object.entries(FILES)) await opfsWrite(p, `${itemsDir}/${name}`, enc.encode(text));
+}
+const swordsOnDisk = async (p: Page) => ItemData.parse([{ name: "Group00_Sword.json", text: dec.decode((await opfsRead(p, SWORDS))!) }]);
+
 async function startVite() {
   vite = Bun.spawn(["node", path.join(ROOT, "node_modules/vite/bin/vite.js"), "--port", String(PORT), "--strictPort"], {
     cwd: ROOT,
@@ -133,7 +145,7 @@ async function main() {
   await ctx.addInitScript(() => {
     window.__pickQueue = [];
     window.__MUBMD_TEST_PICK__ = async (req) => {
-      const next = window.__pickQueue!.shift() ?? (req.mode === "folder" ? "Local" : null);
+      const next = window.__pickQueue!.shift() ?? (req.mode === "folder" ? "MU" : null);
       if (!next) return null;
       let dir = await navigator.storage.getDirectory();
       const parts = next.split("/");
@@ -157,17 +169,17 @@ async function main() {
   });
 
   await p.goto(URL);
-  await opfsWrite(p, "Local/Item.bmd", buildSampleBmd());
+  await writeGame(p, ITEMS);
 
   // 1. Welcome screen of the web build: folder picker, no path box
   await p.reload();
   check("web welcome: folder button, no path box", (await text(p, "[data-testid=pick]")).includes("folder") && !(await p.isVisible("#open-path")));
 
-  // 2. Open the folder -> the Item.bmd inside is loaded
+  // 2. Open the game folder -> the item files inside Main.app are found and loaded
   await p.click("[data-testid=pick]");
   await p.waitForSelector(rowSel(0));
-  check("opens Item.bmd from the folder", (await text(p, "[data-testid=result-count]")) === "488 rows" && (await text(p, "[data-testid=checksum]")) === "Checksum OK");
-  check("path shows the folder", ((await p.getAttribute("span[dir=rtl]", "title")) ?? "") === "/Local/Item.bmd");
+  check("finds the item files inside the app bundle", (await text(p, "[data-testid=result-count]")) === "488 rows" && (await text(p, "[data-testid=layout]")) === "macOS app");
+  check("path shows the item folder", ((await p.getAttribute("span[dir=rtl]", "title")) ?? "") === `/${ITEMS}`);
 
   // 3. Edit + save in place
   await p.click(rowSel(0));
@@ -183,15 +195,14 @@ async function main() {
   await waitText(p, "[data-testid=dirty-status]", "● 1 unsaved change");
   await shot(p, "web-01-edit");
   await p.keyboard.press("Control+s");
-  const saved = await toastWith(p, "Saved 1 change to Item.bmd.");
-  check("save toast", saved.includes("/Local/Item.bmd.mubmd/backups/Item-"), saved);
-  const onDisk = await opfsRead(p, "Local/Item.bmd");
-  check("file written in place", onDisk !== null && ItemBmd.parse(onDisk).getName(0).text === "Chùy Trên Web" && ItemBmd.parse(onDisk).checksumValid);
-  const side = await opfsList(p, "Local/Item.bmd.mubmd");
-  check("side data next to the file", side.join(",") === "backups,changes.tsv,project.json", side.join(","));
-  const backups = await opfsList(p, "Local/Item.bmd.mubmd/backups");
-  const firstBackup = backups[0] ? await opfsRead(p, `Local/Item.bmd.mubmd/backups/${backups[0]}`) : null;
-  check("backup is the original", backups.length === 1 && firstBackup !== null && Buffer.from(firstBackup).equals(Buffer.from(buildSampleBmd())));
+  const saved = await toastWith(p, "Saved 1 change.");
+  check("save toast", saved.includes(`/${ITEMS}.mubmd/backups`), saved);
+  check("file written in place", (await swordsOnDisk(p)).getName(0) === "Chùy Trên Web");
+  const side = await opfsList(p, `${ITEMS}.mubmd`);
+  check("side data next to the item folder", side.join(",") === "backups,changes.tsv,project.json", side.join(","));
+  const backups = await opfsList(p, `${ITEMS}.mubmd/backups`);
+  const firstBackup = backups[0] ? await opfsRead(p, `${ITEMS}.mubmd/backups/${backups[0]}`) : null;
+  check("backup is the original", backups.length === 1 && firstBackup !== null && dec.decode(firstBackup) === FILES["Group00_Sword.json"]);
 
   // 4. Undo / redo still work
   await p.focus("[data-testid=grid]");
@@ -208,7 +219,7 @@ async function main() {
   await p.waitForSelector(`${EDITOR}[aria-label="New name for 0:2"]`);
   await p.keyboard.press("Escape");
   await waitText(p, "[data-testid=dirty-status]", "● 1 unsaved change");
-  check("draft.json written", (await opfsList(p, "Local/Item.bmd.mubmd")).includes("draft.json"));
+  check("draft.json written", (await opfsList(p, `${ITEMS}.mubmd`)).includes("draft.json"));
   lastDialog = "";
   await p.reload();
   check("warns before leaving with unsaved changes", lastDialog === "beforeunload", lastDialog);
@@ -220,17 +231,16 @@ async function main() {
   check("draft restored", (await text(p, `[data-testid=grid] [data-slot='1'] > span:nth-child(3)`)) === "Đoản Đao Nháp");
 
   // 6. The file changes underneath (another program / Drive sync) -> conflict
-  const other = ItemBmd.parse((await opfsRead(p, "Local/Item.bmd"))!);
+  const other = await swordsOnDisk(p);
   other.setName(5, "Sửa Từ Bên Ngoài");
-  await opfsWrite(p, "Local/Item.bmd", other.toBytes());
+  await opfsWrite(p, SWORDS, enc.encode(other.changedFiles()[0]!.text));
   await p.keyboard.press("Control+s");
   await p.waitForSelector("[data-testid=dialog]");
   check("conflict detected", (await text(p, "[data-testid=dialog] h2")) === "The file was changed outside this tool");
   await shot(p, "web-02-conflict");
   await p.click("[data-testid=dialog-force]");
   await toastWith(p, "Saved 1 change");
-  const forced = ItemBmd.parse((await opfsRead(p, "Local/Item.bmd"))!);
-  check("overwrite after confirming", forced.getName(1).text === "Đoản Đao Nháp");
+  check("overwrite after confirming", (await swordsOnDisk(p)).getName(1) === "Đoản Đao Nháp");
 
   // 7. Status + note persist in project.json
   await p.click(rowSel(3));
@@ -238,17 +248,18 @@ async function main() {
   await waitText(p, "[data-testid=dirty-status]", "● 1 unsaved change");
   await p.keyboard.press("Control+s");
   await toastWith(p, "Saved 1 change");
-  const project = JSON.parse(new TextDecoder().decode((await opfsRead(p, "Local/Item.bmd.mubmd/project.json"))!));
+  const project = JSON.parse(dec.decode((await opfsRead(p, `${ITEMS}.mubmd/project.json`))!));
   check("status saved to project.json", project.records["3"]?.status === "reviewed");
 
-  // 8. A folder without any .bmd -> translated error
+  // 8. A folder without item data -> translated error (path shown without the internal id)
   await p.click("[data-testid=open-other]");
   await pickNext(p, "Empty");
   await p.click("[data-testid=pick]");
   await p.waitForSelector("[data-testid=open-error]");
-  check("folder without .bmd", (await text(p, "[data-testid=open-error]")) === "No .bmd file was found in the folder “Empty”.");
+  const noItems = await text(p, "[data-testid=open-error]");
+  check("folder without item data", noItems.startsWith("No item data was found in “/Empty”."), noItems);
 
-  // ---- W3: pickers, recent files, single file, save as, beforeunload, second tab ----
+  // ---- W3: pickers, recent folders, compare, other layouts, beforeunload, second tab ----
   const choose = async (trigger: string, option: string) => {
     await p.click(`[data-testid=${trigger}]`);
     await p.click(`[data-testid=${option}]`);
@@ -256,10 +267,10 @@ async function main() {
   };
   const action = (id: string) => choose("actions", `action-${id}`);
 
-  // 9. Recent files survive a reload (handle remembered in IndexedDB)
+  // 9. Recent folders survive a reload (handle remembered in IndexedDB)
   await p.reload();
   const recent = await text(p, "[data-testid=recent]");
-  check("recent entry shown without the id", recent === "/Local/Item.bmd", recent);
+  check("recent entry shown without the id", recent === "/MU", recent);
   await p.click("[data-testid=recent]");
   await p.waitForSelector(rowSel(0));
   check("reopened from the recent list", (await text(p, "[data-testid=dirty-status]")) === "All saved");
@@ -313,24 +324,27 @@ async function main() {
   await p.keyboard.press("Escape");
   await p.waitForSelector("[data-testid=glossary-dialog]", { state: "detached" });
 
-  // 14. Save as -> new file; its side data goes to OPFS side/<id>/
-  await pickNext(p, "out/Item_copy.bmd");
-  await p.click("text=Save as…");
-  const savedAs = await toastWith(p, "to Item_copy.bmd.");
-  const copy = await opfsRead(p, "out/Item_copy.bmd");
-  check("save as writes the new file", copy !== null && ItemBmd.parse(copy).getName(4).text === "Đao Sát Thủ Web", savedAs);
-  check("now editing the copy", ((await p.getAttribute("span[dir=rtl]", "title")) ?? "").endsWith("/Item_copy.bmd"));
-  const sideIds = await opfsList(p, "side");
-  const sideFiles = sideIds.length ? await opfsList(p, `side/${sideIds[sideIds.length - 1]}/Item_copy.bmd.mubmd`) : [];
-  check("side data of a single file kept in the browser", sideFiles.includes("project.json"), `${sideIds} ${sideFiles}`);
+  // 14. Compare with another game folder (a Windows build: Data/Items)
+  await writeGame(p, "Other/Data/Items");
+  const theirSwords = ItemData.parse([{ name: "Group00_Sword.json", text: FILES["Group00_Sword.json"]! }]);
+  theirSwords.setName(6, "Kiếm La Mã Khác");
+  await opfsWrite(p, "Other/Data/Items/Group00_Sword.json", enc.encode(theirSwords.changedFiles()[0]!.text));
+  await pickNext(p, "Other");
+  await action("compare");
+  await p.waitForSelector("[data-testid=import-dialog]");
+  const compareTitle = await text(p, "[data-testid=import-dialog] h2");
+  const compareRows = await p.locator("[data-testid=import-dialog] tbody tr").allTextContents();
+  check("compare with another game folder", compareTitle === "Compare with Other" && compareRows.some((r) => r.includes("Kiếm La Mã Khác")), `${compareTitle}: ${compareRows.join(" | ")}`);
+  await p.keyboard.press("Escape");
+  await p.keyboard.press("Control+s");
+  await toastWith(p, "Saved 1 change");
 
-  // 15. Open a single Item.bmd file (not a folder)
-  await opfsWrite(p, "single/Item.bmd", buildSampleBmd());
+  // 15. Open the Windows build folder: Data/Items is found there too
   await p.click("[data-testid=open-other]");
-  await pickNext(p, "single/Item.bmd");
-  await p.click("[data-testid=pick-file]");
-  await p.waitForSelector(rowSel(0));
-  check("single file opened", ((await p.getAttribute("span[dir=rtl]", "title")) ?? "") === "/Item.bmd/Item.bmd");
+  await pickNext(p, "Other");
+  await p.click("[data-testid=pick]");
+  await p.waitForFunction(() => document.querySelector("[data-testid=layout]")?.textContent?.trim() === "Windows / Linux build");
+  check("Windows layout found", ((await p.getAttribute("span[dir=rtl]", "title")) ?? "") === "/Other/Data/Items");
 
   // 16. Closing the tab with unsaved changes asks first
   await p.dblclick(rowSel(2));
@@ -353,7 +367,7 @@ async function main() {
   }
   const warnA = await toastWith(a, "also open in another tab");
   const warnB = await toastWith(b, "also open in another tab");
-  check("second tab warning in both tabs", warnA.startsWith("This file") && warnB.startsWith("This file"), `${warnA} | ${warnB}`);
+  check("second tab warning in both tabs", warnA.startsWith("This folder") && warnB.startsWith("This folder"), `${warnA} | ${warnB}`);
 
   check("no JavaScript errors", errors.length === 0, errors.join(" | "));
 }

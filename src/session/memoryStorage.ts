@@ -58,4 +58,21 @@ export class MemoryStorage implements Storage {
     const prefix = `${normalize(dir)}/`;
     return [...this.files.keys()].filter((k) => k.startsWith(prefix) && !k.slice(prefix.length).includes("/")).map((k) => k.slice(prefix.length));
   }
+
+  async listDirs(dir: string): Promise<string[]> {
+    return subDirs([...this.files.keys()], dir);
+  }
+}
+
+// Folder names directly below `dir`, derived from a flat list of file paths.
+export function subDirs(keys: string[], dir: string): string[] {
+  const prefix = normalize(dir) === "/" ? "/" : `${normalize(dir)}/`;
+  const out = new Set<string>();
+  for (const k of keys) {
+    if (!k.startsWith(prefix)) continue;
+    const rest = k.slice(prefix.length);
+    const cut = rest.indexOf("/");
+    if (cut > 0) out.add(rest.slice(0, cut));
+  }
+  return [...out];
 }

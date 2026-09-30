@@ -2,14 +2,15 @@
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { checkGlossary } from "../../../src/core/glossary";
-import { MAX_NAME_BYTES, checkName } from "../../../src/core/nameCodec";
+import { MAX_NAME_CHARS, checkName } from "../../../src/core/nameCodec";
 import { STATUSES } from "../../../src/shared/api";
 import StatusDot from "@/components/StatusDot.vue";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { revert, setNote, setStatus, startEdit } from "@/composables/actions";
 import { fmtTime, glossaryHintText, issueText } from "@/i18n";
-import { byteLevel } from "@/lib/bytes";
+import { lengthLevel } from "@/lib/length";
+import { sourceOf } from "@/lib/search";
 import { useDocStore } from "@/stores/doc";
 
 const { t } = useI18n();
@@ -26,32 +27,33 @@ const facts = computed(() => {
   const r = row.value;
   if (!r) return [];
   const out: [string, string][] = [];
+  out.push([t("detail.english"), r.english || "—"]);
   if (r.reference) out.push([t("detail.reference"), r.reference]);
   if (r.edit) {
-    out.push([t("detail.original"), r.edit.originalEncoding === "unknown" ? t("detail.originalNonUtf8") : r.edit.originalText || t("grid.empty")]);
+    out.push([t("detail.original"), r.edit.originalText || t("grid.empty")]);
     out.push([t("detail.editedBy"), `${r.edit.translator || "?"}${r.edit.at ? `, ${fmtTime(r.edit.at)}` : ""}`]);
   }
   out.push([t("detail.group"), `${r.itemType}. ${t(`itemTypes.${r.itemType}`)}`]);
   out.push([t("detail.typeIndex"), `${r.itemType} / ${r.itemIndex}`]);
   out.push([t("detail.slot"), `#${r.slot}`]);
-  out.push([t("detail.encoding"), t(`encoding.${r.encoding}`)]);
-  out.push([t("detail.length"), t("detail.lengthValue", { bytes: r.byteLength, max: MAX_NAME_BYTES, chars: [...r.text].length })]);
+  out.push([t("detail.length"), t("detail.lengthValue", { chars: r.length, max: MAX_NAME_CHARS })]);
   return out;
 });
 
 const notes = computed(() => {
   const r = row.value;
   if (!r) return [];
-  return [r.encoding === "unknown" ? t("detail.nonUtf8Note") : "", ...r.issues.map((c) => t(`issues.${c}`))].filter(Boolean);
+  return r.issues.map((c) => t(`issues.${c}`));
 });
 
 // Glossary hints for the name (or the name being typed) against the reference name.
 const glossaryHints = computed(() => {
   const r = row.value;
   const entries = store.glossary?.entries ?? [];
-  if (!r || !entries.length || r.encoding === "unknown") return [];
+  if (!r || !entries.length) return [];
   const name = store.editor?.slot === r.slot ? store.editor.value : r.text;
-  return checkGlossary(entries, name, r.reference).map((h) => ({ text: glossaryHintText(h), ok: h.kind === "ok", note: h.note }));
+  if (!name) return [];
+  return checkGlossary(entries, name, sourceOf(r)).map((h) => ({ text: glossaryHintText(h), ok: h.kind === "ok", note: h.note }));
 });
 
 // Note field: edited locally, saved on Enter / blur.
@@ -73,13 +75,13 @@ const live = computed(() => {
   const ed = store.editor;
   if (!ed || ed.slot !== store.selectedSlot) return null;
   const c = checkName(ed.value);
-  const over = c.byteLength - MAX_NAME_BYTES;
+  const over = c.length - MAX_NAME_CHARS;
   return {
-    level: byteLevel(c.byteLength),
+    level: lengthLevel(c.length),
     title:
       over > 0
-        ? t("detail.editingOver", { bytes: c.byteLength, max: MAX_NAME_BYTES, over })
-        : t("detail.editing", { bytes: c.byteLength, max: MAX_NAME_BYTES, left: -over }),
+        ? t("detail.editingOver", { chars: c.length, max: MAX_NAME_CHARS, over })
+        : t("detail.editing", { chars: c.length, max: MAX_NAME_CHARS, left: -over }),
     issues: c.issues.map((i) => ({ text: issueText(i), severity: i.severity })),
   };
 });
@@ -89,7 +91,7 @@ const live = computed(() => {
   <aside class="bg-card overflow-auto border-l p-4" :aria-label="t('detail.label')" data-testid="detail">
     <p v-if="!row" class="text-muted-foreground">{{ t("detail.none") }}</p>
     <template v-else>
-      <h2 class="mb-3 text-lg font-bold break-words">{{ row.encoding === "empty" ? t("grid.empty") : row.text }}</h2>
+      <h2 class="mb-3 text-lg font-bold break-words" :class="row.text ? '' : 'text-muted-foreground italic'">{{ row.text || t("grid.empty") }}</h2>
       <div class="mb-3">
         <p class="text-muted-foreground mb-1 text-xs">{{ t("detail.status") }}</p>
         <div class="flex w-fit overflow-hidden rounded-md border" role="radiogroup" :aria-label="t('detail.status')">

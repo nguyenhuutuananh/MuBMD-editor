@@ -1,5 +1,5 @@
-// run.ts - End-to-end test in real (headless) Chrome against a copy of the sample Item.bmd
-// (tests/fixtures/sampleBmd.ts: real names, fake stats).
+// run.ts - End-to-end test in real (headless) Chrome against a copy of the sample game folder
+// (tests/fixtures/sampleItems.ts: real Vietnamese names, fake stats).
 //   bun run test:e2e [screenshot/dir]
 // Requires an installed Google Chrome (playwright-core uses the "chrome" channel, no browser download).
 
@@ -7,17 +7,19 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { type Browser, type Page, chromium } from "playwright-core";
-import { ItemBmd } from "../../src/core";
-import { writeSampleBmd } from "../fixtures/sampleBmd";
+import { ItemData } from "../../src/core";
+import { fold } from "../../web/src/lib/search";
+import { writeSampleGame } from "../fixtures/sampleItems";
 
 const ROOT = path.join(import.meta.dir, "../..");
 const WORK = fs.mkdtempSync(path.join(os.tmpdir(), "mubmd-e2e-"));
 const SHOTS = process.argv[2] ?? path.join(WORK, "shots");
-const FILE = path.join(WORK, "Item.bmd");
+const FILE = path.join(WORK, "MU"); // the game folder
+const ITEMS = path.join(FILE, "Data", "Items");
 const PORT = 4851;
 const URL = `http://localhost:${PORT}/`;
 fs.mkdirSync(SHOTS, { recursive: true });
-writeSampleBmd(FILE);
+writeSampleGame(FILE);
 
 let server: ReturnType<typeof Bun.spawn> | null = null;
 let browser: Browser | null = null;
@@ -57,7 +59,15 @@ function check(name: string, ok: boolean, detail = "") {
   if (!ok) failures++;
 }
 
-const diskName = (slot: number) => ItemBmd.parse(new Uint8Array(fs.readFileSync(FILE))).getName(slot).text;
+const diskData = (dir = ITEMS) =>
+  ItemData.parse(fs.readdirSync(dir).filter((n) => n.endsWith(".json")).map((name) => ({ name, text: fs.readFileSync(path.join(dir, name), "utf-8") })));
+const diskName = (slot: number) => diskData().getName(slot);
+// Change a name in the item files from outside (another program / a sync).
+function changeOnDisk(slot: number, name: string, dir = ITEMS) {
+  const d = diskData(dir);
+  d.setName(slot, name);
+  for (const f of d.changedFiles()) fs.writeFileSync(path.join(dir, f.name), f.text);
+}
 const rowSel = (n: number) => `[data-testid=grid] [data-slot] >> nth=${n}`;
 const EDITOR = "[data-testid=inline-editor] input";
 const text = async (p: Page, sel: string) => ((await p.textContent(sel)) ?? "").trim();
@@ -100,11 +110,11 @@ async function main() {
   await shot(p, "01-editor-en");
 
   // 3. Over-long name
-  await p.fill(EDITOR, "Quyền Trượng Đại Vương Huyền Thoại Cổ Xưa");
-  check("byte counter", (await text(p, "[data-testid=editor-counter]")) === "58/49");
+  await p.fill(EDITOR, "Quyền Trượng Đại Vương Huyền Thoại Cổ Xưa Của Rồng Lửa Đỏ");
+  check("character counter", (await text(p, "[data-testid=editor-counter]")) === "57/49");
   await p.keyboard.press("Enter");
-  const tooLong = await toastWith(p, "over the 49-byte limit");
-  check("over-long name is blocked, editor stays open", (await p.isVisible(EDITOR)) && tooLong.includes("58 bytes"), tooLong);
+  const tooLong = await toastWith(p, "over the 49-character limit");
+  check("over-long name is blocked, editor stays open", (await p.isVisible(EDITOR)) && tooLong.includes("57 characters"), tooLong);
   await shot(p, "02-too-long-en");
 
   // 4. Vietnamese IME: Enter during composition must not save
@@ -138,10 +148,11 @@ async function main() {
 
   // 7. Save
   await p.keyboard.press("Control+s");
-  const saved = await toastWith(p, "Saved 2 changes to Item.bmd.");
-  check("save + EN toast", saved.includes("backed up to"), saved);
-  check("written correctly to the file", diskName(0) === "Chùy Thử Nghiệm" && diskName(1) === "Đoản Đao Mới");
-  check("backup + change log exist", fs.existsSync(`${FILE}.mubmd/changes.tsv`) && fs.readdirSync(`${FILE}.mubmd/backups`).length === 1);
+  const saved = await toastWith(p, "Saved 2 changes.");
+  check("save + EN toast", saved.includes("Rewrote Group00_Sword.json") && saved.includes("backed up to"), saved);
+  check("written correctly to the item file", diskName(0) === "Chùy Thử Nghiệm" && diskName(1) === "Đoản Đao Mới");
+  check("backup + change log exist", fs.existsSync(`${ITEMS}.mubmd/changes.tsv`) && fs.readdirSync(`${ITEMS}.mubmd/backups`).length === 1);
+  check("the game folder is shown", (await text(p, "[data-testid=game-name]")) === "MU" && (await text(p, "[data-testid=layout]")) === "Windows / Linux build");
 
   // 8. Switch to Vietnamese; it persists across reload
   await p.click("[data-testid=lang-switch]");
@@ -160,16 +171,14 @@ async function main() {
   await p.keyboard.press("Enter");
   await p.waitForTimeout(200);
   await p.keyboard.press("Escape");
-  const other = ItemBmd.parse(new Uint8Array(fs.readFileSync(FILE)));
-  other.setName(10, "Người Khác Sửa");
-  fs.writeFileSync(FILE, other.toBytes());
+  changeOnDisk(10, "Người Khác Sửa");
   await p.keyboard.press("Control+s");
   await p.waitForSelector("[data-testid=dialog]");
   check("conflict dialog (VI)", (await text(p, "[data-testid=dialog] h2")) === "File đã bị thay đổi bên ngoài");
   await shot(p, "04-conflict-vi");
   await p.click("[data-testid=dialog-force]");
   const forced = await toastWith(p, "Đã lưu 1 thay đổi");
-  check("overwrite + VI toast", forced.includes("Bản cũ đã được backup") && diskName(2) === "Trường Kiếm Mới", forced);
+  check("overwrite + VI toast", forced.includes("bản cũ đã được backup") && diskName(2) === "Trường Kiếm Mới", forced);
 
   // 10. Draft after the server is killed
   await p.dblclick(rowSel(3));
@@ -195,12 +204,13 @@ async function main() {
   await p.click(rowSel(0));
   await shot(p, "06-edited-filter-vi");
 
-  // 12. Open errors are translated; opening a file with unsaved changes -> confirm discard
+  // 12. Open errors are translated; opening a folder with unsaved changes -> confirm discard
   await p.click("[data-testid=open-other]");
-  await p.fill("#open-path", path.join(WORK, "khong-co.bmd"));
+  await p.fill("#open-path", path.join(WORK, "khong-co"));
   await p.keyboard.press("Enter");
   await p.waitForSelector("[data-testid=open-error]");
-  check("open error in Vietnamese", (await text(p, "[data-testid=open-error]")) === "Không tìm thấy file.");
+  const openError = await text(p, "[data-testid=open-error]");
+  check("open error in Vietnamese", openError.startsWith("Không tìm thấy dữ liệu vật phẩm trong"), openError);
   await p.fill("#open-path", FILE);
   await p.keyboard.press("Enter");
   await p.waitForSelector("[data-testid=dialog]");
@@ -233,11 +243,14 @@ async function main() {
   await p.waitForFunction(() => document.querySelector("[data-testid=grid] [data-slot='5']")?.textContent?.includes("kiểm tra lại"));
   check("detail status + note", (await statusOf(5)) === "reviewed");
 
-  await p.fill("[data-testid=search]", "rong do");
+  // Rows matching "rong" (name or English name), as the grid will list them.
+  const data = diskData();
+  const matching = data.slots().filter((s) => ["rong"].every((w) => fold(`${data.getName(s)} ${data.english(s)}`).includes(w)));
+  await p.fill("[data-testid=search]", "rong");
   await p.keyboard.press("Enter");
-  await p.waitForFunction(() => document.querySelector("[data-testid=result-count]")?.textContent?.trim() === "10 dòng");
+  await p.waitForFunction((n) => document.querySelector("[data-testid=result-count]")?.textContent?.trim() === `${n} dòng`, matching.length);
   await choose("actions", "mark-reviewed");
-  const marked = await toastWith(p, "Đã đánh dấu 10 dòng");
+  const marked = await toastWith(p, `Đã đánh dấu ${matching.length} dòng`);
   check("bulk mark the listed rows", marked.includes("Đã duyệt"), marked);
   await p.fill("[data-testid=search]", "");
   await p.keyboard.press("Enter");
@@ -245,8 +258,8 @@ async function main() {
   await p.waitForFunction(() => document.querySelector("[data-testid=result-count]")?.textContent?.trim() === "488 dòng");
 
   await p.keyboard.press("Control+s");
-  await toastWith(p, "Đã lưu 11 thay đổi");
-  const project = JSON.parse(fs.readFileSync(`${FILE}.mubmd/project.json`, "utf-8"));
+  await toastWith(p, `Đã lưu ${matching.length + 1} thay đổi`);
+  const project = JSON.parse(fs.readFileSync(`${ITEMS}.mubmd/project.json`, "utf-8"));
   check("status-only save writes project.json", project.records["5"]?.status === "reviewed" && project.records["5"]?.note === "kiểm tra lại");
 
   const ref = path.join(WORK, "ref.tsv");
@@ -276,7 +289,7 @@ async function main() {
   const exp = await toastWith(p, "Đã xuất");
   const expText = fs.existsSync(exported) ? fs.readFileSync(exported, "utf-8") : "";
   check(
-    "export all named slots",
+    "export all items",
     exp.includes("488 dòng") && expText.startsWith("\uFEFFItemType\tItemIndex\tName\tStatus") && expText.includes("\tクリス\t"),
     exp,
   );
@@ -294,7 +307,7 @@ async function main() {
       "ItemType\tItemIndex\tName\tStatus\tTranslator\tBaseName",
       "0\t4\tĐao Sát Thủ Mới\ttranslated\tBình\tĐao Sát Thủ",
       "0\t6\tKiếm La Mã Của Họ\ttranslated\tBình\tKiếm La mã",
-      `0\t7\t${"Đ".repeat(30)}\ttranslated\tBình\tMã Tấu`,
+      `0\t7\t${"Đ".repeat(50)}\ttranslated\tBình\t`,
       "0\t8\tXà Đao\ttranslated\tBình\tXà Đao",
     ].join("\n"),
   );
@@ -317,7 +330,7 @@ async function main() {
   await p.waitForFunction(() => document.querySelector("[data-testid=grid] [data-slot='4']")?.textContent?.includes("Đao Sát Thủ") && !document.querySelector("[data-testid=grid] [data-slot='4']")?.textContent?.includes("Mới"));
   check("the whole import is one undo step", (await nameOf(6)) === "Kiếm La Mã Của Mình");
 
-  // 15. Phase 5: glossary (legacy CSV -> TSV), glossary mismatch filter, compare with another Item.bmd
+  // 15. Phase 5: glossary (legacy CSV -> TSV), glossary mismatch filter, compare with another game folder
   const legacyCsv = path.join(WORK, "glossary.csv");
   fs.writeFileSync(legacyCsv, "Loại,Thuật ngữ / Mẫu,Ghi chú\nĐã chốt dịch,Defense -> Phòng Thủ,PT\nGiữ nguyên,\"Lorencia, Devias\",\n");
   setPick(legacyCsv);
@@ -344,23 +357,23 @@ async function main() {
   await p.waitForTimeout(200);
   await p.keyboard.press("Escape");
   await choose("problem", "problem-glossary");
-  await p.waitForFunction(() => document.querySelector("[data-testid=result-count]")?.textContent?.trim() === "1 dòng");
-  await p.click(rowSel(0));
+  // (Other rows may be listed too: names are also checked against their English names, e.g. "Helm 7".)
+  await p.waitForSelector("[data-testid=grid] [data-slot='3']");
+  await p.click("[data-testid=grid] [data-slot='3']");
   const hint = await text(p, "[data-testid=glossary-hints]");
   check("glossary mismatch filter + hint", hint.includes("“Helm” vẫn chưa dịch (→ Mũ)"), hint);
   await shot(p, "13-glossary-hint-vi");
   await choose("problem", "problem-any");
 
-  const otherBmd = ItemBmd.parse(new Uint8Array(fs.readFileSync(FILE)));
-  otherBmd.setName(10, "Kiếm Ánh Sáng Khác");
-  const otherFile = path.join(WORK, "Other.bmd");
-  fs.writeFileSync(otherFile, otherBmd.toBytes());
-  setPick(otherFile);
+  const otherGame = path.join(WORK, "OtherGame");
+  fs.cpSync(FILE, otherGame, { recursive: true });
+  changeOnDisk(10, "Kiếm Ánh Sáng Khác", path.join(otherGame, "Data", "Items"));
+  setPick(otherGame);
   await action("compare");
   await p.waitForSelector("[data-testid=import-dialog]");
   const title = await text(p, "[data-testid=import-dialog] h2");
   const rowsListed = await p.locator("[data-testid=import-dialog] tbody tr").count();
-  check("compare dialog lists the differing names", title === "So sánh với Other.bmd" && rowsListed >= 1, `${title}, ${rowsListed} rows`);
+  check("compare dialog lists the differing names", title === "So sánh với OtherGame" && rowsListed >= 1, `${title}, ${rowsListed} rows`);
   await shot(p, "14-compare-vi");
   await p.keyboard.press("Escape");
 

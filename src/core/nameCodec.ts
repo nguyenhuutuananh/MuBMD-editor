@@ -1,41 +1,17 @@
-// nameCodec.ts - Decode / validate / encode item names (the UTF-8 Name[50] field).
+// nameCodec.ts - Validate translated item names.
 //
-// Unlike the old tool, an over-long name is NOT silently truncated; it is reported as an
-// error so the translator knows and can shorten it.
+// The game copies a name into the MAX_ITEM_NAME (50) wide-character ITEM_ATTRIBUTE::Name, so at most
+// 49 characters are shown; MuMain counts them as wchar_t, i.e. UTF-16 code units on Windows. An
+// over-long name is an error here (MuMain only warns and cuts it), so the translator shortens it.
 
 import { AppError } from "./errors";
-import { NAME_LEN } from "./format";
 
-export const MAX_NAME_BYTES = NAME_LEN - 1; // leave 1 byte for 0x00
+export const MAX_NAME_CHARS = 49;
 
-export type NameEncoding = "empty" | "utf-8" | "unknown";
+// MuMain's LocalizedString separator ("English||pt=..."): a name must not contain it.
+export const NAME_SEPARATOR = "||";
 
-export interface DecodedName {
-  text: string;
-  encoding: NameEncoding;
-  byteLength: number;
-}
-
-const utf8Strict = new TextDecoder("utf-8", { fatal: true });
-const utf8Lossy = new TextDecoder("utf-8");
-const utf8Encoder = new TextEncoder();
-
-// Non-UTF-8 names (original Japanese/Korean data) are flagged "unknown" and returned with
-// U+FFFD replacement characters for display only - Bun ships no Shift_JIS/EUC-KR decoder,
-// so we do not guess the encoding.
-export function decodeName(raw: Uint8Array): DecodedName {
-  let end = raw.indexOf(0);
-  if (end === -1) end = raw.length;
-  const bytes = raw.subarray(0, end);
-  if (bytes.length === 0) return { text: "", encoding: "empty", byteLength: 0 };
-  try {
-    return { text: utf8Strict.decode(bytes), encoding: "utf-8", byteLength: bytes.length };
-  } catch {
-    return { text: utf8Lossy.decode(bytes), encoding: "unknown", byteLength: bytes.length };
-  }
-}
-
-export type NameIssueCode = "too-long" | "control-char" | "lone-surrogate" | "edge-whitespace" | "double-space";
+export type NameIssueCode = "too-long" | "control-char" | "lone-surrogate" | "separator" | "edge-whitespace" | "double-space";
 
 // The English `message` is only for logs; the UI translates `code` + `params`.
 export interface NameIssue {
@@ -47,25 +23,27 @@ export interface NameIssue {
 
 export interface NameCheck {
   normalized: string; // NFC form - the form written to the file
-  bytes: Uint8Array;
-  byteLength: number;
+  length: number; // characters as the game counts them (UTF-16 code units)
   issues: NameIssue[];
   ok: boolean; // no "error"-level issue
 }
 
-// Vietnamese typed in decomposed form (NFD, e.g. on macOS) takes more bytes and may render
-// wrongly in the game font, so always normalize to NFC before counting bytes.
+// Length as the game counts it (see above), of the NFC form.
+export const nameLength = (name: string) => name.normalize("NFC").length;
+
+// Vietnamese typed in decomposed form (NFD, e.g. on macOS) is longer and may render wrongly in the
+// game font, so names are always normalized to NFC.
 export function checkName(name: string): NameCheck {
   const normalized = name.normalize("NFC");
-  const bytes = utf8Encoder.encode(normalized);
+  const length = normalized.length;
   const issues: NameIssue[] = [];
 
-  if (bytes.length > MAX_NAME_BYTES) {
+  if (length > MAX_NAME_CHARS) {
     issues.push({
       code: "too-long",
       severity: "error",
-      message: `Name is ${bytes.length} bytes, over the ${MAX_NAME_BYTES}-byte limit.`,
-      params: { bytes: bytes.length, max: MAX_NAME_BYTES },
+      message: `Name is ${length} characters, over the ${MAX_NAME_CHARS}-character limit.`,
+      params: { chars: length, max: MAX_NAME_CHARS },
     });
   }
   if (/[\u0000-\u001f\u007f]/.test(normalized)) {
@@ -74,6 +52,9 @@ export function checkName(name: string): NameCheck {
   if (/\p{Cs}/u.test(normalized)) {
     issues.push({ code: "lone-surrogate", severity: "error", message: "Name contains broken Unicode (lone surrogate)." });
   }
+  if (normalized.includes(NAME_SEPARATOR)) {
+    issues.push({ code: "separator", severity: "error", message: `Name must not contain "${NAME_SEPARATOR}".` });
+  }
   if (normalized !== normalized.trim()) {
     issues.push({ code: "edge-whitespace", severity: "warning", message: "Name has leading or trailing spaces." });
   }
@@ -81,13 +62,7 @@ export function checkName(name: string): NameCheck {
     issues.push({ code: "double-space", severity: "warning", message: "Name has two spaces in a row." });
   }
 
-  return {
-    normalized,
-    bytes,
-    byteLength: bytes.length,
-    issues,
-    ok: !issues.some((i) => i.severity === "error"),
-  };
+  return { normalized, length, issues, ok: !issues.some((i) => i.severity === "error") };
 }
 
 export class NameValidationError extends AppError {
@@ -99,13 +74,4 @@ export class NameValidationError extends AppError {
     const errors = check.issues.filter((i) => i.severity === "error").map((i) => i.message);
     super("invalid-name", `Invalid name${where}: ${errors.join(" ")}`, slot === undefined ? {} : { slot });
   }
-}
-
-// Encode to exactly NAME_LEN bytes, zero-padded. Throws NameValidationError on errors.
-export function encodeName(name: string, slot?: number): Uint8Array {
-  const check = checkName(name);
-  if (!check.ok) throw new NameValidationError(check, slot);
-  const out = new Uint8Array(NAME_LEN);
-  out.set(check.bytes, 0);
-  return out;
 }

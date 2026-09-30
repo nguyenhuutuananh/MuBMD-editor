@@ -4,6 +4,7 @@ import { useI18n } from "vue-i18n";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { exportOpen, exportTsv, mySlots } from "@/composables/actions";
+import { exists } from "@/lib/search";
 import { useDocStore } from "@/stores/doc";
 
 const { t, n } = useI18n();
@@ -15,8 +16,8 @@ const scope = ref<Scope>("view");
 const lists = computed(() => {
   if (!exportOpen.value) return { view: [], named: [], mine: [] };
   return {
-    view: store.visible.filter((r) => r.encoding !== "unknown").map((r) => r.slot),
-    named: store.rows.filter((r) => r.encoding === "utf-8").map((r) => r.slot),
+    view: store.visible.map((r) => r.slot),
+    named: store.rows.filter(exists).map((r) => r.slot),
     mine: mySlots(),
   };
 });

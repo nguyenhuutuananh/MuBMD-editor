@@ -22,6 +22,6 @@ export const KEYS = {
   recent: "mubmd.recent",
   filter: "mubmd.filter",
   translator: "mubmd.translator",
-  references: "mubmd.references", // { [Item.bmd path]: reference file path }
-  glossary: "mubmd.glossary", // path of the team glossary file (one for all Item.bmd files)
+  references: "mubmd.references", // { [item folder path]: reference file path }
+  glossary: "mubmd.glossary", // path of the team glossary file (one for all game folders)
 } as const;

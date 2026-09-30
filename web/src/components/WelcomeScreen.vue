@@ -29,17 +29,18 @@ onMounted(() => (input.value?.$el as HTMLInputElement | undefined)?.focus());
       <Button v-if="store.file" variant="link" class="h-auto self-start p-0" @click="backToFile">{{ t("welcome.back") }}</Button>
       <h1 class="text-2xl font-bold">{{ t("welcome.title") }}</h1>
       <i18n-t keypath="welcome.hint" tag="p" class="text-muted-foreground">
-        <template #path><code class="bg-muted rounded px-1 font-mono text-[0.92em]">Data/Local/Item.bmd</code></template>
+        <template #path><code class="bg-muted rounded px-1 font-mono text-[0.92em]">Data/Items</code></template>
       </i18n-t>
+      <ul class="text-muted-foreground -mt-2 list-disc pl-5 text-[13px]" data-testid="layouts">
+        <li>{{ t("welcome.layoutWindows") }} <code class="font-mono">Data/Items</code></li>
+        <li>{{ t("welcome.layoutMac") }} <code class="font-mono">Main.app/Contents/MacOS/Data/Items</code></li>
+        <li>{{ t("welcome.layoutSource") }} <code class="font-mono">src/bin/Data/Items</code></li>
+      </ul>
       <p v-if="isFallback" class="bg-muted rounded-md px-3 py-2 text-[13px]" data-testid="fallback-hint">{{ t("welcome.fallbackHint") }}</p>
       <p v-else-if="isWeb" class="text-muted-foreground text-[13px]">{{ t("welcome.webHint") }}</p>
       <Button class="self-start" data-testid="pick" @click="pickAndOpen()">
-        <FolderOpen />{{ isFallback ? t("welcome.pickUpload") : isWeb ? t("welcome.pickFolder") : t("welcome.pick") }}
+        <FolderOpen />{{ isFallback ? t("welcome.pickUpload") : t("welcome.pick") }}
       </Button>
-      <div v-if="isWeb && !isFallback" class="-mt-2 flex flex-col items-start">
-        <Button variant="link" class="h-auto p-0" data-testid="pick-file" @click="pickAndOpen('bmd-file')">{{ t("welcome.pickFile") }}</Button>
-        <p class="text-muted-foreground text-xs">{{ t("welcome.pickFileHint") }}</p>
-      </div>
 
       <!-- a typed path only means something to the desktop server -->
       <form v-if="!isWeb" class="flex flex-col gap-1.5" @submit.prevent="submit">

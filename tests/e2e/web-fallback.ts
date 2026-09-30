@@ -9,8 +9,8 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { type Browser, type Page, chromium, firefox, webkit } from "playwright-core";
-import { ItemBmd } from "../../src/core";
-import { buildSampleBmd } from "../fixtures/sampleBmd";
+import { ItemData } from "../../src/core";
+import { writeSampleGame } from "../fixtures/sampleItems";
 import { chromiumOptions, installed } from "./browsers";
 
 const ROOT = path.join(import.meta.dir, "../..");
@@ -18,6 +18,14 @@ const PORT = 4862;
 const BASE = `http://localhost:${PORT}/`;
 const SHOTS = process.argv[2] ?? fs.mkdtempSync(path.join(os.tmpdir(), "mubmd-fallback-e2e-"));
 fs.mkdirSync(SHOTS, { recursive: true });
+// A game folder on disk to upload: the item files plus files that must not be read.
+const GAME = writeSampleGame(path.join(fs.mkdtempSync(path.join(os.tmpdir(), "mubmd-fallback-game-")), "MU"));
+fs.writeFileSync(path.join(GAME, "Main.exe"), "MZ");
+fs.mkdirSync(path.join(GAME, "Data", "Local"), { recursive: true });
+fs.writeFileSync(path.join(GAME, "Data", "Local", "Item.bmd"), new Uint8Array(16));
+fs.mkdirSync(path.join(GAME, "Data", "Items", "Models"), { recursive: true });
+fs.writeFileSync(path.join(GAME, "Data", "Items", "Models", "Group00_Sword.json"), "{}");
+const dec = new TextDecoder();
 
 let failures = 0;
 let vite: ReturnType<typeof Bun.spawn> | null = null;
@@ -50,6 +58,13 @@ async function upload(p: Page, trigger: () => Promise<unknown>, name: string, by
   await (await chooser).setFiles({ name, mimeType: "application/octet-stream", buffer: Buffer.from(bytes) });
 }
 
+// Click `trigger`, answer the folder chooser with a folder on disk.
+async function uploadDir(p: Page, trigger: () => Promise<unknown>, dir: string) {
+  const chooser = p.waitForEvent("filechooser");
+  await trigger();
+  await (await chooser).setFiles(dir);
+}
+
 // Run `action`, return the downloaded file (name + bytes), or null if nothing was downloaded.
 async function downloadOf(p: Page, action: () => Promise<unknown>, timeout = 8000): Promise<{ name: string; bytes: Uint8Array } | null> {
   const dl = p.waitForEvent("download", { timeout }).catch(() => null);
@@ -79,14 +94,17 @@ async function scenario(label: string, browser: Browser, url: string) {
   // 1. Fallback welcome screen
   await p.goto(url);
   await p.waitForSelector("[data-testid=pick]");
-  check(`${label}: fallback hint, upload button`, (await p.isVisible("[data-testid=fallback-hint]")) && (await text(p, "[data-testid=pick]")) === "Choose Item.bmd…");
+  check(`${label}: fallback hint, upload button`, (await p.isVisible("[data-testid=fallback-hint]")) && (await text(p, "[data-testid=pick]")) === "Choose game folder…");
 
-  // 2. Upload Item.bmd -> a copy in this browser
-  await upload(p, () => p.click("[data-testid=pick]"), "Item.bmd", buildSampleBmd());
+  // 2. Upload the game folder -> a copy of its item files in this browser
+  await uploadDir(p, () => p.click("[data-testid=pick]"), GAME);
   await p.waitForSelector(rowSel(0));
-  check(`${label}: uploaded copy opened`, (await text(p, "[data-testid=result-count]")) === "488 rows" && (await p.isVisible("[data-testid=browser-copy]")));
+  check(
+    `${label}: uploaded copy opened`,
+    (await text(p, "[data-testid=result-count]")) === "488 rows" && (await p.isVisible("[data-testid=browser-copy]")) && (await text(p, "[data-testid=game-name]")) === "MU",
+  );
 
-  // 3. Edit + save -> the updated Item.bmd is downloaded
+  // 3. Edit + save -> the updated item file is downloaded
   await p.click(rowSel(0));
   await p.keyboard.press("Enter");
   await p.waitForSelector("[data-testid=dialog]");
@@ -100,10 +118,10 @@ async function scenario(label: string, browser: Browser, url: string) {
   await waitText(p, "[data-testid=dirty-status]", "● 1 unsaved change");
   await p.focus("[data-testid=grid]");
   const saved = await downloadOf(p, () => p.keyboard.press(`${mod}+s`));
-  const savedBmd = saved ? ItemBmd.parse(saved.bytes) : null;
-  check(`${label}: save downloads Item.bmd`, saved?.name === "Item.bmd" && savedBmd?.getName(0).text === "Chùy Tải Về" && savedBmd.checksumValid === true);
-  const toast = await toastWith(p, "Downloaded Item.bmd");
-  check(`${label}: toast says where to copy it`, toast.includes("Data/Local"), toast);
+  const savedData = saved ? ItemData.parse([{ name: saved.name, text: dec.decode(saved.bytes) }]) : null;
+  check(`${label}: save downloads the changed item file`, saved?.name === "Group00_Sword.json" && savedData?.getName(0) === "Chùy Tải Về");
+  const toast = await toastWith(p, "Downloaded Group00_Sword.json");
+  check(`${label}: toast says where to copy it`, toast.includes("Data/Items"), toast);
   await p.screenshot({ path: path.join(SHOTS, `${label.replace(/\W+/g, "-")}-saved.png`) });
 
   // 4. A status-only save does not download
@@ -149,6 +167,24 @@ async function scenario(label: string, browser: Browser, url: string) {
   await p.click("[data-testid=import-apply]");
   await toastWith(p, "Imported 1 change");
   check(`${label}: import from an uploaded TSV`, (await text(p, `[data-testid=grid] [data-slot='4'] > span:nth-child(3)`)) === "Đao Sát Thủ Firefox");
+
+  // 8. Changes in several item files -> one Items.zip
+  await p.fill("[data-testid=search]", "7:1");
+  await p.keyboard.press("Enter");
+  await waitText(p, "[data-testid=result-count]", "1 row");
+  await p.dblclick(rowSel(0));
+  await p.waitForSelector(EDITOR);
+  await p.fill(EDITOR, "Mũ Rồng Đỏ");
+  await p.keyboard.press("Enter");
+  await waitText(p, "[data-testid=dirty-status]", "● 3 unsaved changes");
+  await p.focus("[data-testid=grid]");
+  const zipped = await downloadOf(p, () => p.keyboard.press(`${mod}+s`));
+  const zipText = zipped ? dec.decode(zipped.bytes) : "";
+  check(
+    `${label}: several files are downloaded as Items.zip`,
+    zipped?.name === "Items.zip" && zipText.startsWith("PK") && zipText.includes("Group00_Sword.json") && zipText.includes("Group07_Helm.json") && zipText.includes("Mũ Rồng Đỏ"),
+    zipped?.name,
+  );
 
   check(`${label}: no JavaScript errors`, errors.length === 0, errors.join(" | "));
   await ctx.close();

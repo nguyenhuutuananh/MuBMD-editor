@@ -26,7 +26,7 @@ import {
   setStatus,
   startImport,
 } from "@/composables/actions";
-import type { Problem, SlotScope, StatusFilter } from "@/lib/search";
+import { type Problem, SCOPES, type StatusFilter } from "@/lib/search";
 import { useDocStore } from "@/stores/doc";
 
 const { t, n } = useI18n();
@@ -49,7 +49,7 @@ function toResults(e: KeyboardEvent) {
   document.getElementById("grid-body")?.focus();
 }
 
-const scopes: SlotScope[] = ["named", "all", "empty"];
+const scopes = SCOPES;
 const statusFilters: StatusFilter[] = ["any", ...STATUSES];
 const openExport = () => (exportOpen.value = true);
 const openGlossary = () => (glossaryOpen.value = true);
@@ -59,7 +59,6 @@ const problems: { value: Problem; key: string }[] = [
   { value: "edited", key: "edited" },
   { value: "issues", key: "issues" },
   { value: "near-limit", key: "nearLimit" },
-  { value: "unknown-encoding", key: "unknownEncoding" },
   { value: "glossary", key: "glossary" },
 ];
 

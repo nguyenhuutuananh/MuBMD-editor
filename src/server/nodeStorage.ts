@@ -60,4 +60,12 @@ export class NodeStorage implements Storage {
       return [];
     }
   }
+
+  async listDirs(dir: string): Promise<string[]> {
+    try {
+      return (await fs.readdir(dir, { withFileTypes: true })).filter((d) => d.isDirectory()).map((d) => d.name);
+    } catch {
+      return [];
+    }
+  }
 }

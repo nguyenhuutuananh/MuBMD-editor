@@ -6,14 +6,13 @@ import {
   DEFAULT_RECORD,
   type EditInfo,
   type ItemTuple,
-  type NameEncoding,
   type NameIssueCode,
   type SlotRecord,
   type SlotState,
   type Status,
 } from "../../../src/shared/api";
 
-export const NEAR_LIMIT_BYTES = 40;
+export const NEAR_LIMIT_CHARS = 40;
 
 // "Kiếm Rồng Đỏ" -> "kiem rong do": strip accents, đ -> d, lowercase.
 export function fold(s: string): string {
@@ -24,10 +23,10 @@ export interface Row {
   slot: number;
   itemType: number;
   itemIndex: number;
-  text: string;
-  folded: string; // name + reference, folded for search
-  encoding: NameEncoding;
-  byteLength: number;
+  text: string; // name in the target language, "" = not translated
+  english: string | null; // null = no item in this slot
+  folded: string; // name + English + reference, folded for search
+  length: number; // characters, as the game counts them
   issues: NameIssueCode[];
   edit: EditInfo | null; // name differs from the file on disk (unsaved)
   record: SlotRecord;
@@ -35,8 +34,13 @@ export interface Row {
   reference: string; // name from the reference file, "" if none
 }
 
+export const exists = (r: Row) => r.english !== null;
+// What a translation is checked against: the reference file's name, else the English name.
+export const sourceOf = (r: Row) => r.reference || r.english || "";
+const foldRow = (text: string, english: string | null, reference: string) => fold([text, english ?? "", reference].filter(Boolean).join(" "));
+
 export function toRow(
-  [slot, text, encoding, byteLength, issues]: ItemTuple,
+  [slot, text, english, length, issues]: ItemTuple,
   edit: EditInfo | null = null,
   record: SlotRecord = DEFAULT_RECORD,
   dirty = edit !== null,
@@ -47,9 +51,9 @@ export function toRow(
     itemType: Math.floor(slot / MAX_ITEM_INDEX),
     itemIndex: slot % MAX_ITEM_INDEX,
     text,
-    folded: fold(reference ? `${text} ${reference}` : text),
-    encoding,
-    byteLength,
+    english,
+    folded: foldRow(text, english, reference),
+    length,
     issues,
     edit,
     record,
@@ -77,11 +81,14 @@ export function patchRow(row: Row, s: SlotState) {
 
 export function setReference(row: Row, reference: string) {
   row.reference = reference;
-  row.folded = fold(reference ? `${row.text} ${reference}` : row.text);
+  row.folded = foldRow(row.text, row.english, reference);
 }
 
-export type SlotScope = "named" | "all" | "empty";
-export type Problem = "any" | "edited" | "issues" | "unknown-encoding" | "near-limit" | "glossary";
+// Which items: all, only those with a name in the target language, or only those without.
+export type SlotScope = "items" | "named" | "unnamed";
+export const SCOPES: SlotScope[] = ["items", "named", "unnamed"];
+export type Problem = "any" | "edited" | "issues" | "near-limit" | "glossary";
+export const PROBLEMS: Problem[] = ["any", "edited", "issues", "near-limit", "glossary"];
 
 export type StatusFilter = "any" | Status;
 
@@ -106,12 +113,14 @@ export function parseCoord(q: string): Coord | null {
 }
 
 export function matchesScope(r: Row, scope: SlotScope): boolean {
-  if (scope === "all") return true;
-  return scope === "empty" ? r.encoding === "empty" : r.encoding !== "empty";
+  if (!exists(r)) return false;
+  if (scope === "named") return r.text !== "";
+  if (scope === "unnamed") return r.text === "";
+  return true;
 }
 
 export const glossaryProblems = (r: Row, glossary: GlossaryEntry[]) =>
-  r.encoding === "unknown" ? [] : checkGlossary(glossary, r.text, r.reference).filter(isProblemHint);
+  exists(r) && r.text ? checkGlossary(glossary, r.text, sourceOf(r)).filter(isProblemHint) : [];
 
 export function matchesProblem(r: Row, problem: Problem, glossary: GlossaryEntry[] = []): boolean {
   switch (problem) {
@@ -123,19 +132,17 @@ export function matchesProblem(r: Row, problem: Problem, glossary: GlossaryEntry
       return r.dirty;
     case "issues":
       return r.issues.length > 0;
-    case "unknown-encoding":
-      return r.encoding === "unknown";
     case "near-limit":
-      return r.byteLength >= NEAR_LIMIT_BYTES;
+      return r.length >= NEAR_LIMIT_CHARS;
   }
 }
 
 export function applyFilter(rows: Row[], f: Filter, glossary: GlossaryEntry[] = []): Row[] {
   const coord = parseCoord(f.query);
   if (coord) {
-    // A coordinate query ignores the other filters: the user wants exactly that slot.
-    return rows.filter((r) =>
-      "slot" in coord ? r.slot === coord.slot : r.itemType === coord.itemType && r.itemIndex === coord.itemIndex,
+    // A coordinate query ignores the other filters: the user wants exactly that item.
+    return rows.filter(
+      (r) => exists(r) && ("slot" in coord ? r.slot === coord.slot : r.itemType === coord.itemType && r.itemIndex === coord.itemIndex),
     );
   }
   const terms = fold(f.query).split(/\s+/).filter(Boolean);
@@ -149,17 +156,14 @@ export function applyFilter(rows: Row[], f: Filter, glossary: GlossaryEntry[] = 
   );
 }
 
-// Per ItemType: named slots, total slots, translated-or-reviewed named slots (for the group list).
-export function groupCounts(rows: Row[], groups: number): { named: number; total: number; done: number }[] {
-  const out = Array.from({ length: groups }, () => ({ named: 0, total: 0, done: 0 }));
+// Per ItemType: items, and items with a name in the target language (for the group list).
+export function groupCounts(rows: Row[], groups: number): { items: number; named: number }[] {
+  const out = Array.from({ length: groups }, () => ({ items: 0, named: 0 }));
   for (const r of rows) {
     const g = out[r.itemType];
-    if (!g) continue;
-    g.total++;
-    if (r.encoding !== "empty") {
-      g.named++;
-      if (r.record.status !== "untranslated") g.done++;
-    }
+    if (!g || !exists(r)) continue;
+    g.items++;
+    if (r.text) g.named++;
   }
   return out;
 }

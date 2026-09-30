@@ -4,7 +4,7 @@
 // work unchanged. Falls back to memory if IndexedDB is unavailable (e.g. some private modes).
 
 import { AppError } from "../../../src/core/errors";
-import { normalize } from "../../../src/session/memoryStorage";
+import { normalize, subDirs } from "../../../src/session/memoryStorage";
 import type { Storage } from "../../../src/session/storage";
 
 const DB_NAME = "mubmd-files";
@@ -76,9 +76,16 @@ export class IdbStorage implements Storage {
     await this.remove(from);
   }
 
+  private async keys(): Promise<string[]> {
+    return (await this.db) ? ((await this.run("readonly", (s) => s.getAllKeys())) ?? []).map(String) : [...this.memory.keys()];
+  }
+
   async list(dir: string): Promise<string[]> {
     const prefix = `${normalize(dir)}/`;
-    const keys = (await this.db) ? ((await this.run("readonly", (s) => s.getAllKeys())) ?? []).map(String) : [...this.memory.keys()];
-    return keys.filter((k) => k.startsWith(prefix) && !k.slice(prefix.length).includes("/")).map((k) => k.slice(prefix.length));
+    return (await this.keys()).filter((k) => k.startsWith(prefix) && !k.slice(prefix.length).includes("/")).map((k) => k.slice(prefix.length));
+  }
+
+  async listDirs(dir: string): Promise<string[]> {
+    return subDirs(await this.keys(), dir);
   }
 }

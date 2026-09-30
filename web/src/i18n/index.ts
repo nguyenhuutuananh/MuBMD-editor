@@ -4,6 +4,7 @@ import { createI18n } from "vue-i18n";
 import type { GlossaryHint } from "../../../src/core/glossary";
 import { isLang, type Lang, type NameIssue } from "../../../src/shared/api";
 import { ApiError } from "@/lib/api";
+import { displayPath } from "@/lib/paths";
 import { KEYS, load, save } from "@/lib/storage";
 import en from "./locales/en.json";
 import vi from "./locales/vi.json";
@@ -74,7 +75,11 @@ export function errorText(e: unknown): string {
     const firstIssue = e.issues?.find((i) => i.severity === "error");
     if (e.code === "invalid-name" && firstIssue) return issueText(firstIssue);
     const key = `errors.${e.code}`;
-    if (i18n.global.te(key, "en")) return tr(key, e.params);
+    // Paths are shown like everywhere else (web: without the "@<id>" of the granted folder).
+    const params = Object.fromEntries(
+      Object.entries(e.params).map(([k, v]) => [k, typeof v === "string" && (k === "folder" || k === "path") ? displayPath(v) : v]),
+    );
+    if (i18n.global.te(key, "en")) return tr(key, params);
     return e.message;
   }
   return e instanceof Error ? e.message : String(e);

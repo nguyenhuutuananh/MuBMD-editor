@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { MAX_NAME_BYTES } from "../../../src/core/nameCodec";
-import { byteLevel } from "@/lib/bytes";
+import { MAX_NAME_CHARS } from "../../../src/core/nameCodec";
+import { lengthLevel } from "@/lib/length";
 
-const props = defineProps<{ bytes: number }>();
-const level = computed(() => byteLevel(props.bytes));
-const pct = computed(() => Math.min(100, (props.bytes / MAX_NAME_BYTES) * 100));
+const props = defineProps<{ length: number }>();
+const level = computed(() => lengthLevel(props.length));
+const pct = computed(() => Math.min(100, (props.length / MAX_NAME_CHARS) * 100));
 </script>
 
 <template>
@@ -14,7 +14,7 @@ const pct = computed(() => Math.min(100, (props.bytes / MAX_NAME_BYTES) * 100));
       class="w-5 text-right text-xs tabular-nums"
       :class="level === 'over' ? 'text-destructive' : level === 'near' ? 'text-warn' : 'text-muted-foreground'"
     >
-      {{ bytes || "" }}
+      {{ length || "" }}
     </span>
     <span class="bg-muted h-1 flex-1 overflow-hidden rounded-sm">
       <span

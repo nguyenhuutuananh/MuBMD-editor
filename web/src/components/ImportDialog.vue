@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { applyImport, importPreview } from "@/composables/actions";
 import { issueText } from "@/i18n";
+import { displayPath } from "@/lib/paths";
 import { cn } from "@/lib/utils";
 
 const { t } = useI18n();
@@ -49,16 +50,16 @@ const close = (open: boolean) => {
     <DialogContent v-if="importPreview" class="flex max-h-[90vh] flex-col sm:max-w-4xl" data-testid="import-dialog">
       <DialogHeader>
         <DialogTitle>
-          {{ importPreview.source === "bmd" ? t("importDialog.compareTitle", { file: importPreview.fileName }) : t("importDialog.title") }}
+          {{ importPreview.source === "game" ? t("importDialog.compareTitle", { file: displayPath(importPreview.fileName) }) : t("importDialog.title") }}
         </DialogTitle>
         <DialogDescription as="div" class="flex flex-col gap-1.5 text-left">
-          <p class="font-mono text-xs break-all">{{ t("importDialog.file", { file: importPreview.fileName }) }}</p>
+          <p class="font-mono text-xs break-all">{{ t("importDialog.file", { file: displayPath(importPreview.path) }) }}</p>
           <p class="text-foreground font-medium" data-testid="import-summary">{{ t("importDialog.summary", { ...importPreview.counts }) }}</p>
           <p>{{ t("importDialog.skipped", { ...importPreview.counts }) }}</p>
           <p v-if="importPreview.problems.length" class="text-warn">
             {{ t("importDialog.problems", { n: importPreview.problems.length }, importPreview.problems.length) }}
           </p>
-          <p v-if="importPreview.source === 'bmd'">{{ t("importDialog.compareNote") }}</p>
+          <p v-if="importPreview.source === 'game'">{{ t("importDialog.compareNote") }}</p>
           <p v-else-if="!importPreview.hasBase" class="bg-bad-soft text-destructive rounded px-2 py-1">{{ t("importDialog.noBase") }}</p>
         </DialogDescription>
       </DialogHeader>

@@ -1,5 +1,6 @@
-// sidecar.ts - Side data kept in a "<Item.bmd>.mubmd/" folder next to the file:
-//   backups/Item-20260928-111300.bmd   the previous version before each save (newest MAX_BACKUPS kept)
+// sidecar.ts - Side data kept in a "Items.mubmd/" folder next to the item data folder (Data/Items.mubmd;
+// outside Data/Items, so the game never reads it):
+//   backups/Group00_Sword-20260928-111300.json   an item file before each save that rewrote it (newest MAX_BACKUPS kept per file)
 //   backups/project-….json             the previous project.json before each save
 //   changes.tsv                        log: who renamed which slot, from what to what
 //   project.json                       per-slot status / note / translator / merge base (see Project)
@@ -11,7 +12,7 @@ import { type Storage, copyFile, splitName, tryReadText, writeText } from "./sto
 
 export const MAX_BACKUPS = 20;
 
-export const workDir = (bmdPath: string) => `${bmdPath}.mubmd`;
+export const workDir = (itemsDir: string) => `${itemsDir}.mubmd`;
 
 // 2026-09-28 11:13:00 -> "20260928-111300" (local time)
 export function stamp(d: Date): string {
@@ -66,10 +67,10 @@ export async function appendChangeLog(st: Storage, target: string, rows: ChangeL
 // ---- project.json ----
 
 export interface Project {
-  version: 1;
-  // SHA-1 of Item.bmd as last written by this tool. If the file on disk differs when opened, it was
-  // replaced from outside (e.g. a new master copy arrived), so merge bases are reset to its names.
-  bmdSha1: string;
+  version: 2;
+  // SHA-1 of the translated names as last written by this tool. If the names on disk differ when
+  // opened, they were changed from outside (e.g. a new master copy arrived), so merge bases are reset.
+  namesSha1: string;
   records: Record<string, SlotRecord>;
 }
 
@@ -82,7 +83,7 @@ export function parseProject(text: string | null): Project | null {
   if (!text) return null;
   try {
     const p = JSON.parse(text) as Project;
-    if (p?.version !== 1 || typeof p.records !== "object" || p.records === null) return null;
+    if (p?.version !== 2 || typeof p.records !== "object" || p.records === null) return null;
     return p;
   } catch {
     return null;
@@ -99,7 +100,7 @@ export async function writeProject(st: Storage, target: string, project: Project
 
 export interface DraftSlot {
   slot: number;
-  name?: string; // present when the name differs from the file
+  name?: string; // present when the name differs from the files
   record?: SlotRecord | null; // present when the record differs from project.json (null = remove)
 }
 
@@ -110,39 +111,19 @@ export interface Draft {
   slots: DraftSlot[];
 }
 
-interface DraftV1 {
-  version: 1;
-  baseSha1: string;
-  savedAt: string;
-  edits: { slot: number; name: string; translator: string; at: string }[];
-}
-
 export const draftPath = (st: Storage, target: string) => st.join(workDir(target), "draft.json");
 
 export function writeDraft(st: Storage, target: string, draft: Draft): Promise<void> {
   return writeText(st, draftPath(st, target), JSON.stringify(draft, null, 1));
 }
 
-// A corrupt / malformed draft is treated as absent (never blocks opening the file).
-// Version 1 drafts (names only) are upgraded on read.
+// A corrupt / malformed draft is treated as absent (never blocks opening the folder).
 export async function readDraft(st: Storage, target: string): Promise<Draft | null> {
   const text = await tryReadText(st, draftPath(st, target));
   if (!text) return null;
   try {
-    const d = JSON.parse(text) as Draft | DraftV1;
+    const d = JSON.parse(text) as Draft;
     if (d?.version === 2 && Array.isArray(d.slots)) return d;
-    if (d?.version === 1 && Array.isArray(d.edits)) {
-      return {
-        version: 2,
-        baseSha1: d.baseSha1,
-        savedAt: d.savedAt,
-        slots: d.edits.map((e) => ({
-          slot: e.slot,
-          name: e.name,
-          record: { status: "translated", note: "", translator: e.translator ?? "", updatedAt: e.at ?? "" },
-        })),
-      };
-    }
     return null;
   } catch {
     return null;

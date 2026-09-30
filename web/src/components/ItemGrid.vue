@@ -2,7 +2,7 @@
 import { useVirtualizer } from "@tanstack/vue-virtual";
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import BytesMeter from "@/components/BytesMeter.vue";
+import LengthMeter from "@/components/LengthMeter.vue";
 import InlineEditor from "@/components/InlineEditor.vue";
 import StatusDot from "@/components/StatusDot.vue";
 import { registerScroller, select, setStatus, startEdit } from "@/composables/actions";
@@ -14,6 +14,7 @@ const ROW = 32;
 const HEAD = 32; // sticky header inside the scroll area, above the list
 // Shared by the header and the rows so columns always line up. The md+ column list depends on whether
 // a reference file is loaded, so it is passed through a CSS variable (Tailwind classes must be static).
+// Columns: type, index, name, length, status, English, [reference], notes.
 const COLS = "grid grid-cols-[36px_44px_minmax(120px,1fr)_64px_20px] md:[grid-template-columns:var(--cols)] items-center gap-2 px-3";
 const STATUS_KEYS: Record<string, "untranslated" | "translated" | "reviewed"> = {
   Digit1: "untranslated",
@@ -26,7 +27,7 @@ const store = useDocStore();
 const scrollEl = ref<HTMLElement | null>(null);
 const hasRef = computed(() => store.reference !== null);
 const colsVar = computed(() => ({
-  "--cols": `52px 60px minmax(160px,1fr) 92px 112px ${hasRef.value ? "minmax(120px,0.8fr) " : ""}minmax(100px,0.6fr)`,
+  "--cols": `52px 60px minmax(160px,1fr) 92px 112px minmax(120px,0.8fr) ${hasRef.value ? "minmax(120px,0.8fr) " : ""}minmax(100px,0.6fr)`,
 }));
 
 const virtualizer = useVirtualizer(
@@ -50,7 +51,6 @@ const items = computed(() => {
 function flags(r: Row): string[] {
   return [
     r.dirty ? t("grid.edited") : "",
-    r.encoding === "unknown" ? t("grid.nonUtf8") : "",
     ...r.issues.map((c) => t(`issues.${c}`)),
     glossaryProblems(r, store.glossary?.entries ?? []).length ? t("grid.glossary") : "",
     r.record.note ? `“${r.record.note}”` : "",
@@ -121,8 +121,9 @@ onBeforeUnmount(() => registerScroller(null));
         <span class="text-right">{{ t("grid.type") }}</span>
         <span class="text-right">{{ t("grid.index") }}</span>
         <span>{{ t("grid.name") }}</span>
-        <span>{{ t("grid.bytes") }}</span>
+        <span>{{ t("grid.length") }}</span>
         <span class="hidden md:block">{{ t("grid.status") }}</span>
+        <span class="hidden md:block">{{ t("grid.english") }}</span>
         <span v-if="hasRef" class="hidden truncate md:block" :title="store.reference?.fileName">{{ t("grid.reference") }}</span>
         <span class="hidden md:block">{{ t("grid.notes") }}</span>
       </div>
@@ -148,15 +149,16 @@ onBeforeUnmount(() => registerScroller(null));
           <InlineEditor v-if="store.editor?.slot === row.slot" :row="row" />
           <template v-else>
             <span
-              :class="cn('truncate', row.encoding === 'empty' && 'text-muted-foreground italic', row.edit && 'font-semibold')"
-              :title="row.edit ? t('grid.originalTitle', { name: row.edit.originalText || t('grid.empty') }) : row.text"
+              :class="cn('truncate', !row.text && 'text-muted-foreground italic', row.edit && 'font-semibold')"
+              :title="row.edit ? t('grid.originalTitle', { name: row.edit.originalText || t('grid.empty') }) : row.text || row.english || ''"
             >
-              {{ row.encoding === "empty" ? t("grid.empty") : row.text }}
+              {{ row.text || t("grid.empty") }}
             </span>
-            <BytesMeter :bytes="row.byteLength" />
+            <LengthMeter :length="row.length" />
           </template>
           <StatusDot :status="row.record.status" class="md:hidden" />
           <StatusDot :status="row.record.status" with-label class="hidden md:flex" />
+          <span class="text-muted-foreground hidden truncate md:block" :title="row.english ?? ''">{{ row.english }}</span>
           <span v-if="hasRef" class="text-muted-foreground hidden truncate md:block" :title="row.reference">{{ row.reference }}</span>
           <span
             class="hidden truncate text-xs md:block"

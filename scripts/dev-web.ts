@@ -1,5 +1,5 @@
 // dev-web.ts - Development of the web build: Vite only (port 5174); the Session runs in the browser.
-// Open it in Chrome or Edge (File System Access API) and choose a folder that contains Item.bmd.
+// Open it in Chrome or Edge (File System Access API) and choose a game folder (e.g. data/game, created by `bun run dev`).
 
 import * as path from "node:path";
 

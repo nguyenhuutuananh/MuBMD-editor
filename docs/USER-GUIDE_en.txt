@@ -1,19 +1,24 @@
 MuBMD-editor {{VERSION}} - User guide
 =====================================
 
-Translate item names in the MuMain client's Item.bmd (Mu Online season 6).
+Translate the item names of the MuMain client (Mu Online season 6) into Vietnamese.
 Runs on your machine; the UI opens in your browser (http://localhost:4817).
 The UI is in English (default) and Vietnamese - switch with the language button (top right).
+
+Since version 2.0: MuMain no longer reads Item.bmd; it reads Data/Items/Group00_Sword.json ...
+Group15_Etc.json, where each item has its names by language ("en", "es", "pt"...). This tool writes
+the Vietnamese name ("vi"). The game shows the name in the selected language, else the English one.
+Old translations in Item.bmd: export them to TSV with MuBMD-editor 1.x and import that TSV here.
 
 
 0. WEB VERSION (NO INSTALL)
 --------------------------
 Open https://nguyenhuutuananh.github.io/MuBMD-editor/ in Chrome or Edge on a computer:
-  - "Choose the folder with Item.bmd…" -> pick Data/Local. The browser edits the file in place and
-    keeps backups next to it, exactly like the desktop app. Nothing is uploaded.
+  - "Choose game folder…" -> pick the game folder. The browser edits the files in place and keeps
+    backups next to them, exactly like the desktop app. Nothing is uploaded.
   - It can be installed like an app (install icon in the address bar) and then works offline.
-  - Firefox / Safari: you work on a copy kept in the browser; Save downloads the updated Item.bmd
-    to copy back into Data/Local.
+  - Firefox / Safari: pick the game folder (or Data/Items) and work on a copy kept in the browser;
+    Save downloads the updated file (Items.zip for several) to copy back into Data/Items.
 The rest of this guide applies to both the web version and the desktop app.
 
 
@@ -31,58 +36,81 @@ macOS:
     (Intel Macs use the macos-x64 build, Apple silicon M1/M2/M3... the macos-arm64 build)
   - Later: double-click MuBMD-editor, or run ./MuBMD-editor in Terminal.
 
-Command line: MuBMD-editor [path/to/Item.bmd] [--port 4817] [--no-open] [--help]
+Command line: MuBMD-editor [path/to/game] [--port 4817] [--no-open] [--help]
 
 
-2. TRANSLATING
+2. OPENING THE GAME FOLDER
+--------------------------
+Click "Choose game folder…" (or paste a path) and pick the GAME FOLDER - no need to find a file.
+The item data is found automatically:
+  - Windows / Linux:   <game>/Data/Items                          (next to Main.exe / Main)
+  - macOS:             <game>/Main.app/Contents/MacOS/Data/Items  (inside the app)
+  - MuMain source:     <repo>/src/bin/Data/Items
+  - Picking Data or Data/Items directly works too.
+If a folder holds both a Windows and a macOS build, the one of the OS you are running wins; to edit
+the other one, pick its folder directly. The top bar shows where the data was found (e.g. "macOS
+app"; hover it for the path).
+Work on a COPY, and close the game before saving.
+
+
+3. TRANSLATING
 --------------
-  - "Choose file…" -> pick Data/Local/Item.bmd (work on a COPY, not the file of a running game).
-  - Select a row and press Enter (or double-click) to edit. You are asked for a translator name once.
-  - Byte counter: at most 49 bytes (Vietnamese accented letters take 2-3 bytes). Over the limit cannot be saved.
+  - Select a row, press Enter (or double-click) to edit the name. The first time asks for your name.
+  - The "English" column is the original. An empty name = not translated (the game shows English).
+  - Names are at most 49 characters (the game cuts the rest); longer names cannot be saved. No "||".
   - Enter / Tab: save and go to the next row. Shift+Enter: previous row. Esc: cancel.
-  - Ctrl+S: save the file. Ctrl+Z / Ctrl+Y: undo / redo. Ctrl+F: search.
-  - Search ignores accents ("rong do" finds "Rồng Đỏ"), or by position: 7:1, #3585.
+  - Ctrl+S: save. Ctrl+Z / Ctrl+Y: undo / redo. Ctrl+F: search.
+  - Search ignores accents ("truong kiem" finds "Trường Kiếm"), searches the English name too
+    ("helm"), or by position: 7:1, #3585.
+  - Filter "Not translated yet" to see what is left.
   - Status: Untranslated / Translated / Reviewed. Alt+1 / Alt+2 / Alt+3, or in the right panel.
-    In bulk: Actions -> "Mark the N listed rows as…".
+    Bulk: Actions -> "Mark the N listed rows as…".
+  - Saving rewrites only the files with renamed items, and in them only the "name" of those items
+    (in the same form MuMain writes) - everything else stays byte for byte.
 
 
-3. WORKING AS A TEAM
+4. WORKING AS A TEAM
 --------------------
-  1. A coordinator keeps the master Item.bmd and shares it on Google Drive.
-  2. Each translator copies Item.bmd to their own machine, translates their part, saves.
+  1. A coordinator keeps the master Data/Items files (or the MuMain repository) and shares them.
+  2. Each translator copies them into their own game folder, opens it, translates, saves.
   3. Translator: Actions -> "Export translations (TSV)…" -> "Slots I changed" -> send the TSV.
   4. Coordinator: Actions -> "Import translations (TSV)…". The preview shows:
-       Change   = only they changed it (selected by default)
-       Conflict = both changed it (keeps yours by default)
-     Apply, review with the "Edited" filter, then Ctrl+S.
-  5. The coordinator shares the new Item.bmd; translators replace their copy with it.
+       Change     = only they changed it (selected by default)
+       Conflict   = both changed it (keeps yours by default)
+     Click "Apply", review with the "Edited" filter, then Ctrl+S.
+  5. The coordinator shares the new files; translators replace theirs with them.
 
-  TSV files open in Excel / Google Sheets. Old items.tsv files import too.
-  "Compare with another Item.bmd…" lists names that differ and lets you take names from that file.
+  TSV files open in Excel / Google Sheets. Old TSV files (ItemType, ItemIndex, Name) import too -
+  including files exported from Item.bmd by MuBMD-editor 1.x.
+  "Compare with another game folder…" lists the Vietnamese names that differ and lets you take them.
 
 
-4. GLOSSARY AND REFERENCE
+5. GLOSSARY AND REFERENCE
 -------------------------
-  - Actions -> "Glossary…": open the team glossary (TSV, or the old MuMain_VI_Glossary.csv),
-    add / remove terms, save as TSV to share. The "Glossary mismatch" filter finds names that do
-    not follow it (e.g. "Đồng Helm" when Helm -> Mũ was agreed).
-  - Actions -> "Set reference file…": shows an extra column with original names (another Item.bmd,
-    a TSV, or MuMain_VI_Item.csv - its Nguon column). Search also looks in that column.
+  - Actions -> "Glossary…": open the team glossary (TSV, or the old MuMain_VI_Glossary.csv), add /
+    remove terms, save as TSV to share. Terms are checked against the English names.
+    The "Glossary mismatch" filter finds names that do not follow it (e.g. "Đồng Helm" when
+    Helm -> Mũ was agreed).
+  - Actions -> "Set reference file (TSV / CSV)…": adds a column with source names (e.g. Japanese, or
+    MuMain_VI_Item.csv - its Nguon column). Search looks in it too.
 
 
-5. WHERE DATA IS STORED
+6. WHERE DATA IS STORED
 -----------------------
-Next to Item.bmd there is an "Item.bmd.mubmd" folder:
-  backups/       the previous version before each save (newest 20 kept)
-  changes.tsv    log: who renamed which slot, from what to what
-  project.json   per-slot status / note
-  draft.json     unsaved edits (restored after a crash)
+Next to Data/Items there is a folder "Data/Items.mubmd" (the game never reads it):
+  backups/       each file before every save that rewrote it (newest 20 kept per file)
+  changes.tsv    log: who renamed which item, from what to what
+  project.json   status / note of each item
+  draft.json     unsaved changes (restored after a crash)
 
 
-6. TROUBLESHOOTING
+7. TROUBLESHOOTING
 ------------------
-  - "The file was changed outside this tool": Google Drive or someone else just wrote the file.
-    Choose "Save to another file…" to lose nothing, or "Overwrite" (the disk version is backed up first).
-  - "another program is holding it": close the game client and save again.
+  - "No item data was found": the folder has no Data/Items (or Main.app on macOS). An old client
+    with only Item.bmd cannot be used with this version - build a current MuMain.
+  - "... is not a valid item file": that JSON file is broken (the game cannot read it either).
+  - "The file was changed outside this tool": Google Drive, someone else or MuMain's item editor
+    wrote the file. Choose "Overwrite" (the disk version is still backed up), or Cancel and Reload.
+  - "held by another program": close the game client / MuMain's editor and save again.
   - Port 4817 busy: the next free port is used (see the address printed in the console window).
-  - Closed without saving: reopen the file and restore the draft when asked.
+  - Closed without saving: reopen the folder and you will be asked to restore the draft.

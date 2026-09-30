@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { MAX_NAME_BYTES, checkName } from "../../../src/core/nameCodec";
+import { MAX_NAME_CHARS, checkName } from "../../../src/core/nameCodec";
 import { anyDialogOpen, cancelEdit, commitEditor, moveEdit } from "@/composables/actions";
 import { issueText } from "@/i18n";
-import { byteLevel } from "@/lib/bytes";
+import { lengthLevel } from "@/lib/length";
 import type { Row } from "@/lib/search";
 import { useDocStore } from "@/stores/doc";
 
@@ -20,7 +20,7 @@ const value = computed({
   },
 });
 const check = computed(() => checkName(value.value));
-const level = computed(() => byteLevel(check.value.byteLength));
+const level = computed(() => lengthLevel(check.value.length));
 
 function onKeydown(e: KeyboardEvent) {
   // Composing with a Vietnamese IME (Telex/VNI, Unikey...): Enter/Tab confirms the text, it must not save.
@@ -69,7 +69,7 @@ onMounted(() => {
       autocomplete="off"
       :aria-label="t('editor.aria', { type: props.row.itemType, index: props.row.itemIndex })"
       :aria-invalid="!check.ok"
-      :placeholder="props.row.encoding === 'unknown' ? t('editor.unknownPlaceholder') : ''"
+      :placeholder="props.row.english ?? ''"
       :title="check.issues.map(issueText).join('\n')"
       @keydown="onKeydown"
       @blur="onBlur"
@@ -79,7 +79,7 @@ onMounted(() => {
       :class="level === 'over' ? 'text-destructive font-bold' : level === 'near' ? 'text-warn font-semibold' : 'text-muted-foreground'"
       data-testid="editor-counter"
     >
-      {{ check.byteLength }}/{{ MAX_NAME_BYTES }}
+      {{ check.length }}/{{ MAX_NAME_CHARS }}
     </span>
   </div>
 </template>

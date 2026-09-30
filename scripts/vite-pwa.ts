@@ -73,7 +73,7 @@ export function pwa(opts: { publicDir: string; version: string }): Plugin {
       const manifest = {
         name: "MuBMD-editor",
         short_name: "MuBMD",
-        description: "Translate the item names in Item.bmd of the MuMain client (Mu Online season 6).",
+        description: "Translate the item names of the MuMain client (Mu Online season 6).",
         start_url: "./",
         scope: "./",
         display: "standalone",

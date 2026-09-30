@@ -9,7 +9,7 @@ test("known vectors", () => {
   expect(sha1(enc.encode("abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq"))).toBe("84983e441c3bd26ebaae4aa1f95129e5e54670f1");
 });
 
-test("matches node:crypto around every padding boundary and at Item.bmd size", () => {
+test("matches node:crypto around every padding boundary and at the size of a large file", () => {
   for (const n of [1, 55, 56, 57, 63, 64, 65, 119, 120, 128, 4096, 688132]) {
     const b = new Uint8Array(n).map((_, i) => (i * 131 + n) & 255);
     expect(sha1(b)).toBe(createHash("sha1").update(b).digest("hex"));

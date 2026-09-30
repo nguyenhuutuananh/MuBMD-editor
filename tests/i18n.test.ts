@@ -40,16 +40,16 @@ describe("locale files", () => {
   test("every error code and name-issue code is translated", () => {
     // Listed by hand: adding a code to core/errors.ts without translating it fails this test (and tsc).
     const errorCodes: Record<ErrorCode | ClientErrorCode, true> = {
-      "bmd-size": true, "invalid-slot": true, "invalid-name": true, "name-bytes-length": true, "tsv-header": true, "import-changed": true,
+      "item-json": true, "items-not-found": true, "no-item": true, "invalid-slot": true, "invalid-name": true, "tsv-header": true, "import-changed": true,
       "no-file": true, dirty: true, conflict: true, "save-verify-failed": true,
       "file-not-found": true, "file-locked": true, "permission-denied": true, "is-directory": true,
       "not-a-file": true, "disk-full": true, "picker-unsupported": true, "picker-failed": true,
       "missing-path": true, "missing-name": true, "bad-json": true, "unsupported-media": true,
       "not-local": true, "unknown-api": true, internal: true, offline: true, "bad-response": true,
-      "no-bmd-in-folder": true, "fs-unsupported": true,
+      "fs-unsupported": true,
     };
     const issueCodes: Record<NameIssueCode, true> = {
-      "too-long": true, "control-char": true, "lone-surrogate": true, "edge-whitespace": true, "double-space": true,
+      "too-long": true, "control-char": true, "lone-surrogate": true, separator: true, "edge-whitespace": true, "double-space": true,
     };
     for (const code of Object.keys(errorCodes)) expect(EN.has(`errors.${code}`)).toBe(true);
     for (const code of Object.keys(issueCodes)) {

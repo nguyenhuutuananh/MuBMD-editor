@@ -1,19 +1,24 @@
 MuBMD-editor {{VERSION}} - Hướng dẫn sử dụng
 =============================================
 
-Công cụ dịch tên vật phẩm trong Item.bmd của client MuMain (Mu Online season 6).
+Công cụ dịch tên vật phẩm của client MuMain (Mu Online season 6) sang tiếng Việt.
 Chạy trên máy của bạn, giao diện mở trong trình duyệt (http://localhost:4817).
 Giao diện có Tiếng Anh (mặc định) và Tiếng Việt - chọn ở nút ngôn ngữ góc trên bên phải.
+
+Từ bản 2.0: MuMain không còn đọc Item.bmd nữa mà đọc các file Data/Items/Group00_Sword.json ...
+Group15_Etc.json. Mỗi vật phẩm có tên theo từng ngôn ngữ ("en", "es", "pt"...); công cụ này ghi tên
+tiếng Việt ("vi"). Game hiện tên theo ngôn ngữ đang chọn, thiếu thì hiện tên tiếng Anh.
+Bản dịch cũ trong Item.bmd: dùng MuBMD-editor 1.x xuất ra TSV, rồi nhập file TSV đó ở bản này.
 
 
 0. BẢN WEB (KHÔNG CẦN CÀI)
 --------------------------
 Mở https://nguyenhuutuananh.github.io/MuBMD-editor/ bằng Chrome hoặc Edge trên máy tính:
-  - "Chọn thư mục chứa Item.bmd…" -> chọn Data/Local. Trình duyệt sửa trực tiếp file và giữ backup
-    ngay cạnh file, giống hệt bản desktop. Không có gì bị tải lên mạng.
+  - "Chọn thư mục game…" -> chọn thư mục game. Trình duyệt sửa trực tiếp file và giữ backup ngay
+    cạnh đó, giống hệt bản desktop. Không có gì bị tải lên mạng.
   - Có thể cài như app (biểu tượng cài đặt trên thanh địa chỉ), sau đó dùng được cả khi offline.
-  - Firefox / Safari: bạn làm việc trên một bản sao lưu trong trình duyệt; Lưu sẽ tải Item.bmd đã sửa
-    về để chép lại vào Data/Local.
+  - Firefox / Safari: chọn thư mục game (hoặc Data/Items), bạn làm việc trên bản sao lưu trong trình
+    duyệt; Lưu sẽ tải file đã sửa (nhiều file thì là Items.zip) về để chép lại vào Data/Items.
 Phần còn lại của hướng dẫn dùng chung cho cả bản web và bản desktop.
 
 
@@ -31,58 +36,80 @@ macOS:
     (máy Mac chip Intel dùng bản macos-x64, chip Apple M1/M2/M3... dùng bản macos-arm64)
   - Các lần sau: nhấp đúp file MuBMD-editor, hoặc chạy ./MuBMD-editor trong Terminal.
 
-Tuỳ chọn dòng lệnh: MuBMD-editor [đường/dẫn/Item.bmd] [--port 4817] [--no-open] [--help]
+Tuỳ chọn dòng lệnh: MuBMD-editor [đường/dẫn/thư-mục-game] [--port 4817] [--no-open] [--help]
 
 
-2. DỊCH
+2. MỞ THƯ MỤC GAME
+------------------
+Bấm "Chọn thư mục game…" (hoặc dán đường dẫn) và chọn THƯ MỤC GAME - không cần tìm file.
+Công cụ tự tìm dữ liệu vật phẩm:
+  - Windows / Linux:   <game>/Data/Items                          (cạnh Main.exe / Main)
+  - macOS:             <game>/Main.app/Contents/MacOS/Data/Items  (bên trong app)
+  - Mã nguồn MuMain:   <repo>/src/bin/Data/Items
+  - Chọn thẳng Data hoặc Data/Items cũng được.
+Nếu một thư mục có cả bản Windows lẫn bản macOS, bản của hệ điều hành đang chạy được chọn; muốn
+sửa bản kia thì chọn thẳng thư mục của nó. Thanh trên cùng cho biết đã tìm thấy ở đâu (ví dụ
+"Ứng dụng macOS"; rê chuột vào để xem đường dẫn).
+Nên làm trên BẢN SAO, và đóng game trước khi lưu.
+
+
+3. DỊCH
 -------
-  - "Chọn file…" -> chọn Data/Local/Item.bmd (nên làm trên BẢN SAO, không phải file của game đang chạy).
   - Chọn một dòng, bấm Enter (hoặc nhấp đúp) để sửa tên. Lần đầu sẽ hỏi tên người dịch.
-  - Bộ đếm byte: tên tối đa 49 byte (chữ có dấu tốn 2-3 byte). Quá giới hạn thì không lưu được.
+  - Cột "Tiếng Anh" là tên gốc. Để trống tên = chưa dịch (game hiện tên tiếng Anh).
+  - Tên tối đa 49 ký tự (game cắt phần dư). Quá giới hạn thì không lưu được. Không dùng "||".
   - Enter / Tab: lưu và sang dòng dưới. Shift+Enter: lên dòng trên. Esc: huỷ.
-  - Ctrl+S: lưu vào file. Ctrl+Z / Ctrl+Y: hoàn tác / làm lại. Ctrl+F: tìm.
-  - Tìm không cần gõ dấu ("rong do" tìm được "Rồng Đỏ"), hoặc theo vị trí: 7:1, #3585.
+  - Ctrl+S: lưu. Ctrl+Z / Ctrl+Y: hoàn tác / làm lại. Ctrl+F: tìm.
+  - Tìm không cần gõ dấu ("truong kiem" tìm được "Trường Kiếm"), tìm cả tên tiếng Anh ("helm"),
+    hoặc theo vị trí: 7:1, #3585.
+  - Lọc: "Chưa có tên tiếng Việt" để xem những gì còn phải dịch.
   - Trạng thái: Chưa dịch / Đã dịch / Đã duyệt. Alt+1 / Alt+2 / Alt+3, hoặc ở khung bên phải.
     Đánh dấu hàng loạt: Thao tác -> "Đánh dấu N dòng đang hiện là…".
+  - Khi lưu, chỉ các file có tên bị sửa được ghi lại, và trong đó chỉ phần "name" của các vật phẩm
+    đó thay đổi (đúng định dạng MuMain tự ghi) - phần còn lại giữ nguyên từng byte.
 
 
-3. LÀM VIỆC NHÓM
+4. LÀM VIỆC NHÓM
 ----------------
-  1. Người điều phối giữ Item.bmd chính, chia sẻ qua Google Drive.
-  2. Mỗi người dịch chép riêng file Item.bmd về máy mình, mở, dịch phần được giao, lưu.
+  1. Người điều phối giữ bộ file Data/Items chính (hoặc repo MuMain), chia sẻ qua Google Drive / git.
+  2. Mỗi người dịch chép các file đó vào thư mục game của mình, mở, dịch phần được giao, lưu.
   3. Người dịch: Thao tác -> "Xuất bản dịch (TSV)…" -> "Các slot tôi đã sửa" -> gửi file TSV.
   4. Người điều phối: Thao tác -> "Nhập bản dịch (TSV)…". Màn hình xem trước cho biết:
        Thay đổi   = chỉ người kia sửa (được chọn sẵn)
        Xung đột   = cả hai cùng sửa (mặc định giữ bản của mình)
      Chọn xong bấm "Áp dụng", xem lại bằng bộ lọc "Đã sửa", rồi Ctrl+S.
-  5. Người điều phối chia sẻ Item.bmd mới; người dịch thay file trên máy bằng bản mới.
+  5. Người điều phối chia sẻ bộ file mới; người dịch thay file trên máy bằng bản mới.
 
-  File TSV mở được bằng Excel / Google Sheets. File items.tsv kiểu cũ cũng nhập được.
-  "So sánh với Item.bmd khác…" liệt kê các tên khác nhau giữa 2 file và cho lấy tên từ file kia.
+  File TSV mở được bằng Excel / Google Sheets. File TSV kiểu cũ (ItemType, ItemIndex, Name) cũng
+  nhập được - kể cả file do MuBMD-editor 1.x xuất từ Item.bmd.
+  "So sánh với thư mục game khác…" liệt kê các tên tiếng Việt khác nhau và cho lấy tên từ bên kia.
 
 
-4. THUẬT NGỮ VÀ THAM CHIẾU
+5. THUẬT NGỮ VÀ THAM CHIẾU
 --------------------------
   - Thao tác -> "Bảng thuật ngữ…": mở bảng thuật ngữ của nhóm (TSV, hoặc MuMain_VI_Glossary.csv cũ),
-    thêm / xoá thuật ngữ, lưu thành TSV để chia sẻ.
+    thêm / xoá thuật ngữ, lưu thành TSV để chia sẻ. Thuật ngữ được so với tên tiếng Anh.
     Bộ lọc "Lệch thuật ngữ" tìm các tên chưa theo thuật ngữ (ví dụ "Đồng Helm" khi đã chốt Helm -> Mũ).
-  - Thao tác -> "Chọn file tham chiếu…": hiện thêm cột tên gốc (Item.bmd khác, TSV,
+  - Thao tác -> "Chọn file tham chiếu (TSV / CSV)…": hiện thêm cột tên gốc (ví dụ tên tiếng Nhật,
     hoặc MuMain_VI_Item.csv - cột Nguon). Tìm kiếm cũng tìm trong cột này.
 
 
-5. DỮ LIỆU ĐƯỢC LƯU Ở ĐÂU
+6. DỮ LIỆU ĐƯỢC LƯU Ở ĐÂU
 -------------------------
-Cạnh file Item.bmd có thư mục "Item.bmd.mubmd":
-  backups/       bản trước mỗi lần lưu (20 bản mới nhất)
-  changes.tsv    nhật ký: ai đổi tên slot nào, từ gì sang gì
-  project.json   trạng thái / ghi chú của từng slot
+Cạnh thư mục Data/Items có thư mục "Data/Items.mubmd" (game không đọc thư mục này):
+  backups/       bản cũ của từng file trước mỗi lần lưu (20 bản mới nhất cho mỗi file)
+  changes.tsv    nhật ký: ai đổi tên vật phẩm nào, từ gì sang gì
+  project.json   trạng thái / ghi chú của từng vật phẩm
   draft.json     thay đổi chưa lưu (tắt ngang vẫn khôi phục được)
 
 
-6. XỬ LÝ SỰ CỐ
+7. XỬ LÝ SỰ CỐ
 --------------
-  - "File đã bị thay đổi bên ngoài": Google Drive hoặc người khác vừa ghi file. Chọn
-    "Lưu thành file khác…" để không mất gì, hoặc "Ghi đè" (bản trên đĩa vẫn được backup).
-  - "file đang bị chương trình khác giữ": đóng game client rồi lưu lại.
+  - "Không tìm thấy dữ liệu vật phẩm": thư mục đã chọn không có Data/Items (hoặc Main.app trên
+    macOS). Client cũ chỉ có Item.bmd thì chưa dùng được bản này - hãy build MuMain mới.
+  - "... không phải file vật phẩm hợp lệ": file JSON đó bị hỏng (game cũng không đọc được).
+  - "File đã bị thay đổi bên ngoài": Google Drive, người khác hoặc trình sửa vật phẩm của MuMain vừa
+    ghi file. Chọn "Ghi đè" (bản trên đĩa vẫn được backup), hoặc Huỷ rồi Tải lại.
+  - "file đang bị chương trình khác giữ": đóng game client / trình sửa của MuMain rồi lưu lại.
   - Cổng 4817 đang bận: chương trình tự dùng cổng kế tiếp (xem địa chỉ in trong cửa sổ dòng lệnh).
-  - Lỡ tắt khi chưa lưu: mở lại file, chương trình hỏi khôi phục bản nháp.
+  - Lỡ tắt khi chưa lưu: mở lại thư mục, chương trình hỏi khôi phục bản nháp.

@@ -5,6 +5,7 @@ import { AppError, type ErrorCode, type ErrorParams, NameValidationError, isStat
 import {
   type EditRequest,
   type ErrorResponse,
+  FOLDER_KINDS,
   type GlossaryInfo,
   isLang,
   type ItemsResponse,
@@ -13,6 +14,7 @@ import {
   type PickKind,
   type PickResponse,
   type RevertRequest,
+  type SaveKind,
   type SaveRequest,
   type SaveResponse,
   type StateResponse,
@@ -20,6 +22,7 @@ import {
 import { pickFile, pickSaveFile } from "./filePicker";
 import { loadGlossaryFile, saveGlossaryFile } from "../session/glossaryFiles";
 import { itemsResponse as buildItemsResponse, saveResponse, stateResponse } from "../session/responses";
+import { hostPlatform } from "../session/itemsFolder";
 import { NoFileError, Session } from "../session/session";
 import { NodeStorage } from "./nodeStorage";
 
@@ -36,7 +39,7 @@ export interface AppOptions {
   version: string;
   session?: Session;
   pick?: (lang: Lang, kind: PickKind, dir?: string) => Promise<string | null>;
-  pickSave?: (defaultPath: string, lang: Lang, kind: "bmd" | "tsv" | "glossary") => Promise<string | null>;
+  pickSave?: (defaultPath: string, lang: Lang, kind: SaveKind) => Promise<string | null>;
 }
 
 const json = (body: unknown, status = 200) =>
@@ -70,6 +73,7 @@ const STATUS: Partial<Record<ErrorCode, number>> = {
   "picker-unsupported": 501,
   "picker-failed": 500,
   "save-verify-failed": 500,
+  "items-not-found": 404,
   internal: 500,
 };
 
@@ -100,7 +104,7 @@ function errorResponse(e: unknown): Response {
 const str = (v: unknown) => (typeof v === "string" ? v : "");
 
 export function createApp(opts: AppOptions) {
-  const session = opts.session ?? new Session(new NodeStorage());
+  const session = opts.session ?? new Session(new NodeStorage(), undefined, hostPlatform(process.platform));
   const pick = opts.pick ?? pickFile;
   const pickSave = opts.pickSave ?? pickSaveFile;
 
@@ -120,13 +124,15 @@ export function createApp(opts: AppOptions) {
   type Handler = (body: Record<string, unknown>) => unknown;
 
   const langOf = (b: Record<string, unknown>): Lang => (isLang(b.lang) ? b.lang : "en");
+  const sourceOf = (b: Record<string, unknown>) => (b.source === "game" ? "game" : "tsv");
   const slotsOf = (v: unknown): number[] => (Array.isArray(v) ? v.map(Number).filter(Number.isInteger) : []);
   const pathOf = (b: Record<string, unknown>) => {
     const p = str(b.path).trim();
     if (!p) throw new AppError("missing-path", "Missing file path.");
     return p;
   };
-  const openDir = () => (session.file ? pathDirname(session.file.path) : undefined);
+  // Dialogs start next to the open game folder (folder dialogs) or inside it (file dialogs).
+  const startDir = (kind: PickKind) => (session.file ? (FOLDER_KINDS.includes(kind) ? pathDirname(session.file.root) : session.file.root) : undefined);
 
   const posts: Record<string, Handler> = {
     "/api/open": async (b) => {
@@ -136,15 +142,15 @@ export function createApp(opts: AppOptions) {
       return state();
     },
     "/api/pick": async (b) => {
-      const kinds: PickKind[] = ["bmd-file", "tsv", "reference", "glossary", "compare"];
-      const kind: PickKind = kinds.includes(b.kind as PickKind) ? (b.kind as PickKind) : "bmd";
-      return { path: await pick(langOf(b), kind, openDir()) } satisfies PickResponse;
+      const kinds: PickKind[] = ["tsv", "reference", "glossary", "compare"];
+      const kind: PickKind = kinds.includes(b.kind as PickKind) ? (b.kind as PickKind) : "game";
+      return { path: await pick(langOf(b), kind, startDir(kind)) } satisfies PickResponse;
     },
     "/api/pick-save": async (b) => {
       if (!session.file) throw new NoFileError();
-      const kind = b.kind === "tsv" || b.kind === "glossary" ? b.kind : "bmd";
-      const name = str(b.defaultName).replace(/[\\/:*?"<>|]/g, "_").trim();
-      const def = name ? pathJoin(pathDirname(session.file.path), name) : session.file.path;
+      const kind: SaveKind = b.kind === "glossary" ? "glossary" : "tsv";
+      const name = str(b.defaultName).replace(/[\\/:*?"<>|]/g, "_").trim() || (kind === "tsv" ? "export.tsv" : "Glossary.tsv");
+      const def = pathJoin(session.file.root, name);
       return { path: await pickSave(def, langOf(b), kind) } satisfies PickResponse;
     },
     "/api/edit": (b) => {
@@ -159,13 +165,13 @@ export function createApp(opts: AppOptions) {
     },
     "/api/note": (b) => session.setNote(Number(b.slot), str(b.note), str(b.translator)),
     "/api/reference": async (b) => ({ reference: await session.setReference(b.path ? pathOf(b) : null) }),
-    // The glossary is a standalone file shared by the team (not tied to the open Item.bmd).
+    // The glossary is a standalone file shared by the team (not tied to the open game folder).
     "/api/glossary/load": (b): Promise<GlossaryInfo> => loadGlossaryFile(session.storage, pathOf(b)),
     "/api/glossary/save": (b): Promise<GlossaryInfo> =>
       saveGlossaryFile(session.storage, pathOf(b), Array.isArray(b.entries) ? b.entries : []),
     "/api/export": (b) => session.exportTsv(pathOf(b), slotsOf(b.slots)),
-    "/api/import/preview": (b) => session.previewImport(pathOf(b)),
-    "/api/import/apply": (b) => session.applyImport(pathOf(b), str(b.token), slotsOf(b.take), str(b.translator)),
+    "/api/import/preview": (b) => session.previewImport(pathOf(b), sourceOf(b)),
+    "/api/import/apply": (b) => session.applyImport(pathOf(b), str(b.token), slotsOf(b.take), str(b.translator), sourceOf(b)),
     "/api/undo": () => session.undo(),
     "/api/redo": () => session.redo(),
     "/api/draft/restore": () => session.restoreDraft(),
@@ -175,7 +181,7 @@ export function createApp(opts: AppOptions) {
     },
     "/api/save": async (b) => {
       const r = b as Partial<SaveRequest>;
-      return saveResponse(session, await session.save({ path: str(r.path).trim() || undefined, force: r.force === true }));
+      return saveResponse(session, await session.save({ force: r.force === true }));
     },
   };
 

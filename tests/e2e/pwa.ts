@@ -7,7 +7,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { type Browser, type Page, chromium } from "playwright-core";
-import { buildSampleBmd } from "../fixtures/sampleBmd";
+import { sampleFiles } from "../fixtures/sampleItems";
 import { chromiumOptions } from "./browsers";
 
 const ROOT = path.join(import.meta.dir, "../..");
@@ -54,7 +54,7 @@ async function main(browser: Browser) {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   await ctx.addInitScript(() => {
     const w = window as unknown as { __MUBMD_TEST_PICK__?: (req: { mode: string }) => Promise<FileSystemHandle> };
-    w.__MUBMD_TEST_PICK__ = async () => (await navigator.storage.getDirectory()).getDirectoryHandle("Local", { create: true });
+    w.__MUBMD_TEST_PICK__ = async () => (await navigator.storage.getDirectory()).getDirectoryHandle("MU", { create: true });
   });
   const p = await ctx.newPage();
   p.setDefaultTimeout(15000);
@@ -79,16 +79,19 @@ async function main(browser: Browser) {
   const installErrors = installability.installabilityErrors.map((e) => e.errorId).filter((id) => id !== "in-incognito");
   check("installable (no installability errors)", installErrors.length === 0, installErrors.join(", "));
 
-  // 3. The built app works: open the sample through the OPFS "folder"
-  await p.evaluate(async (b64) => {
-    const dir = await (await navigator.storage.getDirectory()).getDirectoryHandle("Local", { create: true });
-    const w = await (await dir.getFileHandle("Item.bmd", { create: true })).createWritable();
-    await w.write(Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)));
-    await w.close();
-  }, Buffer.from(buildSampleBmd()).toString("base64"));
+  // 3. The built app works: open the sample game folder through the OPFS "folder"
+  await p.evaluate(async (files) => {
+    let dir = await navigator.storage.getDirectory();
+    for (const part of ["MU", "Data", "Items"]) dir = await dir.getDirectoryHandle(part, { create: true });
+    for (const [name, text] of Object.entries(files)) {
+      const w = await (await dir.getFileHandle(name, { create: true })).createWritable();
+      await w.write(text);
+      await w.close();
+    }
+  }, sampleFiles());
   await p.click("[data-testid=pick]");
   await p.waitForSelector(rowSel(0));
-  check("built app opens Item.bmd", (await text(p, "[data-testid=result-count]")) === "488 rows");
+  check("built app opens the game folder", (await text(p, "[data-testid=result-count]")) === "488 rows");
 
   // 4. Offline: the app shell and the file still open
   await ctx.setOffline(true);

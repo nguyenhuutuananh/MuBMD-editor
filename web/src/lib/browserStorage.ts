@@ -2,11 +2,11 @@
 //
 // Every folder or file the user grants is registered in IndexedDB under a stable id and "mounted"
 // at a virtual path containing that id:
-//   folder "Local"      -> "/Local@3"                 (so the file is "/Local@3/Item.bmd" and its side
-//                                                      data "/Local@3/Item.bmd.mubmd/…" lives next to it)
+//   folder "MU"         -> "/MU@3"                    (so an item file is "/MU@3/Data/Items/Group00_Sword.json"
+//                                                      and the side data "/MU@3/Data/Items.mubmd/…" lives next to it)
 //   file   "ref.tsv"    -> "/ref.tsv@5/ref.tsv"
 // A single file has no folder to write side data into, so anything else under its mount (backups,
-// draft, project.json of a file opened alone or saved with "Save as") goes to the browser's private
+// anything written next to a picked TSV) goes to the browser's private
 // file system (OPFS) under side/<id>/. Mounts from earlier sessions are restored lazily from
 // IndexedDB; the browser then asks for permission again if needed (which needs a user click).
 // Writes use createWritable(), which the browser commits atomically on close().
@@ -179,16 +179,19 @@ export class BrowserStorage implements Storage {
     await this.remove(from);
   }
 
-  async list(dirPath: string): Promise<string[]> {
+  private async entries(dirPath: string, kind: "file" | "directory"): Promise<string[]> {
     try {
       // Locate a (non-existent) child to get the folder itself; normalize() would drop "/.".
       const loc = await this.locate(`${dirPath}/\u0000list`, "read", false);
       if ("file" in loc) return [];
       const names: string[] = [];
-      for await (const [name, h] of loc.dir.entries()) if (h.kind === "file") names.push(name);
+      for await (const [name, h] of loc.dir.entries()) if (h.kind === kind) names.push(name);
       return names;
     } catch {
       return [];
     }
   }
+
+  list = (dirPath: string) => this.entries(dirPath, "file");
+  listDirs = (dirPath: string) => this.entries(dirPath, "directory");
 }

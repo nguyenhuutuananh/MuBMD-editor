@@ -3,10 +3,11 @@
 import { ref, shallowRef } from "vue";
 import { toast } from "vue-sonner";
 import { checkName } from "../../../src/core/nameCodec";
-import type { DraftInfo, GlossaryEntry, ImportPreview, PickKind, SaveRequest, Status } from "../../../src/shared/api";
+import type { DraftInfo, GlossaryEntry, ImportPreview, SaveRequest, Status } from "../../../src/shared/api";
 import { currentLang, errorText, fmtTime, issueText, tr } from "@/i18n";
 import { ApiError, api, isFallback, isWeb } from "@/lib/api";
 import { displayPath } from "@/lib/paths";
+import { exists } from "@/lib/search";
 import { announceOpen } from "@/lib/tabs";
 import { ask, isDialogOpen } from "@/lib/dialogs";
 import { useDocStore } from "@/stores/doc";
@@ -62,7 +63,7 @@ async function confirmDiscard(): Promise<boolean> {
   return r.action === "discard";
 }
 
-// After a file is opened: re-load its remembered reference file, report a rebase, offer the draft.
+// After a folder is opened: re-load its remembered reference file, report a rebase, offer the draft.
 async function afterOpen(draft: DraftInfo | null) {
   const s = store();
   if (isWeb && s.file) announceOpen(s.file.path, () => toast.warning(tr("toast.otherTab"), { duration: 15000 }));
@@ -98,10 +99,10 @@ export async function openPath(path: string, discard = false): Promise<void> {
   }
 }
 
-export async function pickAndOpen(kind: PickKind = "bmd") {
+export async function pickAndOpen() {
   welcomeError.value = null;
   try {
-    const { path } = await api.pick(currentLang(), kind);
+    const { path } = await api.pick(currentLang(), "game");
     if (path) await openPath(path);
   } catch (e) {
     welcomeError.value = errorText(e);
@@ -110,12 +111,12 @@ export async function pickAndOpen(kind: PickKind = "bmd") {
 
 export async function reload() {
   const f = store().file;
-  if (f) await openPath(f.path);
+  if (f) await openPath(f.root);
 }
 
-// On startup: if the server already has a file open (path on the command line), go straight to it.
+// On startup: if the server already has a folder open (path on the command line), go straight to it.
 export async function start() {
-  // The team glossary is remembered per browser (one file for every Item.bmd).
+  // The team glossary is remembered per browser (one file for every game folder).
   // Web: no permission prompt is possible without a click, so failures are silent here and the
   // glossary is retried after the next file is opened (afterOpen).
   const g = store().rememberedGlossary();
@@ -184,11 +185,9 @@ export async function startEdit(slot: number) {
   if (!(await ensureTranslator())) return;
   const s = store();
   const row = s.rows[slot];
-  if (!row || visibleIndex(slot) < 0) return;
+  if (!row || !exists(row) || visibleIndex(slot) < 0) return;
   select(slot, true);
-  // Non-UTF-8 names display garbled (U+FFFD), so do not prefill them - avoids writing garbage back.
-  const initial = row.encoding === "unknown" ? "" : row.text;
-  s.editor = { slot, value: initial, initial };
+  s.editor = { slot, value: row.text, initial: row.text };
 }
 
 export function cancelEdit() {
@@ -203,7 +202,7 @@ export async function commitEditor(opts: { quiet?: boolean } = {}): Promise<bool
   const row = s.rows[ed.slot];
   if (!row) return true;
   const c = checkName(ed.value);
-  const unchanged = c.normalized === ed.initial || (row.encoding === "unknown" && ed.value === "");
+  const unchanged = c.normalized === ed.initial;
   if (unchanged) {
     if (s.editor === ed) s.editor = null;
     return true;
@@ -312,7 +311,7 @@ export async function exportTsv(slots: number[]) {
   const d = new Date();
   const ymd = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
   const who = (s.translator || "export").replace(/[^\p{L}\p{N}_-]+/gu, "_");
-  const base = (s.file?.fileName ?? "Item.bmd").replace(/\.bmd$/i, "");
+  const base = `Items-${s.file?.locale ?? "vi"}`;
   try {
     const { path } = await api.pickSave(currentLang(), "tsv", `${base}-${who}-${ymd}.tsv`);
     if (!path) return;
@@ -339,7 +338,7 @@ export async function applyImport(take: number[]) {
   const p = importPreview.value;
   if (!p || !(await ensureTranslator())) return;
   try {
-    const res = await store().importApply(p.path, p.token, take);
+    const res = await store().importApply(p.path, p.token, take, p.source);
     importPreview.value = null;
     toast.success(tr("toast.imported", { n: res.changed.length }), { duration: 8000 });
     store().filter.problem = "edited"; // show what came in, for review
@@ -383,14 +382,14 @@ export async function saveGlossary(entries: GlossaryEntry[], forceAsk = false): 
   }
 }
 
-// ---- compare with another Item.bmd (reuses the import preview) ----
+// ---- compare with another game folder (reuses the import preview) ----
 
 export async function compareWith() {
   if (!(await commitEditor())) return;
   try {
     const { path } = await api.pick(currentLang(), "compare");
     if (!path) return;
-    importPreview.value = await api.importPreview(path);
+    importPreview.value = await api.importPreview(path, "game");
   } catch (e) {
     toast.error(errorText(e));
   }
@@ -407,44 +406,33 @@ export async function saveFile(opts: SaveRequest = {}) {
       toast(tr("toast.nothingToSave"));
       return;
     }
-    // Fallback mode: the saved Item.bmd was handed over as a download (see localBackend.ts).
-    const downloaded = isFallback && (res.backupPath !== null || opts.path);
-    toast.success(tr("toast.saved", { n: res.savedCount, file: res.file.fileName }), {
+    // Fallback mode: the saved item files were handed over as a download (see localBackend.ts).
+    const downloaded = isFallback && res.written.length > 0;
+    const files = res.written.map((p) => p.split(/[\\/]/).pop()).join(", ");
+    toast.success(tr("toast.saved", { n: res.savedCount }), {
       description: downloaded
-        ? tr("toast.downloaded", { file: res.file.fileName })
-        : res.backupPath
-          ? tr("toast.backup", { path: displayPath(res.backupPath) })
+        ? tr(res.written.length > 1 ? "toast.downloadedZip" : "toast.downloaded", { file: files })
+        : res.backupDir
+          ? tr("toast.backup", { files, path: displayPath(res.backupDir) })
           : undefined,
       duration: 8000,
     });
   } catch (e) {
-    if (e instanceof ApiError && e.code === "conflict") return resolveConflict();
+    if (e instanceof ApiError && e.code === "conflict") return resolveConflict(String(e.params.file ?? ""));
     toast.error(tr("toast.saveFailed", { reason: errorText(e) }), { duration: 10000 });
   }
 }
 
-async function resolveConflict() {
+async function resolveConflict(file: string) {
   const r = await ask({
     title: tr("conflictDialog.title"),
-    body: [tr("errors.conflict"), tr("conflictDialog.body")],
+    body: [tr("errors.conflict", { file }), tr("conflictDialog.body")],
     actions: [
-      { id: "cancel", label: tr("common.cancel") },
+      { id: "cancel", label: tr("common.cancel"), kind: "primary" },
       { id: "force", label: tr("conflictDialog.force"), kind: "danger" },
-      { id: "save-as", label: tr("conflictDialog.saveAs"), kind: "primary" },
     ],
   });
   if (r.action === "force") await saveFile({ force: true });
-  else if (r.action === "save-as") await saveAs();
-}
-
-export async function saveAs() {
-  if (!(await commitEditor())) return;
-  try {
-    const { path } = await api.pickSave(currentLang());
-    if (path) await saveFile({ path });
-  } catch (e) {
-    toast.error(errorText(e));
-  }
 }
 
 // ---- global shortcuts ----
@@ -457,8 +445,7 @@ export function onGlobalKeydown(e: KeyboardEvent, focusSearch: () => void) {
   const key = e.key.toLowerCase();
   if (key === "s") {
     e.preventDefault();
-    if (e.shiftKey) saveAs();
-    else saveFile();
+    saveFile();
   } else if (key === "f") {
     e.preventDefault();
     focusSearch();

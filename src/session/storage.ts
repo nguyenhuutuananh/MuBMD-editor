@@ -21,6 +21,7 @@ export interface Storage {
   remove(p: string): Promise<void>; // no error if missing
   rename(from: string, to: string): Promise<void>;
   list(dir: string): Promise<string[]>; // file names in a folder; [] if the folder is missing
+  listDirs(dir: string): Promise<string[]>; // sub-folder names in a folder; [] if the folder is missing
 }
 
 export class FileLockedError extends AppError {
@@ -53,7 +54,7 @@ export async function copyFile(st: Storage, from: string, to: string): Promise<v
   await st.writeAtomic(to, await st.read(from));
 }
 
-// Split "Item.bmd" into { name: "Item", ext: ".bmd" }.
+// Split "Group00_Sword.json" into { name: "Group00_Sword", ext: ".json" }.
 export function splitName(fileName: string): { name: string; ext: string } {
   const dot = fileName.lastIndexOf(".");
   return dot > 0 ? { name: fileName.slice(0, dot), ext: fileName.slice(dot) } : { name: fileName, ext: "" };

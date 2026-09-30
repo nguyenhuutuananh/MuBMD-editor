@@ -1,4 +1,4 @@
-// doc.ts - State of the open file + API calls. Flows with dialogs (confirmations, conflicts...) live in composables/actions.ts.
+// doc.ts - State of the open game folder + API calls. Flows with dialogs (confirmations, conflicts...) live in composables/actions.ts.
 //
 // The 8192 rows live in a shallowRef (no deep reactivity). An edit patches the row in place and
 // bumps `rev`, so components reading `rev` re-render.
@@ -11,13 +11,14 @@ import type {
   FileInfo,
   GlossaryEntry,
   GlossaryInfo,
+  ImportSource,
   MutationResponse,
   ReferenceInfo,
   SaveRequest,
   Status,
 } from "../../../src/shared/api";
 import { api } from "@/lib/api";
-import { type Filter, type Row, applyFilter, patchRow, setReference, toRows } from "@/lib/search";
+import { type Filter, PROBLEMS, type Row, SCOPES, applyFilter, patchRow, setReference, toRows } from "@/lib/search";
 import { KEYS, load, save } from "@/lib/storage";
 
 export interface EditorState {
@@ -46,7 +47,8 @@ export const useDocStore = defineStore("doc", () => {
   const selectedSlot = ref<number | null>(null);
   const editor = ref<EditorState | null>(null);
   const translator = ref(load<string>(KEYS.translator, ""));
-  const recent = ref(load<string[]>(KEYS.recent, []));
+  // (Item.bmd paths remembered by versions before 2.0 cannot be opened any more.)
+  const recent = ref(load<string[]>(KEYS.recent, []).filter((p) => !/\.bmd$/i.test(p)));
   const reference = ref<{ path: string; fileName: string; count: number } | null>(null);
   const rebased = ref(false);
   const glossary = shallowRef<GlossaryInfo | null>(null);
@@ -55,8 +57,8 @@ export const useDocStore = defineStore("doc", () => {
   const saved = load<Partial<Filter>>(KEYS.filter, {});
   const filter = reactive<Filter>({
     group: typeof saved.group === "number" ? saved.group : null,
-    scope: saved.scope ?? "named",
-    problem: saved.problem ?? "any",
+    scope: saved.scope && SCOPES.includes(saved.scope) ? saved.scope : "items",
+    problem: saved.problem && PROBLEMS.includes(saved.problem) ? saved.problem : "any",
     status: saved.status ?? "any",
     query: "",
   });
@@ -122,8 +124,8 @@ export const useDocStore = defineStore("doc", () => {
   }
 
   async function open(path: string, discard = false): Promise<DraftInfo | null> {
-    await api.open(path, discard);
-    rememberRecent(path);
+    const { file: opened } = await api.open(path, discard);
+    rememberRecent(opened?.root ?? path);
     return loadItems(false);
   }
 
@@ -136,7 +138,7 @@ export const useDocStore = defineStore("doc", () => {
     rev.value++;
   }
 
-  // Reference names are remembered per Item.bmd path in this browser.
+  // Reference files are remembered per item folder in this browser.
   function applyReferenceNames(info: ReferenceInfo | null) {
     refInfo = info;
     for (const r of rows.value) if (r.reference) setReference(r, "");
@@ -154,7 +156,7 @@ export const useDocStore = defineStore("doc", () => {
     save(KEYS.references, all);
   }
 
-  const referenceFor = (bmdPath: string) => load<Record<string, string>>(KEYS.references, {})[bmdPath] ?? null;
+  const referenceFor = (itemsPath: string) => load<Record<string, string>>(KEYS.references, {})[itemsPath] ?? null;
 
   async function loadReference(path: string | null) {
     const res = await api.reference(path);
@@ -198,7 +200,8 @@ export const useDocStore = defineStore("doc", () => {
     revert: (slot: number) => mutate(() => api.revert(slot, translator.value)),
     setStatus: (slots: number[], s: Status) => mutate(() => api.status(slots, s, translator.value)),
     setNote: (slot: number, note: string) => mutate(() => api.note(slot, note, translator.value)),
-    importApply: (path: string, token: string, take: number[]) => mutate(() => api.importApply(path, token, take, translator.value)),
+    importApply: (path: string, token: string, take: number[], source?: ImportSource) =>
+      mutate(() => api.importApply(path, token, take, translator.value, source)),
     undo: () => mutate(() => api.undo()),
     redo: () => mutate(() => api.redo()),
     restoreDraft: () => mutate(() => api.restoreDraft()),

@@ -1,6 +1,6 @@
 // handleDb.ts - Remember the folders / files the user granted (File System Access handles are
 // storable in IndexedDB), each under a stable numeric id. The id is part of the virtual path
-// ("/Local@3/Item.bmd"), so recent files, the remembered reference and glossary, and drafts keep
+// ("/MU@3/Data/Items"), so recent folders, the remembered reference and glossary, and drafts keep
 // working after a reload. The browser may ask for permission again when a handle is reused.
 //
 // Handles inside the browser's private file system (OPFS) are stored by their path instead of as

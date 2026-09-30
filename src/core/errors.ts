@@ -3,10 +3,11 @@
 
 export type ErrorCode =
   // format / data
-  | "bmd-size"
+  | "item-json"
+  | "items-not-found"
+  | "no-item"
   | "invalid-slot"
   | "invalid-name"
-  | "name-bytes-length"
   | "tsv-header"
   // session
   | "no-file"

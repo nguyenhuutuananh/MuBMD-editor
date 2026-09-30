@@ -14,8 +14,8 @@ import { checkName, type NameIssue } from "./nameCodec";
 import { type Status, type TsvRow, statusRank } from "./tsv";
 
 export interface OursView {
-  name: string;
-  encoding: "empty" | "utf-8" | "unknown";
+  exists: boolean; // false: the open data has no item in this slot
+  name: string; // "" = not translated
   status: Status;
 }
 
@@ -41,6 +41,7 @@ export interface MergeCounts {
   same: number; // identical, nothing to do
   newerHere: number; // only we changed it
   emptyName: number; // Name cell empty -> ignored (never clears a name)
+  noItem: number; // no item in that slot here -> ignored
   apply: number;
   conflict: number;
   status: number;
@@ -53,7 +54,7 @@ export interface MergeAnalysis {
 }
 
 export function analyzeImport(rows: TsvRow[], ours: (slot: number) => OursView): MergeAnalysis {
-  const counts: MergeCounts = { same: 0, newerHere: 0, emptyName: 0, apply: 0, conflict: 0, status: 0, invalid: 0 };
+  const counts: MergeCounts = { same: 0, newerHere: 0, emptyName: 0, noItem: 0, apply: 0, conflict: 0, status: 0, invalid: 0 };
   const items: MergeItem[] = [];
 
   for (const row of rows) {
@@ -63,13 +64,17 @@ export function analyzeImport(rows: TsvRow[], ours: (slot: number) => OursView):
       counts.emptyName++;
       continue;
     }
+    if (!o.exists) {
+      counts.noItem++;
+      continue;
+    }
     const item = (kind: MergeKind, take: boolean, issue: NameIssue | null = null): MergeItem => ({
       slot: row.slot,
       itemType: row.itemType,
       itemIndex: row.itemIndex,
       line: row.line,
       kind,
-      ours: o.encoding === "unknown" ? "" : o.name,
+      ours: o.name,
       theirs,
       base: row.base ?? null,
       oursStatus: o.status,
@@ -86,8 +91,8 @@ export function analyzeImport(rows: TsvRow[], ours: (slot: number) => OursView):
       continue;
     }
 
-    const oursName = o.encoding === "unknown" ? null : o.name; // a non-UTF-8 name never equals anything typed
-    if (theirs === oursName) {
+    const oursName = o.name;
+    if (check.normalized === oursName) {
       if (row.status && row.status !== o.status) {
         items.push(item("status", statusRank(row.status) > statusRank(o.status)));
         counts.status++;

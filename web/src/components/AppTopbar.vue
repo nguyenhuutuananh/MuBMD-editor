@@ -6,7 +6,7 @@ import LanguageSwitch from "@/components/LanguageSwitch.vue";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { askTranslator, reload, saveAs, saveFile, showWelcome, undoRedo } from "@/composables/actions";
+import { askTranslator, reload, saveFile, showWelcome, undoRedo } from "@/composables/actions";
 import { isFallback } from "@/lib/api";
 import { displayPath } from "@/lib/paths";
 import { useDocStore } from "@/stores/doc";
@@ -15,10 +15,14 @@ const { t } = useI18n();
 const store = useDocStore();
 const inWorkspace = computed(() => store.view === "workspace" && store.file !== null);
 const dirty = computed(() => store.status.dirtyCount);
+// The game folder's name (web paths carry a "@<id>" suffix).
+const gameName = computed(() => {
+  const f = store.file;
+  return f ? (f.root.split(/[\\/]/).filter(Boolean).pop() ?? f.fileName).replace(/@\d+$/, "") : "";
+});
 
 watchEffect(() => {
-  const f = store.file;
-  document.title = f && inWorkspace.value ? `${dirty.value ? "• " : ""}${f.fileName} - MuBMD-editor` : "MuBMD-editor";
+  document.title = store.file && inWorkspace.value ? `${dirty.value ? "• " : ""}${gameName.value} - MuBMD-editor` : "MuBMD-editor";
 });
 </script>
 
@@ -27,18 +31,13 @@ watchEffect(() => {
     <div class="font-bold tracking-tight">{{ t("app.name") }}</div>
 
     <div v-if="inWorkspace && store.file" class="flex min-w-0 flex-1 items-center gap-2.5 overflow-hidden">
-      <span class="font-semibold">{{ store.file.fileName }}</span>
+      <span class="font-semibold" data-testid="game-name">{{ gameName }}</span>
       <Tooltip>
         <TooltipTrigger as-child>
-          <Badge
-            :class="store.file.checksumValid ? 'bg-ok-soft text-ok border-transparent' : 'bg-bad-soft text-destructive border-transparent'"
-            data-testid="checksum"
-          >
-            {{ store.file.checksumValid ? t("topbar.checksumOk") : t("topbar.checksumBad") }}
-          </Badge>
+          <Badge class="bg-ok-soft text-ok border-transparent" data-testid="layout">{{ t(`layout.${store.file.layout}`) }}</Badge>
         </TooltipTrigger>
         <TooltipContent class="max-w-sm">
-          {{ store.file.checksumValid ? t("topbar.checksumOkTitle") : t("topbar.checksumBadTitle") }}
+          {{ t("topbar.layoutTitle", { folder: store.file.fileName, files: store.file.fileCount, items: store.file.itemCount, locale: store.file.locale }) }}
         </TooltipContent>
       </Tooltip>
       <Tooltip v-if="isFallback">
@@ -84,7 +83,6 @@ watchEffect(() => {
         <Button size="sm" :disabled="dirty === 0" :title="t('topbar.saveTitle')" data-testid="save" @click="saveFile()">
           {{ t("topbar.save") }}
         </Button>
-        <Button variant="outline" size="sm" @click="saveAs">{{ t("topbar.saveAs") }}</Button>
         <Button variant="outline" size="sm" :title="t('topbar.translatorTitle')" data-testid="translator" @click="askTranslator">
           <UserRound />
           {{ store.translator ? t("topbar.translator", { name: store.translator }) : t("topbar.setTranslator") }}

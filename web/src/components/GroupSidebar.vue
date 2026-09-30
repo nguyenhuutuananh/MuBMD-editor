@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
-import { MAX_ITEM_INDEX, MAX_ITEM_TYPE } from "../../../src/core/format";
+import { MAX_ITEM_TYPE } from "../../../src/core/format";
 import { groupCounts } from "@/lib/search";
 import { cn } from "@/lib/utils";
 import { useDocStore } from "@/stores/doc";
@@ -14,27 +14,27 @@ const groups = computed(() => {
   const counts = groupCounts(store.rows, MAX_ITEM_TYPE);
   const edited = new Array<number>(MAX_ITEM_TYPE).fill(0);
   for (const r of store.rows) if (r.dirty) edited[r.itemType]!++;
-  return counts.map((c, g) => ({ group: g, named: c.named, done: c.done, edited: edited[g]! }));
+  return counts.map((c, g) => ({ group: g, items: c.items, named: c.named, edited: edited[g]! }));
 });
 const total = computed(() =>
-  groups.value.reduce((s, g) => ({ named: s.named + g.named, done: s.done + g.done }), { named: 0, done: 0 }),
+  groups.value.reduce((s, g) => ({ items: s.items + g.items, named: s.named + g.named }), { items: 0, named: 0 }),
 );
 
 const items = computed(() => [
   {
     group: null as number | null,
     label: t("groups.all"),
-    count: n(total.value.named),
+    count: `${n(total.value.named)}/${n(total.value.items)}`,
+    items: total.value.items,
     named: total.value.named,
-    done: total.value.done,
     edited: store.status.dirtyCount,
   },
   ...groups.value.map((g) => ({
     group: g.group as number | null,
     label: `${g.group}. ${t(`itemTypes.${g.group}`)}`,
-    count: `${g.named}/${MAX_ITEM_INDEX}`,
+    count: `${g.named}/${g.items}`,
+    items: g.items,
     named: g.named,
-    done: g.done,
     edited: g.edited,
   })),
 ]);
@@ -63,13 +63,13 @@ const items = computed(() => [
                 {{ it.count }}
               </span>
             </span>
-            <!-- translation progress of the named slots -->
+            <!-- translation progress: items with a name in the target language -->
             <span
-              v-if="it.named"
+              v-if="it.items"
               class="bg-muted block h-1 overflow-hidden rounded-sm"
-              :title="t('groups.progressTitle', { done: it.done, named: it.named })"
+              :title="t('groups.progressTitle', { named: it.named, items: it.items })"
             >
-              <span class="bg-ok block h-full" :style="{ width: `${(it.done / it.named) * 100}%` }" />
+              <span class="bg-ok block h-full" :style="{ width: `${(it.named / it.items) * 100}%` }" />
             </span>
           </span>
         </button>

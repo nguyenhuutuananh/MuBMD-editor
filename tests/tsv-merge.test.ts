@@ -73,9 +73,10 @@ describe("parseTranslationTsv", () => {
 });
 
 describe("analyzeImport", () => {
+  // Every slot below 100 has an item here.
   const ours = (m: Record<number, [string, Status?]>) => (slot: number): OursView => {
     const [name, status] = m[slot] ?? [""];
-    return { name, encoding: name ? "utf-8" : "empty", status: status ?? "untranslated" };
+    return { exists: slot < 100, name, status: status ?? "untranslated" };
   };
   const tsv = (lines: string[]) => parseTranslationTsv(`ItemType\tItemIndex\tName\tStatus\tBaseName\n${lines.join("\n")}\n`).rows;
 
@@ -107,15 +108,17 @@ describe("analyzeImport", () => {
   });
 
   test("empty names are ignored (never clear a name), invalid names are listed", () => {
-    const rows = tsv(["0\t0\t\t\t", `0\t1\t${"Đ".repeat(30)}\t\t`]);
+    const rows = tsv(["0\t0\t\t\t", `0\t1\t${"Đ".repeat(50)}\t\t`]);
     const r = analyzeImport(rows, ours({ 0: ["A"], 1: ["B"] }));
     expect(r.counts.emptyName).toBe(1);
     expect(r.items[0]).toMatchObject({ slot: 1, kind: "invalid", take: false, issue: { code: "too-long" } });
   });
 
-  test("a non-UTF-8 name here is replaced by an imported name", () => {
-    const rows = parseTranslationTsv("ItemType\tItemIndex\tName\n0\t0\tKiếm\n").rows;
-    const r = analyzeImport(rows, () => ({ name: "��", encoding: "unknown", status: "untranslated" }));
-    expect(r.items[0]).toMatchObject({ kind: "apply", ours: "" });
+  test("an untranslated item takes the imported name; rows for slots without an item are skipped", () => {
+    const rows = parseTranslationTsv("ItemType\tItemIndex\tName\n0\t0\tKiếm\n1\t0\tKhông có\n").rows;
+    const r = analyzeImport(rows, ours({}));
+    expect(r.items).toHaveLength(1);
+    expect(r.items[0]).toMatchObject({ slot: 0, kind: "apply", ours: "" });
+    expect(r.counts.noItem).toBe(1);
   });
 });

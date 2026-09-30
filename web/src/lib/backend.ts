@@ -11,6 +11,7 @@ import type {
   GlossaryEntry,
   GlossaryInfo,
   ImportPreview,
+  ImportSource,
   ItemsResponse,
   Lang,
   MutationResponse,
@@ -18,6 +19,7 @@ import type {
   PickKind,
   PickResponse,
   ReferenceInfo,
+  SaveKind,
   SaveRequest,
   SaveResponse,
   StateResponse,
@@ -25,7 +27,7 @@ import type {
 } from "../../../src/shared/api";
 
 // Client-side error codes (not sent by the server).
-export type ClientErrorCode = "offline" | "bad-response" | "no-bmd-in-folder" | "fs-unsupported";
+export type ClientErrorCode = "offline" | "bad-response" | "fs-unsupported";
 
 export class ApiError extends Error {
   constructor(
@@ -47,15 +49,15 @@ export interface Backend {
   items(): Promise<ItemsResponse>;
   open(path: string, discard?: boolean): Promise<StateResponse>;
   pick(lang: Lang, kind?: PickKind): Promise<PickResponse>;
-  pickSave(lang: Lang, kind?: "bmd" | "tsv" | "glossary", defaultName?: string): Promise<PickResponse>;
+  pickSave(lang: Lang, kind?: SaveKind, defaultName?: string): Promise<PickResponse>;
   edit(slot: number, name: string, translator: string): Promise<MutationResponse>;
   revert(slot: number, translator: string): Promise<MutationResponse>;
   status(slots: number[], status: Status, translator: string): Promise<MutationResponse>;
   note(slot: number, note: string, translator: string): Promise<MutationResponse>;
   reference(path: string | null): Promise<{ reference: ReferenceInfo | null }>;
   exportTsv(path: string, slots: number[]): Promise<ExportResponse>;
-  importPreview(path: string): Promise<ImportPreview>;
-  importApply(path: string, token: string, take: number[], translator: string): Promise<MutationResponse>;
+  importPreview(path: string, source?: ImportSource): Promise<ImportPreview>;
+  importApply(path: string, token: string, take: number[], translator: string, source?: ImportSource): Promise<MutationResponse>;
   glossaryLoad(path: string): Promise<GlossaryInfo>;
   glossarySave(path: string, entries: GlossaryEntry[]): Promise<GlossaryInfo>;
   undo(): Promise<MutationResponse>;
