@@ -167,9 +167,17 @@ bun run build -- --out ../somewhere --only macos-arm64
 If this folder lives in a synced folder (Google Drive…), build elsewhere with `--out` (the zips are
 ~60 MB together).
 
-**Releases:** `.github/workflows/release.yml` runs when a tag `v<version>` is pushed (it must match
-`version` in `package.json`): tests, the zips as a GitHub Release, and the web version on GitHub Pages
-(one-time setup: Settings → Pages → Source: "GitHub Actions"). `ci.yml` runs the typecheck, the unit
+**Releases:** `bun run tag` makes the next one. It shows the latest tag and suggests the next
+version - patch / minor / major (after a pre-release: finish it, or the next `-beta.N`) or one you
+type - optionally runs the typecheck + unit tests, writes the version to `package.json` and commits
+it (`chore: release vX.Y.Z`), creates the tag, then pushes the branch + tag or leaves them local
+(printing the push / undo commands). Non-interactive: `bun run tag -- minor --push`,
+`bun run tag -- 2.1.0-beta.1 --no-push --no-checks`, `--yes` for the default answers. It refuses to
+run with uncommitted changes or an existing tag.
+
+A pushed tag `v<version>` runs `.github/workflows/release.yml` (the tag must match `version` in
+`package.json`, which `bun run tag` takes care of): tests, the zips as a GitHub Release, and the web
+version on GitHub Pages (one-time setup: Settings → Pages → Source: "GitHub Actions"). `ci.yml` runs the typecheck, the unit
 tests and the three e2e suites on every push.
 
 ## License
