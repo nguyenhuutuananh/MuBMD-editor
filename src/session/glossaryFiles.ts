@@ -1,7 +1,7 @@
 // glossaryFiles.ts - Load / save the team glossary through a Storage. The glossary is a standalone
 // file shared by the team, not tied to the open folder (the same file as MuBMD-editor's).
 
-import { type GlossaryEntry, parseGlossary, serializeGlossary } from "../core";
+import { type GlossaryEntry, parseGlossary, parseGlossaryStatus, serializeGlossary } from "../core";
 import type { GlossaryInfo } from "../shared/api";
 import { type Storage, readText, writeText } from "./storage";
 
@@ -17,7 +17,13 @@ export async function saveGlossaryFile(st: Storage, file: string, raw: unknown[]
   const str = (v: unknown) => (typeof v === "string" ? v : "");
   const entries: GlossaryEntry[] = raw
     .filter((e): e is GlossaryEntry => typeof (e as GlossaryEntry)?.term === "string" && (e as GlossaryEntry).term.trim() !== "")
-    .map((e) => ({ term: e.term.trim(), translation: str(e.translation).trim() || null, note: str(e.note), category: str(e.category) }));
+    .map((e) => {
+      const entry: GlossaryEntry = { term: e.term.trim(), translation: str(e.translation).trim() || null, note: str(e.note), category: str(e.category) };
+      const source = str(e.source).trim();
+      if (source) entry.source = source;
+      entry.status = parseGlossaryStatus(str(e.status) || "confirmed");
+      return entry;
+    });
   await writeText(st, p, serializeGlossary(entries));
   return { path: p, fileName: st.basename(p), format: "tsv", entries };
 }

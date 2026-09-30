@@ -174,9 +174,12 @@ describe("team API", () => {
     expect([stale.status, (await body<ErrorResponse>(stale)).code]).toEqual([409, "import-changed"]);
 
     const saved = await body<GlossaryInfo>(
-      await app.handle(post("/api/glossary/save", { path: gloss, entries: [{ term: "Helm", translation: "Mũ", note: "", category: "Item" }, { term: " " }] })),
+      await app.handle(post("/api/glossary/save", { path: gloss, entries: [{ term: "Helm", translation: "Mũ", note: "", category: "Item" }, { term: "Dragon", translation: "Rồng", note: "", category: "", source: "Mu VN", status: "suggested" }, { term: " " }] })),
     );
-    expect(saved.entries.length).toBe(1);
-    expect((await body<GlossaryInfo>(await app.handle(post("/api/glossary/load", { path: gloss })))).entries[0]).toMatchObject({ term: "Helm", translation: "Mũ" });
+    expect(saved.entries.length).toBe(2); // the blank term is dropped
+    const loaded = (await body<GlossaryInfo>(await app.handle(post("/api/glossary/load", { path: gloss })))).entries;
+    expect(loaded[0]).toMatchObject({ term: "Helm", translation: "Mũ" });
+    expect(loaded[0]!.status ?? "confirmed").toBe("confirmed");
+    expect(loaded[1]).toMatchObject({ term: "Dragon", source: "Mu VN", status: "suggested" });
   });
 });

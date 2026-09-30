@@ -120,6 +120,21 @@ The same UI as a static page (a PWA: installable, works offline); the Session ru
 - One TSV for both sources: `Group, Key, English, Translation, Status, …` with item rows as
   `Items.Helm / 1`. The glossary is checked against the English text of both kinds of rows.
 
+## Glossary
+
+A TSV file shared by the team (`Term, Translation, Note, Category, Source, Status`; the old
+`MuMain_VI_Glossary.csv` and glossary files without the last two columns still open). **Status**:
+`confirmed` entries are the agreed translations - a text that does not follow one is flagged
+(*Glossary problems*); `suggested` entries are candidates, shown as hints only (several suggestions for
+one term: any of them counts as used). Confirm or take back an entry with ✓ in *Actions → Glossary…*.
+
+`scripts/glossary-build.ts` starts a glossary from names already translated elsewhere (a Vietnamese Mu
+client, other servers), matched with MuMain's English item names **by id**: it writes the item names as a
+TSV to import, and suggested terms - item names used in the UI texts, and words / set names found by
+co-occurrence (`Helm → Mũ`, `Legendary → Ma Thuật`, `Red Wing → Hỏa Thiên`) - plus a report. Run it
+directly (`bun scripts/glossary-build.ts --mumain … --source "Label=file.tsv" … --out …`; `bun run … --`
+splits paths with spaces). See the comment at the top of the script.
+
 ## Checks
 
 - UI strings (from MuResx-editor): ResxGen build errors, printf / `{0}` placeholders, `\n` and Item

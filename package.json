@@ -18,7 +18,8 @@
     "release": "bun scripts/build-bin.ts --out releases",
     "typecheck": "bun scripts/build-web.ts --stub && tsc --noEmit && vue-tsc --noEmit -p web/tsconfig.json",
     "test:e2e:fallback": "bun scripts/build-web-static.ts && bun tests/e2e/web-fallback.ts",
-    "tag": "bun scripts/tag.ts"
+    "tag": "bun scripts/tag.ts",
+    "glossary:build": "bun scripts/glossary-build.ts"
   },
   "devDependencies": {
     "@intlify/unplugin-vue-i18n": "^11.2.5",

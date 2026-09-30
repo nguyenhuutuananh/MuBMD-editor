@@ -323,7 +323,16 @@
     "unsaved": "Bảng thuật ngữ có thay đổi chưa lưu",
     "discardTitle": "Bỏ thay đổi bảng thuật ngữ?",
     "discardBody": "Bảng thuật ngữ có thay đổi chưa lưu vào file.",
-    "discard": "Bỏ thay đổi"
+    "discard": "Bỏ thay đổi",
+    "source": "Nguồn",
+    "statusAll": "Mọi thuật ngữ",
+    "confirm": "Chốt bản dịch này",
+    "unconfirm": "Chuyển về đề xuất",
+    "counts": "{confirmed} đã chốt, {suggested} đề xuất",
+    "status": {
+      "confirmed": "Đã chốt",
+      "suggested": "Đề xuất"
+    }
   },
   "glossaryHint": {
     "ok": "“{term}” → {translation}",

@@ -198,8 +198,9 @@ function onKeydown(e: KeyboardEvent) {
       <section v-if="hints.length">
         <h3 class="text-muted-foreground mb-1 text-xs font-semibold">{{ t("detail.glossary") }}</h3>
         <ul class="flex flex-col gap-1" data-testid="detail-glossary">
-          <li v-for="(h, i) in hints" :key="i" :class="h.kind === 'ok' ? 'text-ok' : 'text-warn'">
-            {{ glossaryHintText(h) }}<span v-if="h.note" class="text-muted-foreground"> — {{ h.note }}</span>
+          <li v-for="(h, i) in hints" :key="i" :class="h.kind === 'ok' ? 'text-ok' : h.suggested ? 'text-muted-foreground' : 'text-warn'">
+            {{ glossaryHintText(h) }}<span v-if="h.suggested" class="text-xs"> ({{ t("glossary.status.suggested") }})</span>
+            <span v-if="h.note" class="text-muted-foreground"> — {{ h.note }}</span>
           </li>
         </ul>
       </section>

@@ -133,6 +133,8 @@ function itemColumns(header: string[]): Map<Field, number> | null {
     basename: "base",
     base: "base",
     reference: "english",
+    nguon: "english", // MuMain_VI_Item.csv: the source (Japanese) name
+    source: "english",
     status: "status",
     translator: "translator",
     updatedat: "updatedAt",

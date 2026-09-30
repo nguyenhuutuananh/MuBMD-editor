@@ -13,3 +13,4 @@ export * from "./registration";
 export * from "./jsonText";
 export * from "./itemData";
 export * from "./itemName";
+export * from "./termAlign";

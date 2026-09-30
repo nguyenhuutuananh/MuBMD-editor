@@ -323,7 +323,16 @@
     "unsaved": "Unsaved glossary changes",
     "discardTitle": "Discard glossary changes?",
     "discardBody": "The glossary has changes that are not saved to its file.",
-    "discard": "Discard"
+    "discard": "Discard",
+    "source": "Source",
+    "statusAll": "All terms",
+    "confirm": "Confirm this translation",
+    "unconfirm": "Back to suggested",
+    "counts": "{confirmed} confirmed, {suggested} suggested",
+    "status": {
+      "confirmed": "Confirmed",
+      "suggested": "Suggested"
+    }
   },
   "glossaryHint": {
     "ok": "“{term}” → {translation}",
