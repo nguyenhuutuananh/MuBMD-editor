@@ -14,8 +14,9 @@ bản dịch được làm **ngoài** tool (bằng script, hoặc sửa tay) r�
 | 2 | Key `Connecting to the server` khai báo 2 lần | `src/Localization/Game.en.resx` | Mất `legacy_id=470`; bản dịch có 2 bản thì bản tiếng Anh thắng |
 | 3 | 11 câu sai tham số printf ở pl, de, pt, ja | `src/Localization/Game.*.resx` | Có thể hiện rác / crash khi dùng locale đó |
 | 4 | Dấu `\` + xuống dòng thật thay cho chữ `\n` | bản dịch làm ngoài tool | Hiển thị sai |
+fix| 5 | macOS / Linux: tooltip vật phẩm trống với chữ có dấu khi mở game từ Finder / launcher | `src/source/App/Platform/Windows/Winmain.cpp` (`setlocale`) | Tooltip chỉ còn ô trống |
 
-MuMain-translator tự báo cả 4 loại: mục 1 bằng badge đỏ "Chưa chọn được trong game" (bản desktop,
+MuMain-translator tự báo 4 loại đầu: mục 1 bằng badge đỏ "Chưa chọn được trong game" (bản desktop,
 khi thư mục mở nằm trong checkout MuMain), mục 2 là `duplicate-key`, mục 3 là `printf-mismatch`,
 mục 4 là `stray-backslash` / `newline-mismatch`.
 
@@ -174,3 +175,31 @@ perl -0pi -e 's/\\\n/\\n/g' Game.vi.resx
 Sau khi sửa, số chữ `\n` của mỗi câu phải bằng câu en (MuMain-translator không còn báo), và
 `grep -c '\\$'` ra 0. Trong MuMain-translator, xuống dòng luôn được gõ là `\n` nên lỗi này không xảy
 ra với câu dịch trong tool.
+
+## 5. macOS / Linux: tooltip vật phẩm trống khi chọn tiếng Việt
+
+**Triệu chứng.** Chọn tiếng Việt, rê chuột vào vật phẩm: chỉ hiện một ô nhỏ, không có chữ nào. Mở game từ
+Terminal thì lại hiện bình thường.
+
+**Nguyên nhân.** Phần lớn chữ trong game (tooltip vật phẩm, các dòng chỉ số) được ghép bằng `mu_swprintf`, tức
+`std::swprintf` của libc. Trên macOS / Linux, hàm này trả về -1 (EILSEQ) và để chuỗi rỗng khi gặp bất kỳ ký tự
+ngoài ASCII nào, nếu `LC_CTYPE` không phải một locale UTF-8. `WinMain` gọi `setlocale(LC_ALL, "")`, nhưng app mở từ
+Finder / Dock / launcher không có biến `LANG`, nên kết quả là locale `"C"`. Windows không bị (MSVC xử lý chuỗi
+rộng không phụ thuộc locale).
+
+**Cách sửa** (trong `src/source/App/Platform/Windows/Winmain.cpp`, ngay sau `setlocale(LC_ALL, "")`): ngoài
+Windows, nếu `LC_CTYPE` chưa phải UTF-8 thì đặt riêng `LC_CTYPE` sang `C.UTF-8` / `en_US.UTF-8` / `UTF-8` (chỉ
+`LC_CTYPE`, để cách đọc / in số không đổi):
+
+```cpp
+#ifndef _WIN32
+    {
+        const char* ctype = setlocale(LC_CTYPE, nullptr);
+        if (ctype == nullptr || (strcasestr(ctype, "UTF-8") == nullptr && strcasestr(ctype, "UTF8") == nullptr))
+            for (const char* l : { "C.UTF-8", "en_US.UTF-8", "UTF-8" })
+                if (setlocale(LC_CTYPE, l) != nullptr) break;
+    }
+#endif
+```
+
+Lỗi này ảnh hưởng mọi ngôn ngữ có dấu (không riêng tiếng Việt), nên đáng gửi lên MuMain gốc.

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Check, Plus, Trash2, Undo2 } from "@lucide/vue";
+import { Check, Pencil, Plus, Trash2, Undo2, X } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { type GlossaryEntry, isConfirmed } from "../../../src/core/glossary";
@@ -23,11 +23,15 @@ const dirty = ref(false);
 const query = ref("");
 const statusFilter = ref<"all" | "confirmed" | "suggested">("all");
 const draft = ref({ term: "", translation: "", note: "", category: "", source: "" });
+// The entry being edited in place (index into `entries`), and its fields.
+const editing = ref<number | null>(null);
+const editDraft = ref({ term: "", translation: "", note: "", category: "", source: "" });
 
 function reset() {
   entries.value = (store.glossary?.entries ?? []).map((e) => ({ ...e }));
   dirty.value = false;
   creating.value = false;
+  editing.value = null;
 }
 watch(glossaryOpen, (open) => open && reset());
 watch(() => store.glossary, reset);
@@ -53,32 +57,68 @@ function toggleStatus(i: number) {
   dirty.value = true;
 }
 
+// The draft fields as an entry (translation empty or equal to the term = keep as-is).
+function toEntry(d: typeof draft.value, status: GlossaryEntry["status"]): GlossaryEntry {
+  const term = d.term.trim();
+  const translation = d.translation.trim();
+  const source = d.source.trim();
+  return {
+    term,
+    translation: translation && translation !== term ? translation : null,
+    note: d.note.trim(),
+    category: d.category.trim(),
+    ...(source ? { source } : {}),
+    status,
+  };
+}
+
+function startEdit(i: number) {
+  const e = entries.value[i]!;
+  editDraft.value = { term: e.term, translation: e.translation ?? "", note: e.note, category: e.category, source: e.source ?? "" };
+  editing.value = i;
+}
+
+function applyEdit() {
+  const i = editing.value;
+  if (i === null || !editDraft.value.term.trim()) return;
+  const old = entries.value[i]!;
+  const next = toEntry(editDraft.value, old.status ?? "confirmed");
+  const same = (["term", "translation", "note", "category", "source"] as const).every((k) => (old[k] ?? "") === (next[k] ?? ""));
+  if (!same) {
+    entries.value = entries.value.map((e, j) => (j === i ? next : e));
+    dirty.value = true;
+  }
+  editing.value = null;
+}
+
+// Enter applies, Esc cancels (without closing the dialog). Composing with an IME: leave it alone.
+function editKey(e: KeyboardEvent) {
+  if (e.isComposing) return;
+  if (e.key === "Enter") {
+    e.preventDefault();
+    applyEdit();
+  } else if (e.key === "Escape") {
+    e.preventDefault();
+    e.stopPropagation();
+    editing.value = null;
+  }
+}
+
 function add() {
-  const term = draft.value.term.trim();
-  if (!term) return;
-  const translation = draft.value.translation.trim();
-  const source = draft.value.source.trim();
-  entries.value = [
-    ...entries.value,
-    {
-      term,
-      translation: translation && translation !== term ? translation : null,
-      note: draft.value.note.trim(),
-      category: draft.value.category.trim(),
-      ...(source ? { source } : {}),
-      status: "confirmed",
-    },
-  ];
+  if (!draft.value.term.trim()) return;
+  entries.value = [...entries.value, toEntry(draft.value, "confirmed")];
   draft.value = { term: "", translation: "", note: "", category: draft.value.category, source: draft.value.source };
   dirty.value = true;
 }
 
 function remove(i: number) {
+  if (editing.value !== null) editing.value = editing.value === i ? null : editing.value > i ? editing.value - 1 : editing.value;
   entries.value = entries.value.filter((_, j) => j !== i);
   dirty.value = true;
 }
 
 async function save(forceAsk = false) {
+  if (editing.value !== null) applyEdit();
   if (await saveGlossary(entries.value, forceAsk)) {
     dirty.value = false;
     creating.value = false;
@@ -87,6 +127,7 @@ async function save(forceAsk = false) {
 
 function startNew() {
   entries.value = [];
+  editing.value = null;
   creating.value = true;
   dirty.value = true;
 }
@@ -166,42 +207,81 @@ async function close(open: boolean) {
                 <th class="p-2">{{ t("glossary.note") }}</th>
                 <th class="p-2">{{ t("glossary.category") }}</th>
                 <th class="p-2">{{ t("glossary.source") }}</th>
-                <th class="w-20 p-2" />
+                <th class="w-28 p-2" />
               </tr>
             </thead>
             <tbody>
-              <tr
-                v-for="{ e, i } in shown"
-                :key="`${i}-${e.term}`"
-                class="border-t align-top"
-                :class="!isConfirmed(e) && 'bg-muted/40'"
-                data-testid="glossary-row"
-              >
-                <td class="p-2 font-medium">
-                  {{ e.term }}
-                  <span v-if="!isConfirmed(e)" class="text-warn block text-[11px] font-normal">{{ t("glossary.status.suggested") }}</span>
-                </td>
-                <td class="p-2">
-                  <span v-if="e.translation">{{ e.translation }}</span>
-                  <span v-else class="text-muted-foreground italic">{{ t("glossary.keep") }}</span>
-                </td>
-                <td class="text-muted-foreground p-2">{{ e.note }}</td>
-                <td class="text-muted-foreground p-2">{{ e.category }}</td>
-                <td class="text-muted-foreground p-2">{{ e.source }}</td>
-                <td class="flex p-1">
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    :title="isConfirmed(e) ? t('glossary.unconfirm') : t('glossary.confirm')"
-                    :aria-label="isConfirmed(e) ? t('glossary.unconfirm') : t('glossary.confirm')"
-                    data-testid="glossary-toggle"
-                    @click="toggleStatus(i)"
-                  >
-                    <Undo2 v-if="isConfirmed(e)" /><Check v-else class="text-ok" />
-                  </Button>
-                  <Button variant="ghost" size="icon-sm" :aria-label="t('glossary.remove')" @click="remove(i)"><Trash2 /></Button>
-                </td>
-              </tr>
+              <template v-for="{ e, i } in shown" :key="`${i}-${e.term}`">
+                <tr
+                  v-if="editing === i"
+                  class="bg-accent/40 border-t align-top"
+                  data-testid="glossary-edit-row"
+                  @keydown="editKey"
+                >
+                  <td class="p-1"><Input v-model="editDraft.term" class="h-8" :aria-label="t('glossary.term')" data-testid="glossary-edit-term" /></td>
+                  <td class="p-1">
+                    <Input
+                      v-model="editDraft.translation"
+                      class="h-8"
+                      :placeholder="t('glossary.translationHint')"
+                      :aria-label="t('glossary.translation')"
+                      data-testid="glossary-edit-translation"
+                    />
+                  </td>
+                  <td class="p-1"><Input v-model="editDraft.note" class="h-8" :aria-label="t('glossary.note')" data-testid="glossary-edit-note" /></td>
+                  <td class="p-1"><Input v-model="editDraft.category" class="h-8" :aria-label="t('glossary.category')" /></td>
+                  <td class="p-1"><Input v-model="editDraft.source" class="h-8" :aria-label="t('glossary.source')" /></td>
+                  <td class="flex p-1">
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      :disabled="!editDraft.term.trim()"
+                      :title="t('glossary.apply')"
+                      :aria-label="t('glossary.apply')"
+                      data-testid="glossary-edit-apply"
+                      @click="applyEdit"
+                    >
+                      <Check class="text-ok" />
+                    </Button>
+                    <Button variant="ghost" size="icon-sm" :title="t('glossary.cancelEdit')" :aria-label="t('glossary.cancelEdit')" @click="editing = null"><X /></Button>
+                  </td>
+                </tr>
+                <tr
+                  v-else
+                  class="border-t align-top"
+                  :class="!isConfirmed(e) && 'bg-muted/40'"
+                  data-testid="glossary-row"
+                  @dblclick="startEdit(i)"
+                >
+                  <td class="p-2 font-medium">
+                    {{ e.term }}
+                    <span v-if="!isConfirmed(e)" class="text-warn block text-[11px] font-normal">{{ t("glossary.status.suggested") }}</span>
+                  </td>
+                  <td class="p-2">
+                    <span v-if="e.translation">{{ e.translation }}</span>
+                    <span v-else class="text-muted-foreground italic">{{ t("glossary.keep") }}</span>
+                  </td>
+                  <td class="text-muted-foreground p-2">{{ e.note }}</td>
+                  <td class="text-muted-foreground p-2">{{ e.category }}</td>
+                  <td class="text-muted-foreground p-2">{{ e.source }}</td>
+                  <td class="flex p-1">
+                    <Button variant="ghost" size="icon-sm" :title="t('glossary.editHint')" :aria-label="t('glossary.edit')" data-testid="glossary-edit" @click="startEdit(i)">
+                      <Pencil />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      :title="isConfirmed(e) ? t('glossary.unconfirm') : t('glossary.confirm')"
+                      :aria-label="isConfirmed(e) ? t('glossary.unconfirm') : t('glossary.confirm')"
+                      data-testid="glossary-toggle"
+                      @click="toggleStatus(i)"
+                    >
+                      <Undo2 v-if="isConfirmed(e)" /><Check v-else class="text-ok" />
+                    </Button>
+                    <Button variant="ghost" size="icon-sm" :aria-label="t('glossary.remove')" @click="remove(i)"><Trash2 /></Button>
+                  </td>
+                </tr>
+              </template>
             </tbody>
           </table>
         </div>

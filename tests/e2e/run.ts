@@ -225,6 +225,18 @@ try {
   await tid("glossary-open").click();
   await tid("glossary-row").first().waitFor();
   check("glossary loaded", (await tid("glossary-row").count()) === 1);
+  await tid("glossary-edit").click();
+  await tid("glossary-edit-translation").fill("Thành");
+  await page.keyboard.press("Escape");
+  check("Esc cancels the edit, the dialog stays", (await tid("glossary-row").innerText()).includes("Lâu Đài") && (await tid("glossary-dialog").count()) === 1);
+  await tid("glossary-row").dblclick();
+  await tid("glossary-edit-translation").fill("Thành");
+  await tid("glossary-edit-note").fill("tên map");
+  await page.keyboard.press("Enter");
+  check("glossary entry edited", (await tid("glossary-row").innerText()).includes("Thành") && (await tid("glossary-edit-row").count()) === 0);
+  await tid("glossary-save").click();
+  await page.waitForFunction(() => !document.querySelector('[data-testid="glossary-save"]:not([disabled])'));
+  check("edited entry saved to the file", fs.readFileSync(glossPath, "utf8").includes("Castle\tThành\ttên map\tMap\t\tconfirmed"), fs.readFileSync(glossPath, "utf8"));
   await page.keyboard.press("Escape");
   await find("Chaos Castle");
   check("no glossary hint on a line kept in English", (await tid("detail-glossary").count()) === 0);
