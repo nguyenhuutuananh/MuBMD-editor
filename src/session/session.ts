@@ -23,24 +23,43 @@ import {
   type ProposalItem,
   type Status,
   analyzeImport,
+  buildPackage,
   checkEmitter,
   checkLocaleCode,
   checkOptionWindow,
+  ITEM_TAB,
+  SHEET_TAIL,
+  type TsvParseResult,
+  isZip,
+  languageName,
+  parseGlossary,
   parseTranslationTsv,
+  readPackage,
+  serializeCsv,
+  serializeGlossary,
   serializeTranslationTsv,
   sha1,
+  sheetFileName,
+  sheetTab,
+  toIdentifier,
+  unzip,
+  zip,
+  type ReadPackage,
 } from "../core";
 import {
   type DecideResponse,
   type DocStatus,
   type DraftInfo,
+  type ExportPackageResponse,
   type ExportResponse,
+  type ExportSheetsResponse,
   type GroupInfo,
   type ImportPreview,
   type KeyRecord,
   type KeyRef,
   type MutationResponse,
   type OpenInfo,
+  type PackageInfo,
   type ProposalDecision,
   type ProposalRow,
   type ProposalState,
@@ -629,34 +648,209 @@ export class Session {
   exportTsv(target: string, keys: KeyRef[]): Promise<ExportResponse> {
     return this.exclusive(async () => {
       this.folderInfo();
-      const rows = [];
-      for (const [group, key] of uniqueRefs(keys)) {
-        const g = this.groups.find((x) => x.name === group);
-        if (!g) continue;
-        const en = g.en(key);
-        const cur = this.keyState(g, key);
-        if (en === null && !cur.entry) continue;
-        const value = cur.entry?.value ?? "";
-        rows.push({
-          group,
-          key,
-          english: en ?? "",
-          value,
-          status: this.statusOf(g, key, cur),
-          translator: cur.record?.translator ?? "",
-          updatedAt: cur.record?.updatedAt ?? "",
-          base: cur.record?.origin ?? value,
-          note: cur.record?.note ?? "",
-        });
-      }
+      const rows = this.tsvRows(keys);
       const abs = this.storage.resolve(target);
       await writeText(this.storage, abs, serializeTranslationTsv(rows));
       return { path: abs, count: rows.length };
     });
   }
 
-  private analyze(text: string) {
-    const parsed = parseTranslationTsv(text);
+  // TSV rows (with BaseText) of the given keys, as they are now.
+  private tsvRows(keys: KeyRef[]) {
+    const rows = [];
+    for (const [group, key] of uniqueRefs(keys)) {
+      const g = this.groups.find((x) => x.name === group);
+      if (!g) continue;
+      const en = g.en(key);
+      const cur = this.keyState(g, key);
+      if (en === null && !cur.entry) continue;
+      const value = cur.entry?.value ?? "";
+      rows.push({
+        group,
+        key,
+        english: en ?? "",
+        value,
+        status: this.statusOf(g, key, cur),
+        translator: cur.record?.translator ?? "",
+        updatedAt: cur.record?.updatedAt ?? "",
+        base: cur.record?.origin ?? value,
+        note: cur.record?.note ?? "",
+      });
+    }
+    return rows;
+  }
+
+  // ---- translation packages (src/core/package.ts) ----
+
+  // Identity of a group's English texts, to tell whether a package comes from the same MuMain version.
+  private englishFingerprint(g: SourceGroup): string {
+    return sha1(new TextEncoder().encode(JSON.stringify(g.keys().flatMap((k) => (g.en(k) === null ? [] : [[k, g.en(k)]]))))).slice(0, 16);
+  }
+
+  // Every key of the locale as a TSV, the translated files as saved, and the glossary (when given)
+  // in one ZIP. Unsaved edits block it: the files inside and the TSV must say the same.
+  exportPackage(target: string, opts: { glossary?: string | null; translator: string; tool: string }): Promise<ExportPackageResponse> {
+    return this.exclusive(async () => {
+      const info = this.folderInfo();
+      const dirty = this.dirtyIds().length;
+      if (dirty) throw new DirtyError(dirty);
+      const st = this.storage;
+      const keys: KeyRef[] = this.groups.flatMap((g) => g.keys().map((k): KeyRef => [g.name, k]));
+      const rows = this.tsvRows(keys);
+      const files: { path: string; bytes: Uint8Array }[] = [];
+      for (const g of this.groups) {
+        if (!g.targetFile) continue;
+        const abs = st.join(info.folder.path, ...g.targetFile.split("/"));
+        if (await st.exists(abs)) files.push({ path: g.targetFile, bytes: await st.read(abs) });
+      }
+      const glossary = opts.glossary ? serializeGlossary(parseGlossary(new TextDecoder().decode(await st.read(st.resolve(opts.glossary)))).entries) : null;
+      const now = this.now();
+      const translated = rows.filter((r) => r.value !== "" && r.english !== "").length;
+      const bytes = buildPackage(
+        {
+          manifest: {
+            locale: info.locale,
+            createdAt: now.toISOString(),
+            by: opts.translator,
+            tool: opts.tool,
+            rows: rows.length,
+            translated,
+            english: Object.fromEntries(this.groups.map((g) => [g.name, this.englishFingerprint(g)])),
+          },
+          translations: serializeTranslationTsv(rows),
+          files,
+          glossary,
+        },
+        now,
+      );
+      const abs = st.resolve(target);
+      await st.writeAtomic(abs, bytes);
+      return { path: abs, rows: rows.length, translated, files: files.length, glossary: glossary !== null };
+    });
+  }
+
+  // The rows of an import file: a translation TSV / CSV, a Google Sheets tab (sheets.ts), a ZIP of
+  // such tabs, or a translation package (whose locale must be the open one).
+  private importParsed(bytes: Uint8Array, fileName: string): { parsed: TsvParseResult; pkg: ReadPackage | null } {
+    const dec = new TextDecoder();
+    if (!isZip(bytes)) return { parsed: this.withRealKeys(this.parseTab(fileName, dec.decode(bytes))), pkg: null };
+    const entries = unzip(bytes);
+    if (!entries.some((e) => e.name === "manifest.json" || e.name.endsWith("/manifest.json"))) {
+      const tabs = entries.filter((e) => /\.(csv|tsv)$/i.test(e.name));
+      if (!tabs.length) throw new AppError("package-invalid", "No manifest.json and no CSV / TSV files.", { detail: "no manifest.json" });
+      const all: TsvParseResult = { rows: [], problems: [], columns: { base: true, status: true, translator: true, note: true } };
+      for (const t of tabs) {
+        const p = this.parseTab(t.name, dec.decode(t.bytes));
+        all.rows.push(...p.rows);
+        all.problems.push(...p.problems.map((x) => ({ ...x, detail: `${t.name.replace(/^.*\//, "")}: ${x.detail}` })));
+        for (const k of Object.keys(all.columns) as (keyof TsvParseResult["columns"])[]) all.columns[k] &&= p.columns[k];
+      }
+      return { parsed: this.withRealKeys(all), pkg: null };
+    }
+    const pkg = readPackage(bytes);
+    const { locale } = this.folderInfo();
+    if (pkg.manifest.locale !== locale) {
+      throw new AppError("package-locale", `The package holds ${pkg.manifest.locale} translations, ${locale} is open.`, { locale: pkg.manifest.locale, open: locale });
+    }
+    return { parsed: parseTranslationTsv(pkg.translations), pkg };
+  }
+
+  // A file with a Group column (or ItemType / ItemIndex), else a sheet tab named after its group.
+  private parseTab(fileName: string, text: string): TsvParseResult {
+    try {
+      return parseTranslationTsv(text);
+    } catch (e) {
+      if (!(e instanceof AppError) || e.code !== "tsv-header") throw e;
+      const tab = sheetTab(fileName);
+      const g = this.groups.find((x) => x.source === "resx" && x.name.toLowerCase() === tab.toLowerCase());
+      if (!g) {
+        const groups = this.groups.filter((x) => x.source === "resx").map((x) => x.name).join(", ");
+        throw new AppError("sheet-tab", `"${tab}" (from ${fileName}) is not a group; the file name must end with the group name.`, { tab, groups });
+      }
+      return parseTranslationTsv(text, { defaultGroup: g.name });
+    }
+  }
+
+  // Keys written as the C++ name ResxGen makes of them (as some sheets do) -> the resx key.
+  private withRealKeys(parsed: TsvParseResult): TsvParseResult {
+    const maps = new Map<string, Map<string, string>>();
+    for (const row of parsed.rows) {
+      const g = this.groups.find((x) => x.name === row.group);
+      if (!g || g.source !== "resx" || g.en(row.key) !== null) continue;
+      if (!maps.has(g.name)) maps.set(g.name, new Map(g.keys().filter((k) => g.en(k) !== null).map((k) => [toIdentifier(k), k])));
+      const real = maps.get(g.name)!.get(row.key);
+      if (real !== undefined) row.key = real;
+    }
+    return parsed;
+  }
+
+  // One CSV per Google Sheets tab, in one ZIP: a tab per string table (Key, English, <language>) and
+  // one for all item names (ItemType, ItemIndex, English, <language>), with Status / Note / BaseText
+  // at the end. Unsaved edits included, like a TSV export. BaseText is the text as exported (not the
+  // merge base of a TSV): the sheet is a copy taken now, so importing a tab back into this copy
+  // tells "changed in the sheet" (apply) from "changed here since" (conflict).
+  exportSheets(target: string): Promise<ExportSheetsResponse> {
+    return this.exclusive(async () => {
+      const { locale } = this.folderInfo();
+      const lang = languageName(locale);
+      const tail = (g: SourceGroup, key: string): string[] => {
+        const cur = this.keyState(g, key);
+        const value = cur.entry?.value ?? "";
+        return [value, this.statusOf(g, key, cur), cur.record?.note ?? "", value];
+      };
+      const entries: { name: string; bytes: Uint8Array }[] = [];
+      const enc = new TextEncoder();
+      let rows = 0;
+      for (const g of this.groups.filter((x) => x.source === "resx")) {
+        const lines = g.keys().filter((k) => g.en(k) !== null).map((k) => [k, g.en(k)!, ...tail(g, k)]);
+        rows += lines.length;
+        entries.push({ name: sheetFileName(locale, g.name), bytes: enc.encode(serializeCsv(["Key", "English", lang, ...SHEET_TAIL], lines)) });
+      }
+      const items = this.groups.filter((x) => x.source === "items");
+      if (items.length) {
+        const lines = items.flatMap((g) => g.keys().filter((k) => g.en(k) !== null).map((k) => [String(g.itemType), k, g.en(k)!, ...tail(g, k)]));
+        rows += lines.length;
+        entries.push({ name: sheetFileName(locale, ITEM_TAB), bytes: enc.encode(serializeCsv(["ItemType", "ItemIndex", "English", lang, ...SHEET_TAIL], lines)) });
+      }
+      const abs = this.storage.resolve(target);
+      await this.storage.writeAtomic(abs, zip(entries, this.now()));
+      return { path: abs, tabs: entries.length, rows };
+    });
+  }
+
+  private packageInfo(pkg: ReadPackage): PackageInfo {
+    const m = pkg.manifest;
+    return {
+      locale: m.locale,
+      createdAt: m.createdAt ?? "",
+      by: m.by ?? "",
+      tool: m.tool ?? "",
+      rows: m.rows ?? 0,
+      translated: m.translated ?? 0,
+      files: pkg.files.length,
+      glossary: pkg.glossary !== null,
+      englishChanged: this.groups.filter((g) => m.english[g.name] !== undefined && m.english[g.name] !== this.englishFingerprint(g)).map((g) => g.name),
+    };
+  }
+
+  // Writes the glossary of a previewed package to .mumain-translator/glossary-<locale>.tsv and
+  // returns that path (to be loaded as the glossary).
+  importPackageGlossary(source: string, token: string): Promise<string> {
+    return this.exclusive(async () => {
+      const info = this.folderInfo();
+      const st = this.storage;
+      const abs = st.resolve(source);
+      const bytes = await st.read(abs);
+      if (sha1(bytes) !== token) throw new AppError("import-changed", "The file changed since the preview.", { file: st.basename(abs) });
+      const { pkg } = this.importParsed(bytes, abs);
+      if (!pkg?.glossary) throw new AppError("package-invalid", "The package has no glossary.", { detail: "no glossary.tsv" });
+      const out = st.join(workDir(st, info.folder.path), `glossary-${info.locale}.tsv`);
+      await writeText(st, out, pkg.glossary);
+      return out;
+    });
+  }
+
+  private analyze(parsed: TsvParseResult) {
     const analysis = analyzeImport(parsed.rows, (group, key) => {
       const g = this.groups.find((x) => x.name === group);
       const en = g ? g.en(key) : null;
@@ -672,7 +866,8 @@ export class Session {
       this.folderInfo();
       const abs = this.storage.resolve(source);
       const bytes = await this.storage.read(abs);
-      const { parsed, analysis } = this.analyze(new TextDecoder().decode(bytes));
+      const { parsed: rows, pkg } = this.importParsed(bytes, abs);
+      const { parsed, analysis } = this.analyze(rows);
       return {
         path: abs,
         fileName: this.storage.basename(abs),
@@ -681,6 +876,7 @@ export class Session {
         counts: analysis.counts,
         problems: parsed.problems,
         hasBase: parsed.columns.base,
+        ...(pkg ? { package: this.packageInfo(pkg) } : {}),
       };
     });
   }
@@ -692,7 +888,7 @@ export class Session {
       const abs = this.storage.resolve(source);
       const bytes = await this.storage.read(abs);
       if (sha1(bytes) !== token) throw new AppError("import-changed", "The file changed since the preview.", { file: this.storage.basename(abs) });
-      const { parsed, analysis } = this.analyze(new TextDecoder().decode(bytes));
+      const { parsed, analysis } = this.analyze(this.importParsed(bytes, abs).parsed);
       const rows = new Map(parsed.rows.map((r) => [id(r.group, r.key), r]));
       const items = new Map(analysis.items.map((it) => [id(it.group, it.key), it]));
       const wanted = uniqueRefs(take).filter(([group, key]) => {

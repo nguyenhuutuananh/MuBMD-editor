@@ -112,6 +112,16 @@ Tên vật phẩm:
     -> Áp dụng -> Lưu. Một file TSV chứa cả chuỗi giao diện lẫn tên vật phẩm (Group "Items.Helm",
     Key "1"). Mở được bằng Excel / Google Sheets; dòng chưa dịch có ô Translation trống để điền rồi
     nhập lại. File TSV của MuBMD-editor (ItemType, ItemIndex, Name) cũng nhập được.
+  - Chia sẻ cả bản dịch: Thao tác -> Xuất gói chia sẻ (.zip) (bản dịch dạng TSV, các file đã dịch, bảng
+    thuật ngữ). Người nhận mở MuMain của họ trong tool (bản web cũng được) -> Thao tác -> Nhập bản dịch
+    (TSV / gói .zip) -> xem trước -> Áp dụng -> Lưu; gộp theo từng dòng nên khác phiên bản MuMain vẫn dùng
+    được (dòng có tiếng Anh đã khác không được chọn sẵn). Không dùng tool: chép thư mục files/ trong gói đè
+    vào MuMain (chỉ khi cùng phiên bản).
+  - Google Sheets: Thao tác -> Xuất cho Google Sheets -> file .zip gồm một CSV cho mỗi tab (Key, English,
+    Vietnamese, Status, Note, BaseText; tab Item: ItemType, ItemIndex, ...). Trong Sheets: mở tab, File ->
+    Nhập -> Tải lên CSV cùng tên -> Thay thế trang tính hiện tại (có thể ẩn cột BaseText). Chiều về: File ->
+    Tải xuống -> CSV một tab (hoặc zip nhiều tab) -> Thao tác -> Nhập bản dịch -> xem trước -> Áp dụng.
+    Sheet cũ không có cột BaseText: mọi chỗ khác nhau đều hiện là thay đổi, hãy xem kỹ trước khi áp dụng.
   - Thuật ngữ: Thao tác -> Bảng thuật ngữ… -> file thuật ngữ của nhóm (TSV, hoặc MuMain_VI_Glossary.csv
     cũ). Được so với câu / tên tiếng Anh; gợi ý hiện ở panel chi tiết, bộ lọc "Lỗi thuật ngữ".
   - Đề xuất AI: trợ lý AI (qua MCP) ghi đề xuất vào .mumain-translator/proposals/. Tool đọc lại khi

@@ -11,7 +11,7 @@ import { AppError } from "../../../src/core";
 import { loadGlossaryFile, saveGlossaryFile } from "../../../src/session/glossaryFiles";
 import type { Platform } from "../../../src/session/itemsFolder";
 import { Session } from "../../../src/session/session";
-import type { PickKind, StateResponse } from "../../../src/shared/api";
+import type { PickKind, SaveKind, StateResponse } from "../../../src/shared/api";
 import { ApiError, type Backend } from "./backend";
 import { BrowserStorage } from "./browserStorage";
 import { downloadFile, uploadFile, uploadFolder } from "./fileTransfer";
@@ -54,7 +54,7 @@ async function call<T>(fn: () => T | Promise<T>): Promise<T> {
   }
 }
 
-type PickRequest = { mode: "folder" } | { mode: "open"; kind: PickKind } | { mode: "save"; kind: "tsv" | "glossary"; suggestedName?: string };
+type PickRequest = { mode: "folder" } | { mode: "open"; kind: PickKind } | { mode: "save"; kind: SaveKind; suggestedName?: string };
 
 // e2e hook: a test answers pickers with its own handles (from OPFS) instead of real dialogs.
 declare global {
@@ -66,6 +66,12 @@ declare global {
 const TEXT: FilePickerAcceptType = {
   description: "TSV / CSV",
   accept: { "text/tab-separated-values": [".tsv", ".txt"], "text/csv": [".csv"] },
+};
+const ZIP: FilePickerAcceptType = { description: "ZIP", accept: { "application/zip": [".zip"] } };
+// A translation file to import: TSV / CSV or a package (.zip).
+const IMPORT: FilePickerAcceptType = {
+  description: "TSV / CSV / ZIP",
+  accept: { "text/tab-separated-values": [".tsv", ".txt"], "text/csv": [".csv"], "application/zip": [".zip"] },
 };
 
 function unsupported(): never {
@@ -86,8 +92,8 @@ async function pickHandle(req: PickRequest): Promise<FileSystemDirectoryHandle |
   if (window.__MUMAIN_TR_TEST_PICK__) return window.__MUMAIN_TR_TEST_PICK__(req);
   if (!hasFsAccess) unsupported();
   if (req.mode === "folder") return run(() => window.showDirectoryPicker!({ id: "mumain-translator-folder", mode: "readwrite" }));
-  if (req.mode === "open") return run(async () => (await window.showOpenFilePicker!({ id: "mumain-translator-tsv", types: [TEXT] }))[0] ?? null);
-  return run(() => window.showSaveFilePicker!({ id: "mumain-translator-tsv", suggestedName: req.suggestedName, types: [TEXT] }));
+  if (req.mode === "open") return run(async () => (await window.showOpenFilePicker!({ id: "mumain-translator-tsv", types: [req.kind === "tsv" ? IMPORT : TEXT] }))[0] ?? null);
+  return run(() => window.showSaveFilePicker!({ id: "mumain-translator-tsv", suggestedName: req.suggestedName, types: [req.kind === "zip" ? ZIP : TEXT] }));
 }
 
 // The user grants a folder (read + write): it becomes "/<name>@<id>"; the Session finds what can be
@@ -100,8 +106,8 @@ async function pick(kind: PickKind): Promise<string | null> {
   return fsStorage.register(h);
 }
 
-async function pickSave(kind: "tsv" | "glossary", suggestedName?: string): Promise<string | null> {
-  if (!fsStorage) return `/downloads/${safeName(suggestedName ?? (kind === "tsv" ? "export.tsv" : "Glossary.tsv"))}`;
+async function pickSave(kind: SaveKind, suggestedName?: string): Promise<string | null> {
+  if (!fsStorage) return `/downloads/${safeName(suggestedName ?? { tsv: "export.tsv", glossary: "Glossary.tsv", zip: "translations.zip" }[kind])}`;
   const h = await pickHandle({ mode: "save", kind, suggestedName });
   return h && h.kind === "file" ? fsStorage.register(h) : null;
 }
@@ -125,7 +131,7 @@ async function upload(kind: PickKind): Promise<string | null> {
     for (const f of up.files) await idb!.writeAtomic(`/browser/${f.path.split("/").map(safeName).join("/")}`, f.bytes);
     return root;
   }
-  const f = await uploadFile(".tsv,.csv,.txt");
+  const f = await uploadFile(kind === "tsv" ? ".tsv,.csv,.txt,.zip" : ".tsv,.csv,.txt");
   if (!f) return null;
   const p = `/uploads/${safeName(f.name)}`;
   await idb!.writeAtomic(p, f.bytes);
@@ -196,6 +202,19 @@ export const backend: Backend = {
   proposals: () => call(() => session.proposals()),
   decideProposals: (decisions, translator) => call(() => session.decideProposals(decisions, translator)),
   importPreview: (path) => call(() => session.previewImport(path)),
+  exportPackage: (path, glossary, translator) =>
+    call(async () => {
+      const r = await session.exportPackage(path, { glossary, translator, tool: __APP_VERSION__ });
+      if (!hasFsAccess && isDownload(r.path)) await download(r.path);
+      return r;
+    }),
+  exportSheets: (path) =>
+    call(async () => {
+      const r = await session.exportSheets(path);
+      if (!hasFsAccess && isDownload(r.path)) await download(r.path);
+      return r;
+    }),
+  packageGlossary: (path, token) => call(async () => ({ path: await session.importPackageGlossary(path, token) })),
   importApply: (path, token, take, translator) => call(() => session.applyImport(path, token, take, translator)),
   glossaryLoad: (path) => call(() => loadGlossaryFile(storage, path)),
   glossarySave: (path, entries) =>

@@ -243,7 +243,11 @@
     "item-name-invalid": "Không dùng được tên vật phẩm này: có \"{'||'}\" hoặc ký tự điều khiển.",
     "proposal-invalid": "Không phải file đề xuất hợp lệ: {detail}",
     "nothing-to-translate": "Thư mục này không có gì để dịch. Hãy chọn repo MuMain (src/Localization, src/bin/Data/Items), thư mục game (Data/Items, hoặc Main.app trên macOS), hoặc chính một trong các thư mục đó.",
-    "items-not-found": "Không tìm thấy dữ liệu vật phẩm (Data/Items) trong “{folder}”."
+    "items-not-found": "Không tìm thấy dữ liệu vật phẩm (Data/Items) trong “{folder}”.",
+    "zip-invalid": "Không đọc được file ZIP này: {detail}",
+    "package-invalid": "File ZIP này không phải gói của MuMain-translator: {detail}",
+    "package-locale": "Gói này chứa bản dịch {locale}, nhưng đang mở {open}. Hãy mở {locale} để nhập.",
+    "sheet-tab": "“{tab}” không phải tên nhóm. Tên file của một tab phải kết thúc bằng tên nhóm ({groups}, hoặc Item)."
   },
   "common": {
     "cancel": "Huỷ",
@@ -306,7 +310,11 @@
     "proposalsCount": "Còn {n} đề xuất AI chờ quyết định.",
     "proposalsBroken": "Không đọc được các file đề xuất: {files}",
     "proposalsSkipped": "Bỏ qua {n} đề xuất: đã thay đổi trên đĩa hoặc đã được quyết định.",
-    "proposalsAccepted": "Đã chấp nhận {n} đề xuất AI. Bấm Lưu để ghi."
+    "proposalsAccepted": "Đã chấp nhận {n} đề xuất AI. Bấm Lưu để ghi.",
+    "packageExported": "Đã xuất gói: {file} ({n} dòng đã dịch, {files} file).",
+    "packageWithGlossary": "Có kèm bảng thuật ngữ.",
+    "sheetsExported": "Đã xuất {file}: {tabs} tab, {n} dòng.",
+    "sheetsHint": "Trong Google Sheets: mở tab, File → Nhập → Tải lên file CSV cùng tên → Thay thế trang tính hiện tại. Chiều về: File → Tải xuống → CSV, rồi Nhập bản dịch ở đây."
   },
   "glossary": {
     "title": "Bảng thuật ngữ",
@@ -360,9 +368,11 @@
   },
   "actions": {
     "export": "Xuất bản dịch (TSV)…",
-    "import": "Nhập bản dịch (TSV)…",
+    "import": "Nhập bản dịch (TSV, CSV từ Sheets hoặc .zip)…",
     "glossary": "Bảng thuật ngữ…",
-    "markList": "Đánh dấu {n} dòng đang hiện là"
+    "markList": "Đánh dấu {n} dòng đang hiện là",
+    "exportPackage": "Xuất gói chia sẻ (.zip)…",
+    "exportSheets": "Xuất cho Google Sheets (.zip các tab CSV)…"
   },
   "exportDialog": {
     "title": "Xuất bản dịch",
@@ -396,7 +406,13 @@
     "base": "Gốc",
     "by": "bởi {name}",
     "invalidChar": "Có ký tự không lưu được trong file .resx.",
-    "apply": "Áp dụng {n} thay đổi"
+    "apply": "Áp dụng {n} thay đổi",
+    "package": "Gói của {by}, {time} ({locale})",
+    "packageCounts": "{rows} dòng, {translated} đã dịch; kèm {files} file đã dịch (để giải nén đè lên cùng phiên bản MuMain mà không cần tool).",
+    "englishChanged": "Bản tiếng Anh của {groups} khác với máy gửi (khác phiên bản MuMain). {n} dòng có tiếng Anh đã khác không được chọn sẵn: hãy so sánh trước khi lấy.",
+    "theirEnglish": "Trong file:",
+    "useGlossary": "Dùng luôn bảng thuật ngữ trong gói",
+    "useGlossaryReplace": "Dùng bảng thuật ngữ trong gói thay cho {file}"
   },
   "registration": {
     "title": "Cho phép chọn “{locale}” trong game",
@@ -474,5 +490,10 @@
       "body": "{n} đề xuất trong danh sách được làm từ bản dịch hiện tại và không có lỗi, cảnh báo hay lỗi thuật ngữ. Chúng trở thành thay đổi chưa lưu (trạng thái Đã dịch), hoàn tác cùng lúc bằng Ctrl+Z; bấm Lưu để ghi.",
       "confirm": "Chấp nhận {n}"
     }
+  },
+  "packageDialog": {
+    "saveTitle": "Lưu trước khi xuất?",
+    "saveBody": "Còn {n} thay đổi chưa lưu. Gói chứa những gì đã lưu, nên cần lưu trước.",
+    "saveAndExport": "Lưu rồi xuất"
   }
 }

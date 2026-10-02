@@ -7,6 +7,8 @@
 import type {
   DecideResponse,
   ErrorCode,
+  ExportPackageResponse,
+  ExportSheetsResponse,
   ErrorParams,
   ExportResponse,
   WorkspaceListing,
@@ -17,6 +19,7 @@ import type {
   Lang,
   PickKind,
   RegistrationInfo,
+  SaveKind,
   Status,
   MutationResponse,
   PickResponse,
@@ -54,11 +57,14 @@ export interface Backend {
   registration(): Promise<RegistrationInfo>;
   reference(locale: string | null): Promise<StateResponse>;
   pick(lang: Lang, kind?: PickKind): Promise<PickResponse>;
-  pickSave(lang: Lang, kind: "tsv" | "glossary", defaultName?: string): Promise<PickResponse>;
+  pickSave(lang: Lang, kind: SaveKind, defaultName?: string): Promise<PickResponse>;
   status(keys: KeyRef[], status: Status, translator: string): Promise<MutationResponse>;
   note(group: string, key: string, note: string, translator: string): Promise<MutationResponse>;
   exportTsv(path: string, keys: KeyRef[]): Promise<ExportResponse>;
-  importPreview(path: string): Promise<ImportPreview>;
+  importPreview(path: string): Promise<ImportPreview>; // a TSV / CSV, or a translation package (.zip)
+  exportPackage(path: string, glossary: string | null, translator: string): Promise<ExportPackageResponse>;
+  packageGlossary(path: string, token: string): Promise<{ path: string }>;
+  exportSheets(path: string): Promise<ExportSheetsResponse>; // a ZIP of one CSV per Google Sheets tab // the glossary of a previewed package, written to the side data
   importApply(path: string, token: string, take: KeyRef[], translator: string): Promise<MutationResponse>;
   glossaryLoad(path: string): Promise<GlossaryInfo>;
   glossarySave(path: string, entries: GlossaryEntry[]): Promise<GlossaryInfo>;

@@ -136,6 +136,33 @@ co-occurrence (`Helm → Mũ`, `Legendary → Ma Thuật`, `Red Wing → Hỏa T
 directly (`bun scripts/glossary-build.ts --mumain … --source "Label=file.tsv" … --out …`; `bun run … --`
 splits paths with spaces). See the comment at the top of the script.
 
+## Sharing a package (.zip)
+
+*Actions → Export a package to share (.zip)…* puts the open locale in one ZIP: `translations.tsv` (every
+key, with status, note, translator and BaseText), the translated files as saved under `files/` (laid out
+like the workspace), the loaded glossary, a `manifest.json` (locale, who, when, a fingerprint of each
+group's English texts) and a `README.txt`. Unsaved edits are saved first.
+
+The receiver opens their own MuMain (desktop, or the web version in any browser) and imports the ZIP with
+*Actions → Import translations (TSV / .zip package)…*: the same preview and 3-way merge as a TSV, so it
+works across MuMain versions. Groups whose English differs from the sender's are named, and rows whose
+English changed are not taken by default. The package's glossary can be used too (written to
+`.mumain-translator/glossary-<locale>.tsv`). Without the tool, `files/` can be copied over a checkout of
+the same MuMain version. A package unzipped and zipped again still imports.
+
+## Google Sheets
+
+The team sheet has one tab per group: `Key, English, Vietnamese` for each string table and
+`ItemType, ItemIndex, English, Vietnamese` for the item names (the old `Nguon, TiengViet` columns still
+read). *Actions → Export for Google Sheets* writes a ZIP with one CSV per tab (`MuMain_VI_Game.csv`...),
+with `Status, Note, BaseText` added at the end (BaseText = the text as exported; hide it in the sheet).
+Import each CSV into its tab with *File → Import → Upload → Replace current sheet*.
+
+Back: *File → Download → CSV* of a tab (named `<spreadsheet> - <tab>.csv`; the group comes from the tab
+name), or a ZIP of several, through *Actions → Import translations*. With BaseText, rows changed in the
+sheet apply and rows also changed here since the export are conflicts; without it (an older sheet) every
+difference is listed as a change - review before applying. Keys written as ResxGen's C++ name are matched.
+
 ## AI proposals
 
 Translations proposed by an AI assistant (through the MCP server below) or a script are files in

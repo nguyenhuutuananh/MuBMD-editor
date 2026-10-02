@@ -203,3 +203,19 @@ describe("proposals API", () => {
     fs.rmSync(dir, { recursive: true, force: true });
   });
 });
+
+describe("package API", () => {
+  test("export a package, preview it as an import", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mumain-translator-package-"));
+    writeSampleLocalization(dir);
+    const app = setup();
+    await app.handle(post("/api/open", { path: dir, locale: "vi" }));
+    const zipPath = path.join(dir, "..", `${path.basename(dir)}.zip`);
+    const res = await body<{ path: string; rows: number; files: number }>(await app.handle(post("/api/package/export", { path: zipPath, translator: "An" })));
+    expect(res.files).toBe(2); // Game.vi.resx, Editor.vi.resx
+    const preview = await body<ImportPreview>(await app.handle(post("/api/import/preview", { path: zipPath })));
+    expect(preview.package).toMatchObject({ locale: "vi", by: "An", tool: "test", englishChanged: [] });
+    fs.rmSync(dir, { recursive: true, force: true });
+    fs.rmSync(zipPath, { force: true });
+  });
+});

@@ -7,16 +7,23 @@ import StatusDot from "@/components/StatusDot.vue";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { applyImport, importPreview } from "@/composables/actions";
-import { issueText } from "@/i18n";
+import { fmtTime, issueText } from "@/i18n";
+import { useDocStore } from "@/stores/doc";
 import { cn } from "@/lib/utils";
 
 const { t } = useI18n();
+const store = useDocStore();
 const idOf = (i: MergeItem) => `${i.group}\u0000${i.key}`;
 const take = ref(new Set<string>());
+// A package's glossary: used by default when no glossary is loaded yet.
+const useGlossary = ref(false);
 
 watch(importPreview, (p) => {
   take.value = new Set(p?.items.filter((i) => i.take).map(idOf) ?? []);
+  useGlossary.value = !!p?.package?.glossary && !store.glossary;
 });
+const pkg = computed(() => importPreview.value?.package ?? null);
+const outdated = computed(() => items.value.filter((i) => i.theirEnglish !== undefined).length);
 
 const items = computed(() => importPreview.value?.items ?? []);
 const selectable = (i: MergeItem) => i.kind !== "invalid";
@@ -33,7 +40,11 @@ const setAll = (on: boolean, filter: (i: MergeItem) => boolean = () => true) => 
   for (const i of items.value) if (selectable(i) && filter(i)) on ? next.add(idOf(i)) : next.delete(idOf(i));
   take.value = next;
 };
-const apply = () => applyImport(items.value.filter((i) => take.value.has(idOf(i))).map((i): KeyRef => [i.group, i.key]));
+const apply = () =>
+  applyImport(
+    items.value.filter((i) => take.value.has(idOf(i))).map((i): KeyRef => [i.group, i.key]),
+    { glossary: !!pkg.value?.glossary && useGlossary.value },
+  );
 
 const KIND_CLASS: Record<MergeItem["kind"], string> = {
   apply: "bg-brand-soft text-brand",
@@ -54,6 +65,17 @@ const close = (open: boolean) => {
         <DialogTitle>{{ t("importDialog.title") }}</DialogTitle>
         <DialogDescription as="div" class="flex flex-col gap-1.5 text-left">
           <p class="font-mono text-xs break-all">{{ t("importDialog.file", { file: importPreview.fileName }) }}</p>
+          <div v-if="pkg" class="bg-muted text-foreground rounded-md px-2.5 py-2" data-testid="import-package">
+            <p class="font-medium">{{ t("importDialog.package", { by: pkg.by || "?", time: fmtTime(pkg.createdAt), locale: pkg.locale }) }}</p>
+            <p class="text-muted-foreground text-xs">{{ t("importDialog.packageCounts", { rows: pkg.rows, translated: pkg.translated, files: pkg.files }) }}</p>
+            <p v-if="pkg.englishChanged.length" class="text-warn mt-1 text-xs" data-testid="import-english-changed">
+              {{ t("importDialog.englishChanged", { groups: pkg.englishChanged.join(", "), n: outdated }) }}
+            </p>
+            <label v-if="pkg.glossary" class="mt-1 flex items-center gap-2 text-xs">
+              <input v-model="useGlossary" type="checkbox" class="accent-primary" data-testid="import-use-glossary" />
+              {{ store.glossary ? t("importDialog.useGlossaryReplace", { file: store.glossary.fileName }) : t("importDialog.useGlossary") }}
+            </label>
+          </div>
           <p class="text-foreground font-medium" data-testid="import-summary">{{ t("importDialog.summary", { ...importPreview.counts }) }}</p>
           <p>{{ t("importDialog.skipped", { ...importPreview.counts }) }}</p>
           <p v-if="importPreview.problems.length" class="text-warn">
@@ -101,7 +123,12 @@ const close = (open: boolean) => {
                 <td class="p-2">
                   <span :class="cn('rounded px-1.5 py-0.5 text-xs whitespace-nowrap', KIND_CLASS[i.kind])">{{ t(`importDialog.kind.${i.kind}`) }}</span>
                 </td>
-                <td class="text-muted-foreground p-2"><RichText :text="i.english" block /></td>
+                <td class="text-muted-foreground p-2">
+                  <RichText :text="i.english" block />
+                  <div v-if="i.theirEnglish !== undefined" class="text-warn text-xs" data-testid="import-their-english">
+                    {{ t("importDialog.theirEnglish") }} <RichText :text="i.theirEnglish" />
+                  </div>
+                </td>
                 <td class="p-2">
                   <RichText v-if="i.ours !== null" :text="i.ours" block />
                   <span v-else class="text-muted-foreground italic">{{ t("grid.missing") }}</span>

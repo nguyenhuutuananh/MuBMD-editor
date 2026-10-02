@@ -24,9 +24,10 @@ describe("parseDelimited", () => {
 });
 
 describe("translation files as CSV", () => {
-  test("MuMain_VI_Item.csv style: item rows, Nguon = the source name, TiengViet = the translation", () => {
+  test("MuMain_VI_Item.csv style: item rows, TiengViet = the translation, Nguon (Japanese) is not the English", () => {
     const r = parseTranslationTsv("ItemType,ItemIndex,Nguon,TiengViet\n0,0,クリス,Chùy Thủy\n");
-    expect(r.rows[0]).toMatchObject({ group: "Items.Sword", key: "0", value: "Chùy Thủy", english: "クリス" });
+    expect(r.rows[0]).toMatchObject({ group: "Items.Sword", key: "0", value: "Chùy Thủy" });
+    expect(r.rows[0]!.english).toBeUndefined();
   });
 
   test("the real MuMain_VI_Item.csv parses", () => {
@@ -34,7 +35,7 @@ describe("translation files as CSV", () => {
     if (!fs.existsSync(p)) return;
     const r = parseTranslationTsv(fs.readFileSync(p, "utf-8"));
     expect(r.rows.length).toBeGreaterThan(800);
-    expect(r.rows[0]).toMatchObject({ group: "Items.Sword", key: "0", english: "クリス", value: "Chùy Thủy" });
+    expect(r.rows[0]).toMatchObject({ group: "Items.Sword", key: "0", value: "Chùy Thủy" });
   });
 });
 

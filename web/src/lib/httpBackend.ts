@@ -3,6 +3,8 @@
 import type {
   DecideResponse,
   ErrorResponse,
+  ExportPackageResponse,
+  ExportSheetsResponse,
   ExportResponse,
   WorkspaceListing,
   GlossaryInfo,
@@ -53,6 +55,9 @@ export const backend: Backend = {
   note: (group, key, note, translator) => request<MutationResponse>("/api/note", { group, key, note, translator }),
   exportTsv: (path, keys) => request<ExportResponse>("/api/export", { path, keys }),
   importPreview: (path) => request<ImportPreview>("/api/import/preview", { path }),
+  exportPackage: (path, glossary, translator) => request<ExportPackageResponse>("/api/package/export", { path, glossary, translator }),
+  exportSheets: (path) => request<ExportSheetsResponse>("/api/sheets/export", { path }),
+  packageGlossary: (path, token) => request<{ path: string }>("/api/package/glossary", { path, token }),
   importApply: (path, token, take, translator) => request<MutationResponse>("/api/import/apply", { path, token, take, translator }),
   glossaryLoad: (path) => request<GlossaryInfo>("/api/glossary/load", { path }),
   glossarySave: (path, entries) => request<GlossaryInfo>("/api/glossary/save", { path, entries }),

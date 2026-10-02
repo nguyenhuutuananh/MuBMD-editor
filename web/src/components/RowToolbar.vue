@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BookOpen, CheckCheck, ChevronDown, Download, RefreshCw, Sparkles, Upload } from "@lucide/vue";
+import { BookOpen, CheckCheck, ChevronDown, Download, FileSpreadsheet, Package, RefreshCw, Sparkles, Upload } from "@lucide/vue";
 import { useDebounceFn } from "@vueuse/core";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
@@ -21,6 +21,8 @@ import {
   acceptCleanProposals,
   cleanProposals,
   exportOpen,
+  exportPackage,
+  exportSheets,
   glossaryOpen,
   registerSearch,
   reloadProposals,
@@ -146,6 +148,8 @@ onBeforeUnmount(() => registerSearch(null));
       <DropdownMenuContent align="end" class="min-w-64">
         <DropdownMenuItem data-testid="action-export" @select="exportOpen = true"><Download />{{ t("actions.export") }}</DropdownMenuItem>
         <DropdownMenuItem data-testid="action-import" @select="startImport"><Upload />{{ t("actions.import") }}</DropdownMenuItem>
+        <DropdownMenuItem data-testid="action-export-package" @select="exportPackage"><Package />{{ t("actions.exportPackage") }}</DropdownMenuItem>
+        <DropdownMenuItem data-testid="action-export-sheets" @select="exportSheets"><FileSpreadsheet />{{ t("actions.exportSheets") }}</DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem data-testid="action-glossary" @select="glossaryOpen = true"><BookOpen />{{ t("actions.glossary") }}</DropdownMenuItem>
         <template v-if="!isFallback">

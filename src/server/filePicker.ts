@@ -14,30 +14,36 @@ export class FilePickerUnavailableError extends AppError {
   }
 }
 
-export type SaveKind = "tsv" | "glossary";
+export type SaveKind = "tsv" | "glossary" | "zip";
 
 // Dialog captions follow the UI language.
 const TEXT = {
   en: {
     folder: "Choose the Localization folder (MuMain/src/Localization)",
-    tsv: "Choose a translation file (TSV or CSV)",
+    tsv: "Choose a translation file (TSV, CSV or a .zip package)",
     glossary: "Choose a glossary file (TSV or CSV, the same as MuBMD-editor's)",
     saveTsv: "Export translations as",
     saveGlossary: "Save the glossary as",
+    saveZip: "Save the translation package as",
     all: "All files",
   },
   vi: {
     folder: "Chọn thư mục Localization (MuMain/src/Localization)",
-    tsv: "Chọn file bản dịch (TSV hoặc CSV)",
+    tsv: "Chọn file bản dịch (TSV, CSV hoặc gói .zip)",
     glossary: "Chọn file thuật ngữ (TSV hoặc CSV, dùng chung với MuBMD-editor)",
     saveTsv: "Xuất bản dịch thành",
     saveGlossary: "Lưu bảng thuật ngữ thành",
+    saveZip: "Lưu gói bản dịch thành",
     all: "Tất cả",
   },
 } satisfies Record<Lang, Record<string, string>>;
 
 const MAC_TEXT_TYPES = '{"tsv", "csv", "txt", "public.plain-text", "public.tab-separated-values-text", "public.comma-separated-values-text"}';
+// Translation files can also be packages (.zip).
+const MAC_IMPORT_TYPES = '{"tsv", "csv", "txt", "zip", "public.plain-text", "public.tab-separated-values-text", "public.comma-separated-values-text", "public.zip-archive"}';
 const WIN_TEXT_FILTER = (all: string) => `TSV / CSV (*.tsv;*.csv;*.txt)|*.tsv;*.csv;*.txt|${all} (*.*)|*.*`;
+const WIN_IMPORT_FILTER = (all: string) => `TSV / CSV / ZIP (*.tsv;*.csv;*.txt;*.zip)|*.tsv;*.csv;*.txt;*.zip|${all} (*.*)|*.*`;
+const WIN_ZIP_FILTER = (all: string) => `ZIP (*.zip)|*.zip|${all} (*.*)|*.*`;
 
 const appleString = (s: string) => `"${s.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 const psString = (s: string) => `'${s.replace(/'/g, "''")}'`;
@@ -60,7 +66,7 @@ function pickerCommand(lang: Lang, kind: PickKind, dir?: string): string[] {
         "-e",
         kind === "folder"
           ? `POSIX path of (choose folder with prompt ${appleString(prompt)}${at("")})`
-          : `POSIX path of (choose file with prompt ${appleString(prompt)} of type ${MAC_TEXT_TYPES}${at("")})`,
+          : `POSIX path of (choose file with prompt ${appleString(prompt)} of type ${kind === "tsv" ? MAC_IMPORT_TYPES : MAC_TEXT_TYPES}${at("")})`,
       ];
     case "win32":
       return powershell(
@@ -75,7 +81,7 @@ function pickerCommand(lang: Lang, kind: PickKind, dir?: string): string[] {
           : [
               "$d = New-Object System.Windows.Forms.OpenFileDialog;",
               `$d.Title = ${psString(prompt)};`,
-              `$d.Filter = ${psString(WIN_TEXT_FILTER(t.all))};`,
+              `$d.Filter = ${psString((kind === "tsv" ? WIN_IMPORT_FILTER : WIN_TEXT_FILTER)(t.all))};`,
               dir ? `$d.InitialDirectory = ${psString(dir)};` : "",
               "if ($d.ShowDialog() -eq 'OK') { $d.FileName }",
             ],
@@ -87,7 +93,7 @@ function pickerCommand(lang: Lang, kind: PickKind, dir?: string): string[] {
 
 function savePickerCommand(defaultPath: string, lang: Lang, kind: SaveKind): string[] {
   const t = TEXT[lang];
-  const prompt = kind === "tsv" ? t.saveTsv : t.saveGlossary;
+  const prompt = kind === "tsv" ? t.saveTsv : kind === "zip" ? t.saveZip : t.saveGlossary;
   const dir = path.dirname(defaultPath);
   const name = path.basename(defaultPath);
   switch (process.platform) {
@@ -101,7 +107,7 @@ function savePickerCommand(defaultPath: string, lang: Lang, kind: SaveKind): str
       return powershell([
         "$d = New-Object System.Windows.Forms.SaveFileDialog;",
         `$d.Title = ${psString(prompt)};`,
-        `$d.Filter = ${psString(WIN_TEXT_FILTER(t.all))};`,
+        `$d.Filter = ${psString((kind === "zip" ? WIN_ZIP_FILTER : WIN_TEXT_FILTER)(t.all))};`,
         `$d.InitialDirectory = ${psString(dir)};`,
         `$d.FileName = ${psString(name)};`,
         "if ($d.ShowDialog() -eq 'OK') { $d.FileName }",

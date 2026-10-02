@@ -243,7 +243,11 @@
     "item-name-invalid": "This item name cannot be used: it contains \"{'||'}\" or a control character.",
     "proposal-invalid": "Not a valid proposal file: {detail}",
     "nothing-to-translate": "Nothing to translate in this folder. Choose a MuMain checkout (src/Localization, src/bin/Data/Items), a game folder (Data/Items, or Main.app on macOS), or one of those folders itself.",
-    "items-not-found": "No item data (Data/Items) was found in “{folder}”."
+    "items-not-found": "No item data (Data/Items) was found in “{folder}”.",
+    "zip-invalid": "Cannot read this ZIP file: {detail}",
+    "package-invalid": "This ZIP is not a MuMain-translator package: {detail}",
+    "package-locale": "This package holds {locale} translations, but {open} is open. Open {locale} to import it.",
+    "sheet-tab": "“{tab}” is not a group. The file name of a sheet tab must end with the group name ({groups}, or Item)."
   },
   "common": {
     "cancel": "Cancel",
@@ -306,7 +310,11 @@
     "proposalsCount": "{n} AI proposal to decide. | {n} AI proposals to decide.",
     "proposalsBroken": "Could not read these proposal files: {files}",
     "proposalsSkipped": "{n} proposal was skipped: it changed on disk or was decided already. | {n} proposals were skipped: they changed on disk or were decided already.",
-    "proposalsAccepted": "{n} AI proposal accepted. Press Save to write it. | {n} AI proposals accepted. Press Save to write them."
+    "proposalsAccepted": "{n} AI proposal accepted. Press Save to write it. | {n} AI proposals accepted. Press Save to write them.",
+    "packageExported": "Package exported: {file} ({n} translated, {files} files).",
+    "packageWithGlossary": "The glossary is included.",
+    "sheetsExported": "Exported {file}: {tabs} tabs, {n} rows.",
+    "sheetsHint": "In Google Sheets: open the tab, File → Import → Upload the CSV of the same name → Replace current sheet. Back: File → Download → CSV, then Import translations here."
   },
   "glossary": {
     "title": "Glossary",
@@ -360,9 +368,11 @@
   },
   "actions": {
     "export": "Export translations (TSV)…",
-    "import": "Import translations (TSV)…",
+    "import": "Import translations (TSV, Sheets CSV or .zip)…",
     "glossary": "Glossary…",
-    "markList": "Mark the {n} listed row as | Mark the {n} listed rows as"
+    "markList": "Mark the {n} listed row as | Mark the {n} listed rows as",
+    "exportPackage": "Export a package to share (.zip)…",
+    "exportSheets": "Export for Google Sheets (.zip of CSV tabs)…"
   },
   "exportDialog": {
     "title": "Export translations",
@@ -396,7 +406,13 @@
     "base": "Base",
     "by": "by {name}",
     "invalidChar": "Contains a character a .resx file cannot store.",
-    "apply": "Apply {n} change | Apply {n} changes"
+    "apply": "Apply {n} change | Apply {n} changes",
+    "package": "Package from {by}, {time} ({locale})",
+    "packageCounts": "{rows} rows, {translated} translated; also {files} translated files inside (to unzip over the same MuMain version without the tool).",
+    "englishChanged": "The English texts of {groups} differ from the sender's (another MuMain version). {n} rows whose English changed are not selected: compare before taking them.",
+    "theirEnglish": "In the file:",
+    "useGlossary": "Also use the glossary of the package",
+    "useGlossaryReplace": "Use the glossary of the package instead of {file}"
   },
   "registration": {
     "title": "Make “{locale}” selectable in the game",
@@ -474,5 +490,10 @@
       "body": "{n} proposal in the list was made from the translation as it is now and has no error, warning or glossary problem. It becomes an unsaved change (status Translated), undone with Ctrl+Z; press Save to write it. | {n} proposals in the list were made from the translations as they are now and have no error, warning or glossary problem. They become unsaved changes (status Translated), undone together with Ctrl+Z; press Save to write them.",
       "confirm": "Accept {n} | Accept {n}"
     }
+  },
+  "packageDialog": {
+    "saveTitle": "Save before exporting?",
+    "saveBody": "{n} unsaved change(s). The package holds what is saved, so save first.",
+    "saveAndExport": "Save and export"
   }
 }

@@ -408,12 +408,19 @@ export async function startImport() {
   }
 }
 
-export async function applyImport(take: KeyRef[]) {
+// `glossary`: also use the glossary of the package (written to the side data folder, then loaded).
+export async function applyImport(take: KeyRef[], opts: { glossary?: boolean } = {}) {
   const p = importPreview.value;
   if (!p || !(await ensureTranslator())) return;
   try {
-    const res = await store().importApply(p.path, p.token, take);
+    const res = take.length ? await store().importApply(p.path, p.token, take) : null;
+    if (opts.glossary) {
+      const { path } = await api.packageGlossary(p.path, p.token);
+      const g = await store().loadGlossary(path);
+      toast.success(tr("toast.glossaryLoaded", { file: g.fileName, n: g.entries.length }));
+    }
     importPreview.value = null;
+    if (!res) return;
     toast.success(tr("toast.imported", { n: res.changed.length }), { duration: 8000 });
     // Show what came in, for review before saving.
     store().filter.query = "";
@@ -421,6 +428,66 @@ export async function applyImport(take: KeyRef[]) {
   } catch (e) {
     toast.error(errorText(e));
     if (e instanceof ApiError && e.code === "import-changed") importPreview.value = null;
+  }
+}
+
+// ---- translation package (.zip) ----
+
+// Everything of the locale in one ZIP to share: the translations as a TSV (imported with the merge),
+// the saved files (to unzip over the same MuMain version), the loaded glossary. Unsaved edits are
+// saved first (the package holds what is on disk).
+export async function exportPackage() {
+  if (!(await ensureTranslator()) || !(await commitEditor())) return;
+  const s = store();
+  if (s.status.dirtyCount) {
+    const r = await ask({
+      title: tr("packageDialog.saveTitle"),
+      body: [tr("packageDialog.saveBody", { n: s.status.dirtyCount })],
+      actions: [
+        { id: "cancel", label: tr("common.cancel") },
+        { id: "save", label: tr("packageDialog.saveAndExport"), kind: "primary" },
+      ],
+    });
+    if (r.action !== "save") return;
+    await saveAll();
+    if (s.status.dirtyCount) return; // the save did not go through (conflict, error)
+  }
+  const d = new Date();
+  const ymd = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+  const who = (s.translator || "export").replace(/[^\p{L}\p{N}_-]+/gu, "_");
+  try {
+    const { path } = await api.pickSave(currentLang(), "zip", `MuMain-${s.open?.locale ?? ""}-${who}-${ymd}.zip`);
+    if (!path) return;
+    const res = await api.exportPackage(path, s.glossary?.path ?? null, s.translator);
+    toast.success(tr("toast.packageExported", { file: res.path.split(/[\\/]/).pop() ?? res.path, n: res.translated, files: res.files }), {
+      description: res.glossary ? tr("toast.packageWithGlossary") : undefined,
+      duration: 10000,
+    });
+  } catch (e) {
+    toast.error(errorText(e));
+  }
+}
+
+// ---- Google Sheets ----
+
+// One CSV per tab of the team sheet, in a ZIP (Key, English, <language>, Status, Note, BaseText;
+// ItemType / ItemIndex for the item names). Each CSV goes into its tab with File -> Import ->
+// Replace current sheet; a tab downloaded as CSV (or a ZIP of them) comes back through the import.
+export async function exportSheets() {
+  if (!(await commitEditor())) return;
+  const s = store();
+  const d = new Date();
+  const ymd = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+  try {
+    const { path } = await api.pickSave(currentLang(), "zip", `MuMain_${(s.open?.locale ?? "").toUpperCase()}-sheets-${ymd}.zip`);
+    if (!path) return;
+    const res = await api.exportSheets(path);
+    toast.success(tr("toast.sheetsExported", { file: res.path.split(/[\\/]/).pop() ?? res.path, tabs: res.tabs, n: res.rows }), {
+      description: tr("toast.sheetsHint"),
+      duration: 12000,
+    });
+  } catch (e) {
+    toast.error(errorText(e));
   }
 }
 

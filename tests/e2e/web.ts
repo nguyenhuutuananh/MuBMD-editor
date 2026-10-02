@@ -265,6 +265,43 @@ try {
     JSON.stringify(decisions).slice(0, 200),
   );
 
+  // a package to share: export from MU, import into another checkout (MU2, fresh), keep editing there
+  await page.evaluate(() => (window.__pickQueue = ["exchange/MuMain-vi.zip"]));
+  await tid("actions").click();
+  await tid("action-export-package").click();
+  await page.waitForFunction(() => document.body.textContent?.includes("Package exported"));
+  const zipSize = await page.evaluate(async () => {
+    const dir = await (await navigator.storage.getDirectory()).getDirectoryHandle("exchange");
+    return (await (await dir.getFileHandle("MuMain-vi.zip")).getFile()).size;
+  });
+  check("package exported to the chosen file", zipSize > 1000, String(zipSize));
+  for (const [p, b] of Object.entries(sampleCheckout("MU2"))) await opfsWrite(page, p, dec.decode(b));
+  await page.evaluate(() => (window.__folder = "MU2"));
+  await tid("open-other").click();
+  await tid("pick").click();
+  await tid("locale-vi").click();
+  await tid("open").click();
+  await tid("badge-items").waitFor();
+  await page.evaluate(() => (window.__pickQueue = ["exchange/MuMain-vi.zip"]));
+  await tid("actions").click();
+  await tid("action-import").click();
+  await tid("import-package").waitFor();
+  check("import shows the package", (await text("import-package")).includes("Package from Web"), await text("import-package"));
+  await tid("import-apply").click();
+  await page.waitForTimeout(300);
+  await page.keyboard.press("Control+s");
+  await saved();
+  const helm3 = ItemData.parse([{ name: "Group07_Helm.json", text: (await opfsRead(page, "MU2/src/bin/Data/Items/Group07_Helm.json")) ?? "" }]);
+  check("package imported into the other checkout", helm3.getName(7 * 512 + 1) === "Mũ Rồng Đỏ" && helm3.getName(7 * 512 + 5) === "Mũ Năm Sửa");
+  check("UI strings came along", ((await opfsRead(page, "MU2/src/Localization/Game.vi.resx")) ?? "").includes("<value>Đang kết nối tới máy chủ</value>"));
+
+  // Google Sheets: a ZIP of one CSV per tab
+  await page.evaluate(() => (window.__pickQueue = ["exchange/sheets.zip"]));
+  await tid("actions").click();
+  await tid("action-export-sheets").click();
+  await page.waitForFunction(() => document.body.textContent?.includes("tabs,"));
+  check("exported for Google Sheets", (await opfsList(page, "exchange")).includes("sheets.zip"));
+
   // a browser without the File System Access API (Firefox, Safari): the fallback mode
   // (tests/e2e/web-fallback.ts runs it in Firefox and WebKit)
   const other = await context.newPage();

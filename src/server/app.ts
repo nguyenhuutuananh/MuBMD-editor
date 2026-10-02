@@ -159,8 +159,8 @@ export function createApp(opts: AppOptions) {
       return { path: await pick(langOf(b), kind, startDir()) } satisfies PickResponse;
     },
     "/api/pick-save": async (b) => {
-      const kind: SaveKind = b.kind === "glossary" ? "glossary" : "tsv";
-      const name = str(b.defaultName).replace(/[\\/:*?"<>|]/g, "_").trim() || (kind === "tsv" ? "translations.tsv" : "Glossary.tsv");
+      const kind: SaveKind = b.kind === "glossary" || b.kind === "zip" ? b.kind : "tsv";
+      const name = str(b.defaultName).replace(/[\\/:*?"<>|]/g, "_").trim() || { tsv: "translations.tsv", glossary: "Glossary.tsv", zip: "translations.zip" }[kind];
       const dir = startDir() ?? process.cwd();
       return { path: await pickSave(pathJoin(dir, name), langOf(b), kind) } satisfies PickResponse;
     },
@@ -171,6 +171,10 @@ export function createApp(opts: AppOptions) {
     "/api/note": (b) => session.setNote(str(b.group), str(b.key), str(b.note), str(b.translator)),
     "/api/export": (b) => session.exportTsv(pathOf(b), keysOf(b.keys)),
     "/api/import/preview": (b) => session.previewImport(pathOf(b)),
+    "/api/package/export": (b) =>
+      session.exportPackage(pathOf(b), { glossary: str(b.glossary).trim() || null, translator: str(b.translator), tool: opts.version }),
+    "/api/sheets/export": (b) => session.exportSheets(pathOf(b)),
+    "/api/package/glossary": async (b) => ({ path: await session.importPackageGlossary(pathOf(b), str(b.token)) }),
     "/api/import/apply": (b) => session.applyImport(pathOf(b), str(b.token), keysOf(b.take), str(b.translator)),
     // The glossary is a standalone file shared by the team (and with MuBMD-editor).
     "/api/glossary/load": (b): Promise<GlossaryInfo> => loadGlossaryFile(session.storage, pathOf(b)),

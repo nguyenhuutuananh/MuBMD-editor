@@ -115,6 +115,16 @@ Item names:
     -> Save. One TSV holds both UI strings and item names (Group "Items.Helm", Key "1"). It opens in
     Excel / Google Sheets; untranslated rows have an empty Translation to fill in and import back.
     MuBMD-editor's TSV files (ItemType, ItemIndex, Name) import too.
+  - Sharing everything: Actions -> Export a package to share (.zip) (the translations as a TSV, the
+    translated files, the glossary). The receiver opens their MuMain in the tool (the web version too) ->
+    Actions -> Import translations (TSV / .zip package) -> preview -> Apply -> Save; merged key by key, so
+    it works across MuMain versions (rows whose English changed are not selected). Without the tool: copy
+    the package's files/ folder over MuMain (same version only).
+  - Google Sheets: Actions -> Export for Google Sheets -> a .zip with one CSV per tab (Key, English,
+    Vietnamese, Status, Note, BaseText; the Item tab: ItemType, ItemIndex, ...). In Sheets: open the tab,
+    File -> Import -> Upload the CSV of the same name -> Replace current sheet (BaseText can be hidden).
+    Back: File -> Download -> CSV of a tab (or a zip of several) -> Actions -> Import translations ->
+    preview -> Apply. An older sheet without BaseText lists every difference as a change: review first.
   - Glossary: Actions -> Glossary… -> the team's glossary file (TSV, or the old MuMain_VI_Glossary.csv).
     Checked against the English text / name; hints in the detail panel, filter "Glossary problems".
   - AI proposals: an AI assistant (through MCP) writes proposals into .mumain-translator/proposals/.

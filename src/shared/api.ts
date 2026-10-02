@@ -226,7 +226,8 @@ export interface ReferenceRequest {
   locale: string | null; // null = none
 }
 
-export type PickKind = "folder" | "tsv" | "glossary";
+export type PickKind = "folder" | "tsv" | "glossary"; // tsv: a translation file, TSV / CSV or a .zip package
+export type SaveKind = "tsv" | "glossary" | "zip";
 
 export interface PickRequest {
   lang?: Lang; // language of the native OS dialog captions
@@ -235,7 +236,7 @@ export interface PickRequest {
 
 export interface PickSaveRequest {
   lang?: Lang;
-  kind?: "tsv" | "glossary";
+  kind?: SaveKind;
   defaultName?: string; // file name suggestion (folder = next to the Localization folder)
 }
 
@@ -270,6 +271,40 @@ export interface ImportPreview {
   counts: MergeCounts;
   problems: TsvProblem[];
   hasBase: boolean;
+  package?: PackageInfo; // the file is a translation package (.zip)
+}
+
+// What a translation package says about itself (src/core/package.ts).
+export interface PackageInfo {
+  locale: string;
+  createdAt: string;
+  by: string;
+  tool: string;
+  rows: number;
+  translated: number;
+  files: number; // translated files inside (for unzipping without the tool)
+  glossary: boolean; // holds the team glossary
+  englishChanged: string[]; // groups whose English texts differ from the ones here (another MuMain version)
+}
+
+export interface ExportPackageRequest {
+  path: string;
+  glossary?: string | null; // glossary file to put in (the one loaded)
+  translator: string;
+}
+
+export interface ExportSheetsResponse {
+  path: string;
+  tabs: number;
+  rows: number;
+}
+
+export interface ExportPackageResponse {
+  path: string;
+  rows: number;
+  translated: number;
+  files: number;
+  glossary: boolean;
 }
 
 export interface ImportApplyRequest {

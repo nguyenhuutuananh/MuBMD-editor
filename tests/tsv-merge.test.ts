@@ -45,7 +45,8 @@ describe("translation TSV", () => {
 
   test("MuBMD-editor's item TSV: rows of the item groups", () => {
     const r = parseTranslationTsv("ItemType\tItemIndex\tName\tStatus\tBaseName\tReference\n0\t1\tKiếm\treviewed\tCũ\tSword\n16\t0\tX\t\t\t\n");
-    expect(r.rows.map((x) => [x.group, x.key, x.value, x.status, x.base, x.english])).toEqual([["Items.Sword", "1", "Kiếm", "reviewed", "Cũ", "Sword"]]);
+    // Reference is another locale's name, not the English one.
+    expect(r.rows.map((x) => [x.group, x.key, x.value, x.status, x.base, x.english])).toEqual([["Items.Sword", "1", "Kiếm", "reviewed", "Cũ", undefined]]);
     expect(r.problems.map((p) => p.code)).toEqual(["missing-key"]); // ItemType 16 does not exist
   });
 });

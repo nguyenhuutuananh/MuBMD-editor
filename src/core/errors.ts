@@ -15,6 +15,10 @@ export type ErrorCode =
   | "item-json" // an item file (Data/Items/*.json) MuMain could not load either (params: file, detail)
   | "item-name-invalid" // an item name the game cannot take ("||", control characters) (params: code)
   | "proposal-invalid" // not a proposal file (params: detail)
+  | "zip-invalid" // not a ZIP file this tool can read (params: detail)
+  | "package-invalid" // a ZIP without the files of a translation package (params: detail)
+  | "package-locale" // a package of another locale than the one open (params: locale, open)
+  | "sheet-tab" // a sheet tab (CSV without a Group column) whose name is no group (params: tab, groups)
   // session
   | "no-folder" // nothing is open yet
   | "nothing-to-translate" // the folder has neither Localization .resx files nor item data (params: path)

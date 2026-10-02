@@ -119,7 +119,10 @@ const nfc = (s: string | undefined) => (s ?? "").normalize("NFC");
 const short = (s: string | undefined) => nfc(s).trim();
 
 // A file of the item editor MuBMD-editor (ItemType, ItemIndex, Name, Status, Translator, UpdatedAt,
-// BaseName, Reference, Note): read as rows of the item groups ("Items.Sword" / "12").
+// BaseName, Reference, Note), the team sheet's Item tab (ItemType, ItemIndex, English or the old
+// Nguon, Vietnamese / TiengViet): read as rows of the item groups ("Items.Sword" / "12"). Only a
+// column named English is the English name: Nguon (the Japanese name of the old Item.bmd) and
+// Reference (another locale) are not, and would make every row look outdated.
 function itemColumns(header: string[]): Map<Field, number> | null {
   const norm = header.map((h) => h.trim().toLowerCase().replace(/[\s_-]/g, ""));
   const type = norm.indexOf("itemtype");
@@ -131,10 +134,10 @@ function itemColumns(header: string[]): Map<Field, number> | null {
   ]);
   const map: Record<string, Field> = {
     basename: "base",
+    basetext: "base",
     base: "base",
-    reference: "english",
-    nguon: "english", // MuMain_VI_Item.csv: the source (Japanese) name
-    source: "english",
+    english: "english",
+    en: "english",
     status: "status",
     translator: "translator",
     updatedat: "updatedAt",
@@ -156,7 +159,9 @@ function itemRef(type: string, index: string): [string, string] | null {
   return [itemGroupName(t), String(i)];
 }
 
-export function parseTranslationTsv(text: string): TsvParseResult {
+// `defaultGroup`: a Google Sheets tab without a Group column (sheets.ts): every row is of this
+// group, and a column the reader does not know is the translation (it is named after the language).
+export function parseTranslationTsv(text: string, opts: { defaultGroup?: string } = {}): TsvParseResult {
   const table = parseDelimited(text);
   const header = table[0] ?? [];
   const items = itemColumns(header);
@@ -167,7 +172,12 @@ export function parseTranslationTsv(text: string): TsvParseResult {
       if (f && !col.has(f)) col.set(f, i);
     });
   }
-  if (!col.has("group") || !col.has("key") || !col.has("value")) {
+  const tabGroup = !items && !col.has("group") && opts.defaultGroup ? opts.defaultGroup : null;
+  if (tabGroup && !col.has("value")) {
+    const i = header.findIndex((h) => h.trim() !== "" && fieldOf(h) === null);
+    if (i >= 0) col.set("value", i);
+  }
+  if ((!col.has("group") && !tabGroup) || !col.has("key") || !col.has("value")) {
     throw new AppError("tsv-header", `The header must contain Group, Key and Translation columns (got: ${header.join(", ")}).`, {
       columns: header.join(", "),
     });
@@ -183,7 +193,7 @@ export function parseTranslationTsv(text: string): TsvParseResult {
     const line = i + 2;
     if (!cells.join("").trim()) return;
     // Keys and texts are kept exactly (leading / trailing spaces can matter in game texts).
-    let group = short(get(cells, "group"));
+    let group = tabGroup ?? short(get(cells, "group"));
     let key = nfc(get(cells, "key"));
     if (items) [group, key] = itemRef(group, key) ?? ["", ""];
     if (!group || !key) {

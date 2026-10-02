@@ -13,6 +13,8 @@
 // A text with an error-level check (printf placeholders...) is listed, but not taken by default.
 // A new text marked "untranslated" in the file (a row exported empty, then filled in a sheet)
 // comes in as "translated".
+// A row whose English column differs from the en text here (the file comes from another version of
+// MuMain, the English changed since) is marked `englishChanged` and not taken by default.
 
 import { isXmlChar } from "./xml";
 import { type Status, type TsvRow, statusRank } from "./tsv";
@@ -41,6 +43,7 @@ export interface MergeItem {
   translator: string | null;
   take: boolean; // default choice shown in the preview
   errors: ValueIssue[]; // error-level checks of `theirs` against en
+  theirEnglish?: string; // set when the file's English text differs from the en text here
 }
 
 export interface MergeCounts {
@@ -81,6 +84,7 @@ export function analyzeImport(rows: TsvRow[], ours: (group: string, key: string)
       continue;
     }
     const errors = (o.check ?? checkValue)(o.en, theirs).filter((i) => SEVERITY[i.code] === "error");
+    const enChanged = row.english !== undefined && row.english !== "" && row.english.normalize("NFC") !== o.en.normalize("NFC");
     const item = (kind: MergeKind, take: boolean): MergeItem => ({
       group: row.group,
       key: row.key,
@@ -93,8 +97,9 @@ export function analyzeImport(rows: TsvRow[], ours: (group: string, key: string)
       oursStatus: o.status,
       theirsStatus: kind !== "status" && row.status === "untranslated" ? "translated" : (row.status ?? null),
       translator: row.translator ?? null,
-      take: take && errors.length === 0,
+      take: take && errors.length === 0 && !enChanged,
       errors,
+      ...(enChanged ? { theirEnglish: row.english } : {}),
     });
 
     if (hasInvalidChar(theirs)) {
