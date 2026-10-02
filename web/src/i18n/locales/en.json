@@ -38,7 +38,11 @@
     "itemsFound": "{n} file, {layout} | {n} files, {layout}",
     "noResx": "No string tables here (they only exist in a MuMain checkout).",
     "pickUpload": "Choose folder (upload)…",
-    "fallbackHint": "This browser cannot edit files in place (Chrome or Edge can). Choose the folder anyway: only the files to translate are read into a copy kept in this browser (nothing is sent anywhere), and saving downloads the changed files - one file as it is, several as a zip laid out like the folder - to put back over it."
+    "fallbackHint": "This browser cannot edit files in place (Chrome or Edge can). Choose the folder anyway: only the files to translate are read into a copy kept in this browser (nothing is sent anywhere), and saving downloads the changed files - one file as it is, several as a zip laid out like the folder - to put back over it.",
+    "localeName": "Name of “{code}”",
+    "localeNamePlaceholder": "e.g. ภาษาไทย",
+    "localeNameHint": "In its own language. Shown in the tool and in the lines suggested for the game’s language list; kept for this folder.",
+    "otherLocale": "Other language…"
   },
   "topbar": {
     "reference": "Reference",
@@ -61,7 +65,8 @@
     "resxTitle": "The game's string tables: {dir} (compiled into the client by MuMain's build: rebuild to see a change).",
     "itemsTitle": "Item names: {dir} (read by the game at start: restart it to see a change).",
     "browserCopy": "Copy in this browser",
-    "browserCopyTitle": "This browser cannot write to your folders, so you are editing a copy kept in the browser. Saving downloads the changed files: put them back into the folder (a zip unpacks over it)."
+    "browserCopyTitle": "This browser cannot write to your folders, so you are editing a copy kept in the browser. Saving downloads the changed files: put them back into the folder (a zip unpacks over it).",
+    "localeTitle": "Translate another language of this folder, or rename this one"
   },
   "groups": {
     "label": "Groups",

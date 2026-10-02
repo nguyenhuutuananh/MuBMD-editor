@@ -302,6 +302,29 @@ try {
   await page.waitForFunction(() => document.body.textContent?.includes("tabs,"));
   check("exported for Google Sheets", (await opfsList(page, "exchange")).includes("sheets.zip"));
 
+  // another language of the open folder, from the locale badge: a new one with its own name
+  await tid("locale-switch").click();
+  await tid("locale-new").click();
+  await tid("locale-new-code").fill("th");
+  check("a name suggested for a new code", (await tid("locale-name").inputValue()) === "ไทย", await tid("locale-name").inputValue());
+  await tid("locale-name").fill("ภาษาไทย");
+  await tid("open").click();
+  await page.waitForFunction(() => document.querySelector('[data-testid="locale"]')?.textContent?.includes("th"));
+  check("switched to the new language with its name", (await text("locale")).includes("th · ภาษาไทย"), await text("locale"));
+  check("the name is kept for the folder", ((await opfsRead(page, "MU2/.mumain-translator/locales.json")) ?? "").includes("ภาษาไทย"));
+  await tid("locale-switch").click();
+  await tid("locale-vi").click();
+  await tid("open").click();
+  await page.waitForFunction(() => document.querySelector('[data-testid="locale"]')?.textContent?.startsWith("vi"));
+  check("back to vi without choosing the folder again", (await text("locale")).startsWith("vi"), await text("locale"));
+
+  // a recent folder: the locale choice instead of its last locale
+  await tid("open-other").click();
+  await tid("recent-locale").first().click();
+  await tid("sources").waitFor();
+  check("recent folder: choose another language", (await tid("locale-vi").count()) === 1);
+  await page.getByRole("button", { name: /Back/ }).first().click();
+
   // a browser without the File System Access API (Firefox, Safari): the fallback mode
   // (tests/e2e/web-fallback.ts runs it in Firefox and WebKit)
   const other = await context.newPage();

@@ -15,6 +15,7 @@ import type { WorkspaceListing } from "../shared/api";
 import { type ItemsFolder, ItemsNotFoundError, type Platform, findItemsFolder } from "./itemsFolder";
 import { itemLocales } from "./sources/itemsGroup";
 import type { Storage } from "./storage";
+import { readLocaleNames } from "./localeNames";
 
 export interface Workspace {
   root: string;
@@ -100,5 +101,6 @@ export async function listWorkspace(st: Storage, ws: Workspace): Promise<Workspa
     resx,
     items,
     locales: [...perLocale.keys()].sort(compareLocales).map((code) => ({ code, groups: perLocale.get(code)! })),
+    names: await readLocaleNames(st, ws.root),
   };
 }

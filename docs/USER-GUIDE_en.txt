@@ -59,7 +59,12 @@ to translate. When a folder holds both a Windows and a macOS build, the one of t
 is used; to edit the other one, choose its folder directly.
 
 Then choose the language to translate. "A new language" starts one (e.g. th): its translations are
-added on the first save. You can also show a reference language in its own column (e.g. de).
+added on the first save. The "Name" field suggests the name in that language (th -> ไทย) and can be
+changed (e.g. ภาษาไทย); it is kept for this folder and used in the lines suggested for the game's
+language list. You can also show a reference language in its own column (e.g. de).
+To translate another language (or rename this one) without choosing the folder again, click the
+language badge at the top (e.g. "vi · Tiếng Việt"). In "Recently opened", "Other language…" opens the
+language choice of that folder instead of its last language.
 
 On the left: "Everything", then "UI strings" and "Item names" with their groups, progress (green =
 translated, amber = identical to English), errors / warnings and unsaved changes. At the top: badges

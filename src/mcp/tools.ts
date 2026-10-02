@@ -5,7 +5,7 @@
 
 import { PROPOSAL_VERSION, SEVERITY, type GlossaryEntry, type GlossaryHint, checkGlossary, isConfirmed, isProblemHint } from "../core";
 import { ROW_KEEP, type RowIssue, type Status } from "../shared/api";
-import { localeName } from "../shared/locales";
+import { localeLabel } from "../shared/locales";
 import { loadGlossaryFile } from "../session/glossaryFiles";
 import { loadDecisions, loadProposals, recordDecisions, writeProposalFile } from "../session/proposals";
 import type { ProposalInfo, Session } from "../session/session";
@@ -177,7 +177,7 @@ export function createTools(ctx: McpContext): McpTool[] {
         return {
           root: open.folder.path,
           locale,
-          language: localeName(locale),
+          language: localeLabel(locale, open.folder.names),
           sources: {
             ...(open.folder.resx ? { resx: { dir: open.folder.resx.rel || ".", ...count("resx") } } : {}),
             ...(open.folder.items ? { items: { dir: open.folder.items.rel || ".", ...count("items") } } : {}),

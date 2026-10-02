@@ -68,8 +68,11 @@ export async function runMcp(argv: string[]): Promise<void> {
   const disk = new NodeStorage();
   const probe = new Session(new GuardedStorage(disk, "/nonexistent-mumain-translator"), undefined, hostPlatform(process.platform));
   let root: string;
+  let names: Record<string, string> = {};
   try {
-    root = (await probe.scan(args.folder)).path; // the workspace root (where .mumain-translator/ is)
+    const listing = await probe.scan(args.folder);
+    root = listing.path; // the workspace root (where .mumain-translator/ is)
+    names = listing.names;
   } catch (e) {
     process.stderr.write(`Cannot open ${args.folder}: ${(e as Error).message}\n`);
     process.exit(1);
@@ -77,6 +80,6 @@ export async function runMcp(argv: string[]): Promise<void> {
   const session = new Session(new GuardedStorage(disk, proposalsDir(disk, root)), undefined, hostPlatform(process.platform));
   const tools = createTools({ session, folder: args.folder, locale: args.locale, glossary: args.glossary, style: args.style, by: args.by });
   process.stderr.write(`MuMain-translator MCP server ${pkg.version}: ${root} (${args.locale})\n`);
-  const prompts = createPrompts({ locale: args.locale, hasGlossary: args.glossary !== null, hasStyle: args.style !== null });
+  const prompts = createPrompts({ locale: args.locale, language: names[args.locale], hasGlossary: args.glossary !== null, hasStyle: args.style !== null });
   await serveStdio(createMcpServer({ name: "mumain-translator", version: pkg.version, instructions: INSTRUCTIONS, tools, prompts }));
 }

@@ -62,7 +62,7 @@ try {
   await page.goto(url);
   await tid("pick").click();
   await tid("locale-vi").waitFor();
-  check("locales listed without en", (await page.locator('[data-testid^="locale-"]:not([data-testid^="locale-new"])').count()) === 2);
+  check("locales listed without en", (await page.locator('[data-testid^="locale-"]:not([data-testid^="locale-new"]):not([data-testid="locale-name"]):not([data-testid="locale-switch"])').count()) === 2);
   await tid("open").click();
   await tid("grid").waitFor();
   check("workspace shows the locale", (await text("locale")).startsWith("vi"));
@@ -317,7 +317,7 @@ try {
     await tid("path").fill(real);
     await page.keyboard.press("Enter");
     // The first translation the checkout has (upstream: de; a team's checkout: its own locale).
-    await page.locator('[data-testid^="locale-"]:not([data-testid^="locale-new"])').first().click();
+    await page.locator('[data-testid^="locale-"]:not([data-testid^="locale-new"]):not([data-testid="locale-name"]):not([data-testid="locale-switch"])').first().click();
     await tid("open").click();
     await page.waitForFunction(() => /\d,\d{3}/.test(document.querySelector('[data-testid="result-count"]')?.textContent ?? ""));
     check("real folder loads", /\d/.test(await text("result-count")), await text("result-count"));

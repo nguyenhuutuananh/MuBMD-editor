@@ -131,7 +131,11 @@ export function createApp(opts: AppOptions) {
   const posts: Record<string, Handler> = {
     "/api/scan": (b) => session.scan(pathOf(b)),
     "/api/open": async (b) => {
-      await session.openFolder(pathOf(b), str(b.locale).trim(), str(b.reference).trim() || null, { discard: b.discard === true, create: b.create === true });
+      await session.openFolder(pathOf(b), str(b.locale).trim(), str(b.reference).trim() || null, {
+        discard: b.discard === true,
+        create: b.create === true,
+        name: typeof b.name === "string" ? b.name : undefined,
+      });
       return state();
     },
     "/api/edit": (b) => {

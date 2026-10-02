@@ -7,9 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { backToFolder, openFolder, openRecent, pickFolder, scanPath, showWelcome, welcomeError } from "@/composables/actions";
+import { backToFolder, chooseRecentLocale, openFolder, openRecent, pickFolder, scanPath, showWelcome, welcomeError } from "@/composables/actions";
 import { isFallback, isWeb } from "@/lib/api";
-import { localeName } from "@/lib/locales";
+import { suggestLocaleName } from "@/lib/locales";
 import { displayPath } from "@/lib/paths";
 import { useDocStore } from "@/stores/doc";
 
@@ -20,6 +20,10 @@ const input = ref<InstanceType<typeof Input> | null>(null);
 const NONE = "__none__";
 const NEW = "__new__"; // the "new language" choice
 const newCode = ref("");
+// Display name of the chosen locale (shown in the tool and in the lines suggested for the game's
+// language list). For a new code it follows the code until the user types a name.
+const name = ref("");
+const nameTouched = ref(false);
 
 function submit() {
   const p = path.value.trim().replace(/^"(.*)"$/, "$1");
@@ -39,13 +43,26 @@ watch(listing, (l) => {
   newCode.value = "";
   reference.value = last?.reference && codes.includes(last.reference) ? last.reference : NONE;
 });
+watch(
+  [target, newCode, listing],
+  () => {
+    if (target.value !== NEW) {
+      name.value = target.value ? store.localeTitle(target.value) : "";
+      nameTouched.value = false;
+    } else if (!nameTouched.value) name.value = suggestLocaleName(newCode.value.trim());
+  },
+  { immediate: true },
+);
 const referenceChoices = computed(() => choices.value.filter((c) => c.code !== target.value));
 const code = computed(() => (target.value === NEW ? newCode.value.trim() : target.value));
 const exists = computed(() => listing.value?.locales.some((l) => l.code === code.value) ?? false);
 const codeOk = computed(() => code.value !== "" && code.value !== "en" && isLocaleCode(code.value));
 const confirm = () => {
   if (!listing.value || !codeOk.value) return;
-  openFolder(listing.value.path, code.value, reference.value === NONE ? null : reference.value, false, !exists.value);
+  const typed = name.value.trim();
+  // Only a name that differs from what is shown now is stored (a new locale: always).
+  const rename = !exists.value || typed !== store.localeTitle(code.value) ? { name: typed } : {};
+  openFolder(listing.value.path, code.value, reference.value === NONE ? null : reference.value, { create: !exists.value, ...rename });
 };
 
 onMounted(() => (input.value?.$el as HTMLInputElement | undefined)?.focus());
@@ -88,7 +105,7 @@ onMounted(() => (input.value?.$el as HTMLInputElement | undefined)?.focus());
             >
               <input v-model="target" type="radio" name="target" :value="c.code" class="accent-(--brand)" />
               <span class="font-mono text-xs">{{ c.code }}</span>
-              <span class="flex-1">{{ localeName(c.code) }}</span>
+              <span class="flex-1">{{ store.localeTitle(c.code) }}</span>
               <span class="text-muted-foreground text-xs">{{ t("welcome.groups", { n: c.groups }, c.groups) }}</span>
             </label>
             <label
@@ -114,13 +131,27 @@ onMounted(() => (input.value?.$el as HTMLInputElement | undefined)?.focus());
               </span>
             </label>
           </fieldset>
+          <div v-if="code && codeOk" class="flex flex-col gap-1.5">
+            <Label for="locale-name" class="text-muted-foreground text-xs">{{ t("welcome.localeName", { code }) }}</Label>
+            <Input
+              id="locale-name"
+              v-model="name"
+              class="w-72"
+              spellcheck="false"
+              autocomplete="off"
+              :placeholder="t('welcome.localeNamePlaceholder')"
+              data-testid="locale-name"
+              @input="nameTouched = true"
+            />
+            <p class="text-muted-foreground text-xs">{{ t("welcome.localeNameHint") }}</p>
+          </div>
           <div v-if="referenceChoices.length" class="flex flex-col gap-1.5">
             <Label class="text-muted-foreground text-xs">{{ t("welcome.reference") }}</Label>
             <Select v-model="reference">
               <SelectTrigger class="w-60"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem :value="NONE">{{ t("welcome.referenceNone") }}</SelectItem>
-                <SelectItem v-for="c in referenceChoices" :key="c.code" :value="c.code">{{ c.code }} · {{ localeName(c.code) }}</SelectItem>
+                <SelectItem v-for="c in referenceChoices" :key="c.code" :value="c.code">{{ c.code }} · {{ store.localeTitle(c.code) }}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -172,9 +203,17 @@ onMounted(() => (input.value?.$el as HTMLInputElement | undefined)?.focus());
       <div v-if="!listing && store.recent.length">
         <h2 class="text-muted-foreground mt-2 mb-1 text-xs font-semibold">{{ t("welcome.recent") }}</h2>
         <ul class="flex flex-col gap-1 text-[13px]">
-          <li v-for="r in store.recent" :key="r.path">
-            <button type="button" class="text-brand text-left break-all hover:underline" data-testid="recent" @click="openRecent(r)">
+          <li v-for="r in store.recent" :key="r.path" class="flex items-baseline gap-2">
+            <button type="button" class="text-brand min-w-0 flex-1 text-left break-all hover:underline" data-testid="recent" @click="openRecent(r)">
               <span class="font-mono text-xs">[{{ r.locale }}{{ r.reference ? ` + ${r.reference}` : "" }}]</span> {{ displayPath(r.path) }}
+            </button>
+            <button
+              type="button"
+              class="text-muted-foreground hover:text-foreground shrink-0 text-xs underline-offset-2 hover:underline"
+              data-testid="recent-locale"
+              @click="chooseRecentLocale(r)"
+            >
+              {{ t("welcome.otherLocale") }}
             </button>
           </li>
         </ul>

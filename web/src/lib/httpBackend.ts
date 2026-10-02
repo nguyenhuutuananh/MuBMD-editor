@@ -46,7 +46,7 @@ export const backend: Backend = {
   state: () => request<StateResponse>("/api/state"),
   rows: () => request<RowsResponse>("/api/rows"),
   scan: (path) => request<WorkspaceListing>("/api/scan", { path }),
-  open: (path, locale, reference, discard = false, create = false) => request<StateResponse>("/api/open", { path, locale, reference, discard, create }),
+  open: (path, locale, reference, opts = {}) => request<StateResponse>("/api/open", { path, locale, reference, ...opts }),
   registration: () => request<RegistrationInfo>("/api/registration"),
   reference: (locale) => request<StateResponse>("/api/reference", { locale }),
   pick: (lang, kind = "folder") => request<PickResponse>("/api/pick", { lang, kind }),

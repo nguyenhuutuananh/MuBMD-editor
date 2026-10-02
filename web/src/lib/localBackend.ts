@@ -159,9 +159,9 @@ export const backend: Backend = {
   state: () => call(state),
   rows: () => call(() => session.rows()),
   scan: (path) => call(() => session.scan(path)),
-  open: (path, locale, reference, discard = false, create = false) =>
+  open: (path, locale, reference, opts = {}) =>
     call(async () => {
-      await session.openFolder(path, locale, reference, { discard, create });
+      await session.openFolder(path, locale, reference, opts);
       return state();
     }),
   reference: (locale) =>

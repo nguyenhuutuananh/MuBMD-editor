@@ -58,7 +58,12 @@ Game đã phát hành không có file .resx (chúng đã được biên dịch v
 chọn; muốn sửa bản kia thì chọn thẳng thư mục của nó.
 
 Sau đó chọn ngôn ngữ cần dịch. "Ngôn ngữ mới" để bắt đầu một ngôn ngữ (vd. th): bản dịch được thêm
-ở lần lưu đầu. Có thể chọn thêm một ngôn ngữ tham khảo, hiện ở cột riêng (vd. de).
+ở lần lưu đầu. Ô "Tên" tự gợi ý tên bằng chính ngôn ngữ đó (th -> ไทย), sửa được (vd. ภาษาไทย); tên được
+lưu cho thư mục này và dùng trong dòng code gợi ý cho danh sách ngôn ngữ của game. Có thể chọn thêm một
+ngôn ngữ tham khảo, hiện ở cột riêng (vd. de).
+Đổi sang ngôn ngữ khác (hoặc đổi tên ngôn ngữ đang dịch) mà không chọn lại thư mục: bấm huy hiệu ngôn
+ngữ trên cùng (vd. "vi · Tiếng Việt"). Trong "Mở gần đây", "Ngôn ngữ khác…" mở bước chọn ngôn ngữ của
+thư mục đó thay vì mở thẳng ngôn ngữ lần trước.
 
 Bên trái: "Tất cả", rồi "Chuỗi giao diện" và "Tên vật phẩm" với từng nhóm, tiến độ (xanh = đã dịch,
 vàng = giống hệt tiếng Anh), số lỗi / cảnh báo và số thay đổi chưa lưu. Trên cùng: huy hiệu cho biết

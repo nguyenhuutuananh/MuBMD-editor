@@ -46,6 +46,12 @@ export class ApiError extends Error {
   }
 }
 
+export interface OpenOptions {
+  discard?: boolean; // discard the unsaved edits of the folder open now
+  create?: boolean; // a locale without files yet
+  name?: string; // display name of the locale, stored for this folder
+}
+
 export interface Backend {
   readonly kind: "http" | "local";
   // Web build without the File System Access API: files are uploaded, results downloaded.
@@ -53,7 +59,7 @@ export interface Backend {
   state(): Promise<StateResponse>;
   rows(): Promise<RowsResponse>;
   scan(path: string): Promise<WorkspaceListing>;
-  open(path: string, locale: string, reference: string | null, discard?: boolean, create?: boolean): Promise<StateResponse>;
+  open(path: string, locale: string, reference: string | null, opts?: OpenOptions): Promise<StateResponse>;
   registration(): Promise<RegistrationInfo>;
   reference(locale: string | null): Promise<StateResponse>;
   pick(lang: Lang, kind?: PickKind): Promise<PickResponse>;

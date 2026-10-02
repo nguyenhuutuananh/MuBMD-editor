@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { AppError, checkEmitter, checkOptionWindow, parseResx, resxValues, wideLiteral } from "../src/core";
 import { MemoryStorage } from "../src/session/memoryStorage";
 import { EMITTER_FILE, OPTION_WINDOW_FILE, Session } from "../src/session/session";
+import { localeLabel, suggestLocaleName } from "../src/shared/locales";
 import { sampleBytes } from "./fixtures/sampleLocalization";
 
 const DIR = "/mu/src/Localization";
@@ -88,5 +89,45 @@ describe("new locale", () => {
     expect(await code(s.openFolder(DIR, "th"))).toBe("locale-not-found");
     await s.openFolder(DIR, "vi", null, { create: true }); // existing: create is harmless
     expect(s.rows().groups[2]!.file).toBe("src/Localization/Game.vi.resx");
+  });
+});
+
+describe("locale names", () => {
+  test("a suggestion in the language itself; MuMain's own names first", () => {
+    expect(suggestLocaleName("th")).toBe("ไทย");
+    expect(suggestLocaleName("vi")).toBe("Tiếng Việt");
+    expect(suggestLocaleName("xx")).toBe("");
+    expect(localeLabel("th", { th: "ภาษาไทย" })).toBe("ภาษาไทย");
+    expect(localeLabel("th", {})).toBe("th");
+  });
+
+  test("a new locale with a name: kept for the folder, used in the lines for the game's language list", async () => {
+    const { s, st } = setup();
+    await s.openFolder(DIR, "th", null, { create: true, name: " ภาษาไทย " });
+    expect(s.open!.folder.names).toEqual({ th: "ภาษาไทย" });
+    const file = [...st.files.keys()].find((k) => k.endsWith(".mumain-translator/locales.json"))!;
+    expect(JSON.parse(new TextDecoder().decode(st.files.get(file)!))).toEqual({ version: 1, names: { th: "ภาษาไทย" } });
+    const r = await s.registration();
+    expect(r.name).toBe("ภาษาไทย");
+    expect(r.optionWindow!.line).toContain('// ภาษาไทย');
+    // Read back on the next scan / open of the folder.
+    expect((await s.scan(DIR)).names).toEqual({ th: "ภาษาไทย" });
+  });
+
+  test("renaming a known locale, and back to MuMain's name (not stored)", async () => {
+    const { s, st } = setup();
+    await s.openFolder(DIR, "vi", null, { name: "Tiếng Việt (MU)" });
+    expect((await s.registration()).name).toBe("Tiếng Việt (MU)");
+    await s.openFolder(DIR, "vi", null, { name: "Tiếng Việt" });
+    expect(s.open!.folder.names).toEqual({});
+    const file = [...st.files.keys()].find((k) => k.endsWith(".mumain-translator/locales.json"))!;
+    expect(JSON.parse(new TextDecoder().decode(st.files.get(file)!)).names).toEqual({});
+  });
+
+  test("opening without a name changes nothing", async () => {
+    const { s, st } = setup();
+    await s.openFolder(DIR, "vi");
+    expect([...st.files.keys()].some((k) => k.endsWith("locales.json"))).toBe(false);
+    expect(s.open!.folder.names).toEqual({});
   });
 });

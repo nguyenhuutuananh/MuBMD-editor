@@ -74,7 +74,8 @@ import {
   type RowsResponse,
   type WorkspaceListing,
 } from "../shared/api";
-import { localeName } from "../shared/locales";
+import { localeLabel } from "../shared/locales";
+import { writeLocaleName } from "./localeNames";
 import type { Platform } from "./itemsFolder";
 import { migrateLegacy } from "./migrate";
 import { type LoadedProposal, type ProposalScan, loadProposals, recordDecisions } from "./proposals";
@@ -238,7 +239,7 @@ export class Session {
     path: string,
     locale: string,
     reference: string | null = null,
-    opts: { discard?: boolean; create?: boolean } = {},
+    opts: { discard?: boolean; create?: boolean; name?: string } = {},
   ): Promise<OpenInfo> {
     return this.exclusive(async () => {
       const { ws, listing } = await this.readListing(path);
@@ -261,6 +262,14 @@ export class Session {
         migrated = await migrateLegacy(this.storage, ws, listing.path, locale, groups, this.now());
       } catch (e) {
         console.warn(`Could not carry over the old side data: ${(e as Error).message}`);
+      }
+      // A name given for the locale (a new one, or renamed) is kept for this folder.
+      if (opts.name !== undefined) {
+        try {
+          listing.names = await writeLocaleName(this.storage, listing.path, locale, opts.name);
+        } catch (e) {
+          console.warn(`Could not store the locale name: ${(e as Error).message}`);
+        }
       }
       this.info = { folder: listing, locale, reference: ref, loadedAt: this.now().toISOString(), migrated };
       await this.loadProject();
@@ -345,7 +354,7 @@ export class Session {
     return this.exclusive(async () => {
       const { locale } = this.folderInfo();
       const resxDir = this.workspace?.resx?.dir ?? null;
-      const name = localeName(locale);
+      const name = localeLabel(locale, this.info?.folder.names);
       const read = async (rel: string, check: typeof checkOptionWindow): Promise<RegistrationFile | null> => {
         if (!resxDir) return null;
         const text = await tryReadText(this.storage, this.storage.join(resxDir, rel));

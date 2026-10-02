@@ -8,6 +8,7 @@ import { SEVERITY } from "../../../src/core/validate";
 import type { DraftInfo, GlossaryEntry, ImportPreview, KeyRef, ProposalDecision, ProposalRow, SaveRequest, Status } from "../../../src/shared/api";
 import { currentLang, errorText, fmtTime, tr } from "@/i18n";
 import { ApiError, api, isFallback, isWeb } from "@/lib/api";
+import type { OpenOptions } from "@/lib/backend";
 import { announceOpen } from "@/lib/tabs";
 import { ask, isDialogOpen } from "@/lib/dialogs";
 import { type Row, glossaryProblems } from "@/lib/rows";
@@ -92,11 +93,13 @@ async function confirmDiscard(): Promise<boolean> {
   return r.action === "discard";
 }
 
-// Step 2 (or a recent entry): open for translating `locale`; `create` for a new language.
-export async function openFolder(path: string, locale: string, reference: string | null, discard = false, create = false): Promise<void> {
+// Step 2 (or a recent entry): open for translating `locale`; `create` for a new language, `name`
+// its display name (kept for this folder).
+export async function openFolder(path: string, locale: string, reference: string | null, opts: OpenOptions = {}): Promise<void> {
+  const create = opts.create === true;
   welcomeError.value = null;
   try {
-    const draft = await store().openFolder(path, locale, reference, discard, create);
+    const draft = await store().openFolder(path, locale, reference, opts);
     // Web: each tab keeps its own copy of the folder in memory.
     const opened = store().open;
     const m = opened?.migrated;
@@ -107,7 +110,7 @@ export async function openFolder(path: string, locale: string, reference: string
     if (create && isNew) toast.info(tr("toast.newLocale", { locale }), { duration: 10000 });
   } catch (e) {
     if (e instanceof ApiError && e.code === "dirty") {
-      if (await confirmDiscard()) return openFolder(path, locale, reference, true, create);
+      if (await confirmDiscard()) return openFolder(path, locale, reference, { ...opts, discard: true });
       return;
     }
     if (e instanceof ApiError && e.code === "locale-code") {
@@ -120,7 +123,22 @@ export async function openFolder(path: string, locale: string, reference: string
 }
 
 // A recent entry may be a language whose files were never saved: open it as new again.
-export const openRecent = (r: RecentEntry) => openFolder(r.path, r.locale, r.reference, false, true);
+export const openRecent = (r: RecentEntry) => openFolder(r.path, r.locale, r.reference, { create: true });
+
+// The locale choice (step 2) of a recent folder, instead of opening it with its last locale.
+export function chooseRecentLocale(r: RecentEntry) {
+  return scanPath(r.path);
+}
+
+// Translate another locale of the folder open now (or rename this one): back to the locale choice.
+export async function changeLocale() {
+  const s = store();
+  const open = s.open;
+  if (!open || !(await commitEditor())) return;
+  s.editor = null;
+  s.view = "welcome";
+  await scanPath(open.folder.path);
+}
 
 // Read the files again; unsaved edits are put back on top of what is on disk now.
 export async function reload() {

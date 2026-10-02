@@ -26,6 +26,8 @@ import type {
   Status,
 } from "../../../src/shared/api";
 import { api, isFallback } from "@/lib/api";
+import type { OpenOptions } from "@/lib/backend";
+import { localeLabel } from "@/lib/locales";
 import { type Filter, type Row, applyFilter, toRow, toRows } from "@/lib/rows";
 import { KEYS, load, save } from "@/lib/storage";
 
@@ -223,8 +225,8 @@ export const useDocStore = defineStore("doc", () => {
     return listing.value;
   }
 
-  async function openFolder(path: string, locale: string, reference: string | null, discard = false, create = false) {
-    const { open: info } = await serial(() => api.open(path, locale, reference, discard, create));
+  async function openFolder(path: string, locale: string, reference: string | null, opts: OpenOptions = {}) {
+    const { open: info } = await serial(() => api.open(path, locale, reference, opts));
     if (info) rememberRecent({ path: info.folder.path, locale: info.locale, reference: info.reference });
     listing.value = null;
     selectedId.value = null;
@@ -236,6 +238,9 @@ export const useDocStore = defineStore("doc", () => {
     if (info) rememberRecent({ path: info.folder.path, locale: info.locale, reference: info.reference });
     await loadRows();
   }
+
+  // A locale as shown: this folder's own name for it, else MuMain's.
+  const localeTitle = (code: string) => localeLabel(code, (listing.value ?? open.value?.folder)?.names);
 
   const groupName = (r: Row) => groups.value[r.group]?.name ?? "";
   // The sources of the open workspace, in sidebar order.
@@ -270,6 +275,7 @@ export const useDocStore = defineStore("doc", () => {
     saveGlossary,
     rememberedGlossary,
     refOf,
+    localeTitle,
     refilter,
     loadRows,
     scan,

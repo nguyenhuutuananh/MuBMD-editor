@@ -65,6 +65,7 @@ export interface WorkspaceListing {
     files: { file: string; locales: string[] }[]; // locales that have a name in the file
   } | null;
   locales: { code: string; groups: number }[]; // en first; groups = how many groups / item files have it
+  names: Record<string, string>; // the workspace's own locale names (.mumain-translator/locales.json)
 }
 
 export interface GroupInfo {
@@ -204,6 +205,7 @@ export interface OpenRequest {
   reference?: string | null;
   discard?: boolean; // discard unsaved edits of the folder open now
   create?: boolean; // a locale the folder has no file for yet (files are created on the first save)
+  name?: string; // display name of the locale, stored for this folder ("" = MuMain's own)
 }
 
 // Is the locale selectable in the game (see src/core/registration.ts)? null for a file that is not

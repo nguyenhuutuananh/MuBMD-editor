@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Redo2, RefreshCw, Undo2, UserRound } from "@lucide/vue";
+import { ChevronDown, Redo2, RefreshCw, Undo2, UserRound } from "@lucide/vue";
 import { computed, watchEffect } from "vue";
 import { useI18n } from "vue-i18n";
 import LanguageSwitch from "@/components/LanguageSwitch.vue";
@@ -7,10 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { askTranslator, registrationOpen, reload, saveAll, setReference, showWelcome, undoRedo } from "@/composables/actions";
+import { askTranslator, changeLocale, registrationOpen, reload, saveAll, setReference, showWelcome, undoRedo } from "@/composables/actions";
 import { fmtTime } from "@/i18n";
 import { isFallback } from "@/lib/api";
-import { localeName } from "@/lib/locales";
 import { displayPath } from "@/lib/paths";
 import { useDocStore } from "@/stores/doc";
 
@@ -45,9 +44,17 @@ watchEffect(() => {
     <div class="font-bold tracking-tight">{{ t("app.name") }}</div>
 
     <div v-if="open" class="flex min-w-0 flex-1 items-center gap-2.5 overflow-hidden">
-      <Badge class="bg-brand-soft text-brand border-transparent" data-testid="locale">
-        {{ open.locale }} · {{ localeName(open.locale) }}
-      </Badge>
+      <Tooltip>
+        <TooltipTrigger as-child>
+          <button type="button" class="rounded-md focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none" data-testid="locale-switch" @click="changeLocale">
+            <Badge class="bg-brand-soft text-brand hover:border-brand cursor-pointer border-transparent" data-testid="locale">
+              {{ open.locale }} · {{ store.localeTitle(open.locale) }}
+              <ChevronDown class="size-3" />
+            </Badge>
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>{{ t("topbar.localeTitle") }}</TooltipContent>
+      </Tooltip>
       <Tooltip v-if="open.folder.resx">
         <TooltipTrigger as-child>
           <Badge variant="outline" data-testid="badge-resx">{{ t("groups.source.resx") }}</Badge>
@@ -131,7 +138,7 @@ watchEffect(() => {
             <SelectTrigger size="sm" class="w-auto" data-testid="reference"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem :value="NONE">{{ t("topbar.referenceNone") }}</SelectItem>
-              <SelectItem v-for="c in references" :key="c" :value="c">{{ c }} · {{ localeName(c) }}</SelectItem>
+              <SelectItem v-for="c in references" :key="c" :value="c">{{ c }} · {{ store.localeTitle(c) }}</SelectItem>
             </SelectContent>
           </Select>
         </label>

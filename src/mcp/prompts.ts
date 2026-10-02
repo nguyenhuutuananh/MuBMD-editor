@@ -7,6 +7,7 @@ import type { McpPrompt } from "./protocol";
 
 export interface PromptContext {
   locale: string;
+  language?: string; // the workspace's name of the locale (default: MuMain's)
   hasGlossary: boolean;
   hasStyle: boolean;
 }
@@ -19,7 +20,8 @@ const num = (v: string | undefined, def: number, min: number, max: number, name:
 };
 
 export function createPrompts(ctx: PromptContext): McpPrompt[] {
-  const lang = `${localeName(ctx.locale)} (${ctx.locale})`;
+  const name = ctx.language || localeName(ctx.locale);
+  const lang = `${name} (${ctx.locale})`;
   const missing = [
     ctx.hasStyle ? "" : "No style guide was configured (--style): tell the user, and follow only the glossary and the rules below.",
     ctx.hasGlossary ? "" : "No glossary was configured (--glossary): tell the user; terms will not be checked.",
@@ -36,7 +38,7 @@ export function createPrompts(ctx: PromptContext): McpPrompt[] {
 ${missing.map((m) => `- ${m}`).join("\n")}`.trimEnd();
 
   const summary = (extra: string, review = true) =>
-    `When done, write a short summary for the user in ${localeName(ctx.locale)}: ${extra}` +
+    `When done, write a short summary for the user in ${name}: ${extra}` +
     (review ? " Then remind them to review the proposals in MuMain-translator (they appear when its window gets focus; the web version needs Chrome or Edge opened on the same folder) and to press Save." : "");
 
   return [

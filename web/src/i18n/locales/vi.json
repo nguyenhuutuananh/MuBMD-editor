@@ -38,7 +38,11 @@
     "itemsFound": "{n} file, {layout}",
     "noResx": "Ở đây không có bảng chuỗi giao diện (chỉ có trong repo MuMain).",
     "pickUpload": "Chọn thư mục (tải lên)…",
-    "fallbackHint": "Trình duyệt này không sửa trực tiếp được file (Chrome hoặc Edge thì được). Bạn vẫn chọn thư mục như thường: chỉ những file cần dịch được đọc vào một bản sao lưu trong trình duyệt (không gửi đi đâu cả), và khi lưu, các file đã sửa sẽ được tải về (một file thì tải nguyên file, nhiều file thì gói thành zip theo đúng cấu trúc thư mục) để chép đè lại vào thư mục."
+    "fallbackHint": "Trình duyệt này không sửa trực tiếp được file (Chrome hoặc Edge thì được). Bạn vẫn chọn thư mục như thường: chỉ những file cần dịch được đọc vào một bản sao lưu trong trình duyệt (không gửi đi đâu cả), và khi lưu, các file đã sửa sẽ được tải về (một file thì tải nguyên file, nhiều file thì gói thành zip theo đúng cấu trúc thư mục) để chép đè lại vào thư mục.",
+    "localeName": "Tên của “{code}”",
+    "localeNamePlaceholder": "VD: ภาษาไทย",
+    "localeNameHint": "Viết bằng chính ngôn ngữ đó. Hiện trong tool và trong dòng code gợi ý cho danh sách ngôn ngữ của game; lưu riêng cho thư mục này.",
+    "otherLocale": "Ngôn ngữ khác…"
   },
   "topbar": {
     "reference": "Tham khảo",
@@ -61,7 +65,8 @@
     "resxTitle": "Bảng chuỗi giao diện: {dir} (được build của MuMain biên dịch vào client: phải build lại mới thấy thay đổi).",
     "itemsTitle": "Tên vật phẩm: {dir} (game đọc khi khởi động: khởi động lại game để thấy thay đổi).",
     "browserCopy": "Bản trong trình duyệt",
-    "browserCopyTitle": "Trình duyệt này không ghi được vào thư mục của bạn, nên bạn đang sửa một bản sao lưu trong trình duyệt. Khi lưu, các file đã sửa sẽ được tải về: hãy chép chúng lại vào thư mục (file zip thì giải nén đè lên)."
+    "browserCopyTitle": "Trình duyệt này không ghi được vào thư mục của bạn, nên bạn đang sửa một bản sao lưu trong trình duyệt. Khi lưu, các file đã sửa sẽ được tải về: hãy chép chúng lại vào thư mục (file zip thì giải nén đè lên).",
+    "localeTitle": "Dịch ngôn ngữ khác của thư mục này, hoặc đổi tên ngôn ngữ đang dịch"
   },
   "groups": {
     "label": "Nhóm",
