@@ -15,7 +15,7 @@
     "placeholder": "/path/to/MuMain",
     "next": "Next",
     "recent": "Recently opened",
-    "back": "← Back to the open folder",
+    "back": "← Back to translating {locale} ({folder})",
     "chooseTitle": "Which language do you translate?",
     "chooseHint": "English (en) is the source every translation follows. A group without a translation for the chosen language is shown as untranslated.",
     "groups": "{n} group / file | {n} groups / files",

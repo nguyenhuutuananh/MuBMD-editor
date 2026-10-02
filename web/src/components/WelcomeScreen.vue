@@ -71,7 +71,10 @@ onMounted(() => (input.value?.$el as HTMLInputElement | undefined)?.focus());
 <template>
   <main class="flex flex-1 justify-center overflow-auto px-4 pt-[10vh] pb-6">
     <section class="bg-card flex h-fit w-full max-w-xl flex-col gap-4 rounded-xl border p-7">
-      <Button v-if="store.open" variant="link" class="h-auto self-start p-0" @click="backToFolder">{{ t("welcome.back") }}</Button>
+      <!-- back to the translation open now (whichever step this is) -->
+      <Button v-if="store.open" variant="link" class="h-auto self-start p-0" data-testid="welcome-back" @click="backToFolder">
+        {{ t("welcome.back", { locale: `${store.open.locale} · ${store.localeTitle(store.open.locale)}`, folder: displayPath(store.open.folder.path).split(/[\\/]/).filter(Boolean).pop() ?? "" }) }}
+      </Button>
 
       <!-- step 2: choose the locale -->
       <template v-if="listing">

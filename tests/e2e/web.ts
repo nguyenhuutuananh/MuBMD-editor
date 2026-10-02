@@ -323,7 +323,9 @@ try {
   await tid("recent-locale").first().click();
   await tid("sources").waitFor();
   check("recent folder: choose another language", (await tid("locale-vi").count()) === 1);
-  await page.getByRole("button", { name: /Back/ }).first().click();
+  await tid("welcome-back").click();
+  await tid("grid").waitFor();
+  check("back to the translation open now", (await text("locale")).startsWith("vi"));
 
   // a browser without the File System Access API (Firefox, Safari): the fallback mode
   // (tests/e2e/web-fallback.ts runs it in Firefox and WebKit)

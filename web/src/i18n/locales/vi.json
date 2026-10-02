@@ -15,7 +15,7 @@
     "placeholder": "/đường/dẫn/tới/MuMain",
     "next": "Tiếp",
     "recent": "Mở gần đây",
-    "back": "← Quay lại thư mục đang mở",
+    "back": "← Quay lại màn hình dịch {locale} ({folder})",
     "chooseTitle": "Bạn dịch sang ngôn ngữ nào?",
     "chooseHint": "Tiếng Anh (en) là bản gốc mọi bản dịch làm theo. Nhóm chưa có bản dịch cho ngôn ngữ đã chọn được hiển thị là chưa dịch.",
     "groups": "{n} nhóm / file",
