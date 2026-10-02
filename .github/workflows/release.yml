@@ -1,6 +1,7 @@
 # Release: pushing a tag like v1.0.0
 #   1. builds the Windows + macOS zips and publishes a GitHub Release (job "release")
-#   2. then deploys the web version (static PWA) to GitHub Pages (job "pages")
+#   2. then deploys the web version (static PWA) to GitHub Pages (job "pages") and puts its address at
+#      the top of the release notes (.github/release-notes-header.md), next to the desktop zips
 #   git tag v1.0.0 && git push origin v1.0.0
 # The tag must match "version" in package.json.
 # One-time setup for Pages: repository Settings -> Pages -> Source: "GitHub Actions".
@@ -62,7 +63,7 @@ jobs:
     needs: release # only after the tests passed and the release exists
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write # edit the release notes
       pages: write
       id-token: write
     environment:
@@ -92,3 +93,19 @@ jobs:
 
       - id: deploy
         uses: actions/deploy-pages@v5
+
+      # Only once the web version is live: the notes say how to use the release, the web version
+      # (its real address, a custom domain included) or a desktop zip. Skipped when already there
+      # (a re-run).
+      - name: Add the web version to the release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PAGES_URL: ${{ steps.deploy.outputs.page_url }}
+        run: |
+          body=$(gh release view "$GITHUB_REF_NAME" --json body --jq .body)
+          case "$body" in *"<!-- mumain-translator:web -->"*) echo "Release notes already mention the web version."; exit 0 ;; esac
+          version="${GITHUB_REF_NAME#v}"
+          sed -e "s|{{PAGES_URL}}|${PAGES_URL}|g" -e "s|{{VERSION}}|${version}|g" .github/release-notes-header.md > notes.md
+          printf '\n%s\n' "$body" >> notes.md
+          gh release edit "$GITHUB_REF_NAME" --notes-file notes.md
